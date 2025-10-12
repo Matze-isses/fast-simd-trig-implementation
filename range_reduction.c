@@ -122,24 +122,16 @@ double brisebarre_range_reduction(double x) {
   int i = 7; // num iterations - 1
   int j = 56; // current first bit
   int8_t w;
-  bool w_pos;
 
   while (i >= 0) {
     // This is checked and will be the bit values of the integer part of x 
     // starting with the larger bits (first 8)
     w = (int8_t)(I >> j);
-    w_pos = (w > 0);
 
     // print_bits_u8(w); // for checking
 
-    if (w_pos) {
-      s_hi  += t_hi(i, abs(w));
-      s_med += t_med(i, abs(w));
-    } else {
-      s_hi  -= t_hi(i, abs(w));
-      s_med -= t_med(i, abs(w));
-    }
-
+    s_hi  += t_hi(i, abs(w));
+    s_med += t_med(i, abs(w));
     // subtract the consumed part
     I -= ((uint64_t)w << j);
 
@@ -148,11 +140,7 @@ double brisebarre_range_reduction(double x) {
   }
 
   for (int i = 0; i < 8; i++) {
-    if (w_pos) {
-      s_lo += t_lo(i, abs(w));
-    } else {
-      s_lo -= t_lo(i, abs(w));
-    }
+    s_lo  = t_lo(i, abs(w));
   }
 
   // Combine the triple (simple, keeps your structure; Fast2sum not strictly necessary for returning y)
