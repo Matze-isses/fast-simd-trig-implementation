@@ -173,6 +173,56 @@ double brisebarre_range_reduction(double x) {
   return y_hi + y_lo;
 }
 
+typedef int int4;
+typedef union { int4 i[2]; double x; double d; } mynumber;
+
+static const double s1 = -0x1.5555555555555p-3;   /* -0.16666666666666666     */
+static const double s2 = 0x1.1111111110ECEp-7;    /*  0.0083333333333323288   */
+static const double s3 = -0x1.A01A019DB08B8p-13;  /* -0.00019841269834414642  */
+static const double s4 = 0x1.71DE27B9A7ED9p-19;   /*  2.755729806860771e-06   */
+static const double s5 = -0x1.ADDFFC2FCDF59p-26;  /* -2.5022014848318398e-08  */
+static const double aa = -0x1.5558000000000p-3;   /* -0.1666717529296875      */
+static const double bb = 0x1.5555555556E24p-18;   /*  5.0862630208387126e-06  */
+static const double big = 0x1.8000000000000p45;   /*  52776558133248          */
+static const double hp0 = 0x1.921FB54442D18p0;    /*  1.5707963267948966      */
+static const double hp1 = 0x1.1A62633145C07p-54;  /*  6.123233995736766e-17   */
+static const double mp1 = 0x1.921FB58000000p0;    /*  1.5707963407039642      */
+static const double mp2 = -0x1.DDE973C000000p-27; /* -1.3909067564377153e-08  */
+static const double mp3 = -0x1.CB3B399D747F2p-55; /* -4.9789962505147994e-17  */
+static const double pp3 = -0x1.CB3B398000000p-55; /* -4.9789962314799099e-17  */
+static const double pp4 = -0x1.d747f23e32ed7p-83; /* -1.9034889620193266e-25  */
+static const double hpinv = 0x1.45F306DC9C883p-1; /*  0.63661977236758138     */
+static const double toint = 0x1.8000000000000p52; /*  6755399441055744        */
+
+/* Reduce range of x to within PI/2 with abs (x) < 105414350.  The high part
+   is written to *a, the low part to *da.  Range reduction is accurate to 136
+   bits so that when x is large and *a very close to zero, all 53 bits of *a
+   are correct.  */
+static __always_inline int4
+reduce_sincos (double x, double *a, double *da)
+{
+  mynumber v;
+
+  double t = (x * hpinv + toint);
+  double xn = t - toint;
+  v.x = t;
+  double y = (x - xn * mp1) - xn * mp2;
+  int4 n = v.i[0] & 3;
+
+  double b, db, t1, t2;
+  t1 = xn * pp3;
+  t2 = y - t1;
+  db = (y - t2) - t1;
+
+  t1 = xn * pp4;
+  b = t2 - t1;
+  db += (t2 - b) - t1;
+
+  *a = b;
+  *da = db;
+  return n;
+}
+
 
 int get_quadrant(double x) {
   int quadrant = 0;
@@ -252,7 +302,7 @@ int main(void) {
 
     {302.0, "302.0", 0},
     {305.5, "305.5", 2},
-    
+
     // The following examples have at the start of all 8 columns as long values
     // 0, which should make the calculation of t exact. 
     {6316927.0, "6316927", 0},
@@ -272,35 +322,42 @@ int main(void) {
     {6356635.0, "6356635.0", 3},
     {23788.5, "23788.5", 0},
 
-//  {pow(2, 57) * M_PI, "pi * 2^58", 0},
+    //  {pow(2, 57) * M_PI, "pi * 2^58", 0},
 
-//  // Those are the edge cases where it stops working 
-//  {nextafter(M_PI * 2.0 * INT_MAX, -INFINITY), "2 * pi * intmax - eps", 3},
+    //  // Those are the edge cases where it stops working 
+    //  {nextafter(M_PI * 2.0 * INT_MAX, -INFINITY), "2 * pi * intmax - eps", 3},
 
-//  {M_PI * 2.0 * INT_MAX, "2 * pi * intmax", 0},
-//  {nextafter(M_PI * 2.0 * INT_MAX, INFINITY), "2 * pi * intmax + eps", 0},
-//  {M_PI * 2.0 * INT_MAX + 1, "2 * pi * intmax + 1", 0},
-//  {M_PI * 2.0 * INT_MAX + M_PI, "pi * (2 * intmax + 1)", 2},
+    //  {M_PI * 2.0 * INT_MAX, "2 * pi * intmax", 0},
+    //  {nextafter(M_PI * 2.0 * INT_MAX, INFINITY), "2 * pi * intmax + eps", 0},
+    //  {M_PI * 2.0 * INT_MAX + 1, "2 * pi * intmax + 1", 0},
+    //  {M_PI * 2.0 * INT_MAX + M_PI, "pi * (2 * intmax + 1)", 2},
 
-//  // Converted large number to bits then took those and put them into a bit to decimal calculator (https://numeral-systems.com/ieee-754-converter/)
-//  // then put the result into an full precision calculator and checked the quadrant (https://www.mathsisfun.com/calculator-precision.html)
-//  {180899997887870864251481058976852284292172291974620700999680.0, "approx 1.8 * 10^59", 0},
-//  {9999999978010827105118843667605086770705495962419200.0, "approx 9 * 10^51", 1},
-//  {999999997801082606665947196063956106460623011840.0, "approx 9 * 10^47", 1},
-//  {679899997801082676275550042794554161600728662016.0, "approx 6.8 * 10^47", 1},
-//  {579899997887998780515705500125536825728609841840128.0, "approx 5.8 * 10^50", 1},
-//  {3698999978879987753059268883445507785324923154088429879296.0, "approx 3.7 * 10^57", 2},
-//  {1408999978878708665079569693857962203230771643241038251115788338092413288448.0, "approx 1.4 * 10^75", 2},
-//  {140899997887870848106493420455200807689536941778985583455291404091450082399540603781120.0, "approx 1.4 * 10^86", 2},
-//  {61000687969105996493672285664758005575629682910825211579427204492165120.0, "approx 6.1 * 10^70", 2}
+    //  // Converted large number to bits then took those and put them into a bit to decimal calculator (https://numeral-systems.com/ieee-754-converter/)
+    //  // then put the result into an full precision calculator and checked the quadrant (https://www.mathsisfun.com/calculator-precision.html)
+    {180899997887870864251481058976852284292172291974620700999680.0, "approx 1.8 * 10^59", 0},
+    //  {9999999978010827105118843667605086770705495962419200.0, "approx 9 * 10^51", 1},
+    //  {999999997801082606665947196063956106460623011840.0, "approx 9 * 10^47", 1},
+    //  {679899997801082676275550042794554161600728662016.0, "approx 6.8 * 10^47", 1},
+    //  {579899997887998780515705500125536825728609841840128.0, "approx 5.8 * 10^50", 1},
+    //  {3698999978879987753059268883445507785324923154088429879296.0, "approx 3.7 * 10^57", 2},
+    //  {1408999978878708665079569693857962203230771643241038251115788338092413288448.0, "approx 1.4 * 10^75", 2},
+    //  {140899997887870848106493420455200807689536941778985583455291404091450082399540603781120.0, "approx 1.4 * 10^86", 2},
+    //  {61000687969105996493672285664758005575629682910825211579427204492165120.0, "approx 6.1 * 10^70", 2}
+    {nextafter(0.0, -INFINITY), "0 - eps", 3}, 
   };
 
   int n = sizeof(ugly_tests) / sizeof(ugly_tests[0]); 
 
+
   for (int i = 0; i < n; i++) {
     int q = get_quadrant(ugly_tests[i].value);
     printf("  %-25s is in quadrant %d", ugly_tests[i].name, q);
-    printf(" Correct: %-5s (%d)\n\n\n", (q == ugly_tests[i].quadrant) ? "True" : "\033[31mFalse\033[0m", ugly_tests[i].quadrant); // ]]
+    printf(" Correct: %-5s (%d)\n", (q == ugly_tests[i].quadrant) ? "True" : "\033[31mFalse\033[0m", ugly_tests[i].quadrant); // ]]
+                                                                                                                                  //
+    double a;
+    double da;
+    int4 n = reduce_sincos(ugly_tests[i].value, &a, &da);
+    printf("The result of the glibc-implementation is: Quadrant: %d; a: %.17g; da: %.17g  this is correct? %-5s (%d)\n\n", n, a, da, (n == ugly_tests[i].quadrant) ? "True" : "\033[31mFalse\033[0m", ugly_tests[i].quadrant);
   }
 
   // print_double_bits(ugly_tests[1].value);
