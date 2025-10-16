@@ -375,3 +375,4 @@ int main(void) {
   // random_test();
   return 0;
 }
+// gcc range_reduction.c bit_printing.c -o range_reduction -lm && ./range_reduction
