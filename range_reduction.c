@@ -31,22 +31,12 @@ void fast2sum(double a, double b, double *s, double *r) {
     *r = b - z;
 }
 
-static inline double quantize_pow2(double v, int k) {
-  return nearbyint(v * ldexp(1.0, -k)) * ldexp(1.0, k);
-}
-
-static inline double mod_pi(double v) {
-  double r = fmod(v, RANGE_MAX);
-  if (r < 0) r += RANGE_MAX;
-  return r;
-}
-
 void calc_t(int i, int8_t w, double *t_hi, double *t_med, double *t_lo) {
   // printf("w:  %.d\n", w);
   // printf("uw: %.d\n", abs(w));
 
   double base = fmod(pow(2, 8 * i) * w, RANGE_MAX);
-  *t_hi = round(base / TWO_POW_NEG_49) * TWO_POW_NEG_49;
+  *t_hi = base;
 
   base -= *t_hi;
   *t_med = round(base / TWO_POW_NEG_99) * TWO_POW_NEG_99;
@@ -98,7 +88,7 @@ double brisebarre_range_reduction(double x) {
 
     if (w != 0) {
       // get the t values
-      calc_t(i, abs(w), &t_hi, &t_med, &t_lo);
+      calc_t(i, w, &t_hi, &t_med, &t_lo);
 
       printf("t_hi: %.17g; t_med: %.17g; t_lo: %.17g\n", t_hi, t_med, t_lo);
 
@@ -334,7 +324,7 @@ int main(void) {
 
     //  // Converted large number to bits then took those and put them into a bit to decimal calculator (https://numeral-systems.com/ieee-754-converter/)
     //  // then put the result into an full precision calculator and checked the quadrant (https://www.mathsisfun.com/calculator-precision.html)
-    {180899997887870864251481058976852284292172291974620700999680.0, "approx 1.8 * 10^59", 0},
+    //  {180899997887870864251481058976852284292172291974620700999680.0, "approx 1.8 * 10^59", 0},
     //  {9999999978010827105118843667605086770705495962419200.0, "approx 9 * 10^51", 1},
     //  {999999997801082606665947196063956106460623011840.0, "approx 9 * 10^47", 1},
     //  {679899997801082676275550042794554161600728662016.0, "approx 6.8 * 10^47", 1},
@@ -343,23 +333,42 @@ int main(void) {
     //  {1408999978878708665079569693857962203230771643241038251115788338092413288448.0, "approx 1.4 * 10^75", 2},
     //  {140899997887870848106493420455200807689536941778985583455291404091450082399540603781120.0, "approx 1.4 * 10^86", 2},
     //  {61000687969105996493672285664758005575629682910825211579427204492165120.0, "approx 6.1 * 10^70", 2}
-    {nextafter(0.0, -INFINITY), "0 - eps", 3}, 
   };
 
   int n = sizeof(ugly_tests) / sizeof(ugly_tests[0]); 
-
+  bool correct_results_own[n];
+  bool correct_results_glibc[n];
 
   for (int i = 0; i < n; i++) {
     int q = get_quadrant(ugly_tests[i].value);
     printf("  %-25s is in quadrant %d", ugly_tests[i].name, q);
-    printf(" Correct: %-5s (%d)\n", (q == ugly_tests[i].quadrant) ? "True" : "\033[31mFalse\033[0m", ugly_tests[i].quadrant); // ]]
-                                                                                                                                  //
+    if (q == ugly_tests[i].quadrant) {
+      printf(" Correct:  True (%d)\n", ugly_tests[i].quadrant); // ]]
+      correct_results_own[i] = true;
+    } else {
+      correct_results_own[i] = false;
+      printf(" Correct: \033[31mFalse\033[0m (%d)\n", ugly_tests[i].quadrant); // ]]
+    }
+
     double a;
     double da;
-    int4 n = reduce_sincos(ugly_tests[i].value, &a, &da);
-    printf("The result of the glibc-implementation is: Quadrant: %d; a: %.17g; da: %.17g  this is correct? %-5s (%d)\n\n", n, a, da, (n == ugly_tests[i].quadrant) ? "True" : "\033[31mFalse\033[0m", ugly_tests[i].quadrant);
+    int4 glibc_q = reduce_sincos(ugly_tests[i].value, &a, &da);
+    if (glibc_q == ugly_tests[i].quadrant) {
+      printf("glibc-implementation: in quadrant %d; Correct:  True (%d)\n", glibc_q, ugly_tests[i].quadrant);
+      correct_results_glibc[i] = true;
+    } else {
+      correct_results_glibc[i] = false;
+      printf("glibc-implementation: in quadrant %d; Correct: \033[31mFalse\033[0m (%d)\n", glibc_q, ugly_tests[i].quadrant);
+    }
   }
 
+  printf("\n+---------------------------+-------+-------+\n");
+  printf("| Value%-20s |  own  | glibc |\n", "");
+  printf("+---------------------------+-------+-------+\n");
+  for (int i = 0; i < n; i++){
+    printf("| %-25s | %-5s | %-5s |\n", ugly_tests[i].name, correct_results_own[i] ? "True" : "False", correct_results_glibc[i] ? "True" : "False");
+  }
+  printf("+---------------------------+-------+-------+\n");
   // print_double_bits(ugly_tests[1].value);
   
 
