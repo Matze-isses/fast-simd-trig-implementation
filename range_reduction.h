@@ -9,6 +9,7 @@
 
 #define SDOUBLE __m256d
 #define LOAD_DOU _mm256_set1_pd
+
 #define MUL_DOU _mm256_mul_pd
 #define SIMD_TO_DOUBLE_VEC _mm256_storeu_pd
 

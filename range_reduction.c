@@ -18,7 +18,7 @@ const double TWO_POW_NEG_49 = pow(2, -49);
 const double TWO_POW_NEG_99 = pow(2, -99);
 const double ONE_OVER_RANGE = 1 / RANGE_MAX;
 const double ONE_OVER_PI_2 = 1 / M_PI_2;
-const int MAX_SIMD_DOUBLES = (int)(SIMD_LENGTH / sizeof(double));
+const int MAX_SIMD_DOUBLES = (int)(SIMD_LENGTH / 64);
 
 
 typedef struct {
@@ -42,6 +42,7 @@ int get_quadrant(double x) {
 }
 
 
+// When using the -O2 this is faster. For non optimized code this is slower.
 void get_simd_quadrant(double *src, double *quad, double *range) {
     SDOUBLE x   = LOAD_DOU_VEC(src);
     SDOUBLE two_pi = LOAD_DOU(RANGE_MAX);
@@ -73,9 +74,11 @@ void sin_simd(double *x, double *res, size_t n, float prec) {
     for (int j = 0; j < MAX_SIMD_DOUBLES; j++) {
       partial_values[j] = x[i+j];
     }
-
     get_simd_quadrant(partial_values, quadrants, reduced_range);
-    PRINT_ARRAY(quadrants, 4);
+    
+    for (int j = 0; j < MAX_SIMD_DOUBLES; j++) {
+      res[i+j] = quadrants[j];
+    }
   }
 }
 
@@ -107,6 +110,7 @@ int random_test() {
   double upper = 1000000000.0;
 
   double *vec = malloc(n * sizeof(double));
+  double *res = malloc(n * sizeof(double));
 
   if (!vec) {
     perror("malloc");
@@ -118,7 +122,7 @@ int random_test() {
   START_CLOCK;
 
   for (int i = 0; i < n; i++) {
-    get_quadrant(vec[i]);
+    res[i] = get_quadrant(vec[i]);
   }
 
   END_CLOCK("Quadrant Calculation WARMUP");
@@ -126,10 +130,16 @@ int random_test() {
   START_CLOCK;
 
   for (int i = 0; i < n; i++) {
-    get_quadrant(vec[i]);
+    res[i] = get_quadrant(vec[i]);
   }
 
   END_CLOCK("Quadrant Calculation       ");
+
+  START_CLOCK;
+
+  sin_simd(vec, res, n, 0.1);
+
+  END_CLOCK("Quadrant Calculation SIMD");
 
   free(vec);
 }
@@ -259,7 +269,21 @@ int main(void) {
   }
 
   sin_simd(test_values, test_results, n, 0.1);
-  // random_test();
+
+  for (int i = 0; i < n; i++) {
+    int q = (int)round(test_results[i]);
+    printf("(SIMD)  %-25s is in quadrant %d", ugly_tests[i].name, q);
+
+    if (q == ugly_tests[i].quadrant) {
+      printf(" Correct:  True (%d)\n", ugly_tests[i].quadrant); // ]]
+      correct_results_own[i] = true;
+    } else {
+      correct_results_own[i] = false;
+      printf(" Correct: \033[31mFalse\033[0m (%d)\n", ugly_tests[i].quadrant); // ]]
+    }
+  }
+
+  random_test();
   return 0;
 }
 // gcc range_reduction.c bit_printing.c -o range_reduction -lm -mavx -O2 && ./range_reduction
