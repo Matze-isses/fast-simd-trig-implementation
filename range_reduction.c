@@ -19,6 +19,8 @@ const double TWO_POW_NEG_99 = pow(2, -99);
 const double ONE_OVER_RANGE = 1 / RANGE_MAX;
 const double ONE_OVER_PI_2 = 1 / M_PI_2;
 const int MAX_SIMD_DOUBLES = (int)(SIMD_LENGTH / 64);
+const int TAYLOR_DEGREE = 8;
+
 
 
 typedef struct {
@@ -43,43 +45,97 @@ int get_quadrant(double x) {
 
 
 // When using the -O2 this is faster. For non optimized code this is slower.
-void get_simd_quadrant(double *src, double *quad, double *range) {
-    SDOUBLE x   = LOAD_DOU_VEC(src);
-    SDOUBLE two_pi = LOAD_DOU(RANGE_MAX);
-    SDOUBLE one_over_2_pi = LOAD_DOU(ONE_OVER_RANGE);
-    SDOUBLE one_over_pi_2 = LOAD_DOU(ONE_OVER_PI_2);
+void get_simd_quadrant_double(double *src, double *quad, double *range) {
+    SDOUBLE x   = LOAD_DOUBLE_VEC(src);
+    SDOUBLE two_pi = LOAD_DOUBLE(RANGE_MAX);
+    SDOUBLE one_over_2_pi = LOAD_DOUBLE(ONE_OVER_RANGE);
+    SDOUBLE one_over_pi_2 = LOAD_DOUBLE(ONE_OVER_PI_2);
 
     // works but is potentially negative
-    SDOUBLE n = MUL_DOU(x, one_over_2_pi);
-    n = FLOOR_S(n);
+    SDOUBLE n = MUL_DOUBLE_S(x, one_over_2_pi);
+    n = FLOOR_DOUBLE_S(n);
+
 
-
-    SDOUBLE range_multiple = MUL_DOU(n, two_pi);
+    SDOUBLE range_multiple = MUL_DOUBLE_S(n, two_pi);
     SDOUBLE in_range = SUB_DOUBLE_S(x, range_multiple); // in [0, 2 * pi]
 
-    n = MUL_DOU(in_range, one_over_pi_2);
-    n = FLOOR_S(n);
+    n = MUL_DOUBLE_S(in_range, one_over_pi_2);
+    n = FLOOR_DOUBLE_S(n);
 
     SIMD_TO_DOUBLE_VEC(quad, n);
     SIMD_TO_DOUBLE_VEC(range, in_range);
 }
 
-void sin_simd(double *x, double *res, size_t n, float prec) {
-  double *quadrants = malloc(MAX_SIMD_DOUBLES * sizeof(int));
-  double *reduced_range = malloc(MAX_SIMD_DOUBLES * sizeof(double));
+void get_simd_quadrant_float(float *src, float *quad, float *range) {
+  SFLOAT x = LOAD_FLOAT_VEC(src);
+  SFLOAT two_pi = LOAD_FLOAT((float) RANGE_MAX);
+  SFLOAT one_over_2_pi = LOAD_FLOAT((float) ONE_OVER_RANGE);
+  SFLOAT one_over_pi_2 = LOAD_FLOAT((float) ONE_OVER_PI_2);
 
+  SFLOAT n = MUL_FLOAT_S(x, one_over_pi_2);
+  n = FLOOR_FLOAT_S(n);
+
+  SFLOAT range_multiple = MUL_FLOAT_S(n, two_pi);
+  SFLOAT in_range = SUB_FLOAT_S(x, range_multiple); // in [0, 2 * pi]
+
+  n = MUL_FLOAT_S(in_range, one_over_pi_2);
+  n = FLOOR_FLOAT_S(n);
+
+  SIMD_TO_FLOAT_VEC(quad, n);
+  SIMD_TO_FLOAT_VEC(range, in_range);
+}
+
+/*
+ * It is assumed that the src vector has the correct length given the AVX version and that
+ * the ranges are already reduced to [0, pi/2]. This function only works for calculating the 
+ * values in the first quadrant.
+ */
+void taylor_sin(double *src, double *res) {
+}
+
+void sin_simd_float(float *x, float *res, size_t n, float prec) {
+  float *quadrants = malloc(MAX_SIMD_DOUBLES * sizeof(int));
+  float *reduced_range = malloc(MAX_SIMD_DOUBLES * sizeof(float));
+  float *partial_values = malloc(MAX_SIMD_DOUBLES * sizeof(float));
+  
+  for (int i = 0; i < n; i+= MAX_SIMD_DOUBLES) {
+    for (int j = 0; j < MAX_SIMD_DOUBLES; j++) {
+      partial_values[j] = x[i+j];
+    }
+
+    get_simd_quadrant_float(partial_values, quadrants, reduced_range);
+    
+    for (int j = 0; j < MAX_SIMD_DOUBLES; j++) {
+      res[i+j] = quadrants[j];
+    }
+  }
+
+  free(quadrants);
+  free(reduced_range);
+  free(partial_values);
+}
+
+
+void sin_simd(double *x, double *res, size_t n, float prec) {
+  double *quadrants = malloc(MAX_SIMD_DOUBLES * sizeof(double));
+  double *reduced_range = malloc(MAX_SIMD_DOUBLES * sizeof(double));
   double *partial_values = malloc(MAX_SIMD_DOUBLES * sizeof(double));
   
   for (int i = 0; i < n; i+= MAX_SIMD_DOUBLES) {
     for (int j = 0; j < MAX_SIMD_DOUBLES; j++) {
       partial_values[j] = x[i+j];
     }
-    get_simd_quadrant(partial_values, quadrants, reduced_range);
+
+    get_simd_quadrant_double(partial_values, quadrants, reduced_range);
     
     for (int j = 0; j < MAX_SIMD_DOUBLES; j++) {
       res[i+j] = quadrants[j];
     }
   }
+
+  free(quadrants);
+  free(reduced_range);
+  free(partial_values);
 }
 
 // Helper: generate a uniform random double in [0, 1]
@@ -218,28 +274,6 @@ int main(void) {
     {6356628.0, "6356628.0", 3},
     {6356635.0, "6356635.0", 3},
     {23788.5, "23788.5", 0},
-
-    //  {pow(2, 57) * M_PI, "pi * 2^58", 0},
-
-    //  // Those are the edge cases where it stops working
-    //  {nextafter(M_PI * 2.0 * INT_MAX, -INFINITY), "2 * pi * intmax - eps", 3},
-
-    //  {M_PI * 2.0 * INT_MAX, "2 * pi * intmax", 0},
-    //  {nextafter(M_PI * 2.0 * INT_MAX, INFINITY), "2 * pi * intmax + eps", 0},
-    //  {M_PI * 2.0 * INT_MAX + 1, "2 * pi * intmax + 1", 0},
-    //  {M_PI * 2.0 * INT_MAX + M_PI, "pi * (2 * intmax + 1)", 2},
-
-    //  // Converted large number to bits then took those and put them into a bit to decimal calculator (https://numeral-systems.com/ieee-754-converter/)
-    //  // then put the result into an full precision calculator and checked the quadrant (https://www.mathsisfun.com/calculator-precision.html)
-    //  {180899997887870864251481058976852284292172291974620700999680.0, "approx 1.8 * 10^59", 0},
-    //  {9999999978010827105118843667605086770705495962419200.0, "approx 9 * 10^51", 1},
-    //  {999999997801082606665947196063956106460623011840.0, "approx 9 * 10^47", 1},
-    //  {679899997801082676275550042794554161600728662016.0, "approx 6.8 * 10^47", 1},
-    //  {579899997887998780515705500125536825728609841840128.0, "approx 5.8 * 10^50", 1},
-    //  {3698999978879987753059268883445507785324923154088429879296.0, "approx 3.7 * 10^57", 2},
-    //  {1408999978878708665079569693857962203230771643241038251115788338092413288448.0, "approx 1.4 * 10^75", 2},
-    //  {140899997887870848106493420455200807689536941778985583455291404091450082399540603781120.0, "approx 1.4 * 10^86", 2},
-    //  {61000687969105996493672285664758005575629682910825211579427204492165120.0, "approx 6.1 * 10^70", 2}
   };
 
   int n = sizeof(ugly_tests) / sizeof(ugly_tests[0]);
@@ -261,6 +295,9 @@ int main(void) {
   }
 
   
+  float* test_values_float = malloc(n * sizeof(float));
+  float* test_results_float = malloc(n * sizeof(float));
+
   double *test_values = malloc(n * sizeof(double));
   double *test_results = malloc(n * sizeof(double));
 
@@ -272,7 +309,32 @@ int main(void) {
 
   for (int i = 0; i < n; i++) {
     int q = (int)round(test_results[i]);
-    printf("(SIMD)  %-25s is in quadrant %d", ugly_tests[i].name, q);
+    printf("(SIMD DOUBLE)  %-25s is in quadrant %d", ugly_tests[i].name, q);
+
+    if (q == ugly_tests[i].quadrant) {
+      printf(" Correct:  True (%d)\n", ugly_tests[i].quadrant); // ]]
+      correct_results_own[i] = true;
+    } else {
+      correct_results_own[i] = false;
+      printf(" Correct: \033[31mFalse\033[0m (%d)\n", ugly_tests[i].quadrant); // ]]
+    }
+  }
+
+  free(test_values);
+  free(test_results);
+
+
+  printf("\n\nHere\n\n");
+
+  for (int i = 0; i < n; i++) {
+    test_values_float[i] = (float)ugly_tests[i].value;
+  }
+
+  sin_simd_float(test_values_float, test_results_float, n, 0.1);
+
+  for (int i = 0; i < n; i++) {
+    int q = (int)round(test_results_float[i]);
+    printf("(SIMD FLOAT)  %-25s is in quadrant %d", ugly_tests[i].name, q);
 
     if (q == ugly_tests[i].quadrant) {
       printf(" Correct:  True (%d)\n", ugly_tests[i].quadrant); // ]]
@@ -284,6 +346,9 @@ int main(void) {
   }
 
   random_test();
+
+  free(test_values_float);
+  free(test_results_float);
   return 0;
 }
 // gcc range_reduction.c bit_printing.c -o range_reduction -lm -mavx -O2 && ./range_reduction

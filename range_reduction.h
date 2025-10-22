@@ -5,19 +5,32 @@
 
 #define SIMD_LENGTH (256)
 
-#define LOAD_DOU_VEC _mm256_loadu_pd
 
+// Double I/O
 #define SDOUBLE __m256d
-#define LOAD_DOU _mm256_set1_pd
-
-#define MUL_DOU _mm256_mul_pd
+#define LOAD_DOUBLE _mm256_set1_pd
+#define LOAD_DOUBLE_VEC _mm256_loadu_pd
 #define SIMD_TO_DOUBLE_VEC _mm256_storeu_pd
 
-#define FLOOR_S _mm256_floor_pd
-
+// Double Operations
 #define MUL_DOUBLE_S _mm256_mul_pd
 #define ADD_DOUBLE_S _mm256_add_pd
 #define SUB_DOUBLE_S _mm256_sub_pd
+#define FLOOR_DOUBLE_S _mm256_floor_pd
+
+// Float I/O
+#define SFLOAT __m256
+#define LOAD_FLOAT _mm256_set1_ps
+#define LOAD_FLOAT_VEC _mm256_loadu_ps
+#define SIMD_TO_FLOAT_VEC _mm256_storeu_ps
+
+// Float Operations
+#define MUL_FLOAT_S _mm256_mul_ps
+#define ADD_FLOAT_S _mm256_add_ps
+#define SUB_FLOAT_S _mm256_sub_ps
+#define FLOOR_FLOAT_S _mm256_floor_ps
+
+
 
 #define PRINT_M256D(reg) do {                                \
     double vals[4];                                          \
