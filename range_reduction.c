@@ -1,18 +1,24 @@
-#include "clock_utils.h"
+#include "tests/clock_utils.h"
+#include <assert.h>
 #include <float.h>
 #include <limits.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "range_reduction.h"
 #include "bit_printing.h"
 
 #define MAX_EXACT_INT (9007199254740992)
 #define LONG_RANGE_END (57952155664616982739.0)
 
 const double END_FRIENDLY_RANGE = M_PI * 2.0 * INT_MAX;
+
 const double RANGE_MAX = M_PI * 2.0;
 const double TWO_POW_NEG_49 = pow(2, -49);
 const double TWO_POW_NEG_99 = pow(2, -99);
+const double ONE_OVER_RANGE = 1 / RANGE_MAX;
+const double ONE_OVER_PI_2 = 1 / M_PI_2;
+const int MAX_SIMD_DOUBLES = (int)(SIMD_LENGTH / sizeof(double));
 
 
 typedef struct {
@@ -22,219 +28,110 @@ typedef struct {
 } UglyCaseTriplet;
 
 
-// ################################## brisbarre #########################################################################
-
-
-void fast2sum(double a, double b, double *s, double *r) {
-    *s = a + b;
-    double z = *s - a;
-    *r = b - z;
-}
-
-void calc_t(int i, int8_t w, double *t_hi, double *t_med, double *t_lo) {
-  // printf("w:  %.d\n", w);
-  // printf("uw: %.d\n", abs(w));
-
-  double base = fmod(pow(2, 8 * i) * w, RANGE_MAX);
-  *t_hi = base;
-
-  base -= *t_hi;
-  *t_med = round(base / TWO_POW_NEG_99) * TWO_POW_NEG_99;
-
-  *t_lo = base - *t_med;
-}
-
-int reduce_s_hi(double x) {
-  int k = (int)round(x / RANGE_MAX);
-  return k;
-}
-
-/**
- * Range reduction Algorithm for 2^53 < x < 2^63 - 1
- * Based on Brisebarre et al., "A New Range-Reduction Algorithm" (2005).
- * Returns res in [0, 2*pi).
- */
-double brisebarre_range_reduction(double x) {
-  // For x >= 2^53, the double is already an integer exactly; cast safely.
-  // We stay within signed 64-bit as requested: x < 2^63.
-  long I = (long) llround(x);
-  double p = x - I;
-
-  printf("Bits-I: ");
-  print_bits_ulong(I); // for checking
-
-  double s_hi  = p;
-  double s_med = 0.0;
-  double s_lo  = 0.0;
-
-  double y_hi;
-  double y_lo;
-
-  int i = 7; // num iterations - 1
-  int j = 56; // current first bit
-
-  int8_t w;
-  bool w_pos;
-  double t_hi, t_med, t_lo;
-
-  while (i >= 0) {
-    // This is checked and will be the bit values of the integer part of x 
-    // starting with the larger bits (first 8)
-    w = (int8_t)(I >> j);
-    w_pos = (w > 0);
-
-    printf("Current Bits-w: ");
-    print_bits_u8(w); // for checking
-
-    if (w != 0) {
-      // get the t values
-      calc_t(i, w, &t_hi, &t_med, &t_lo);
-
-      printf("t_hi: %.17g; t_med: %.17g; t_lo: %.17g\n", t_hi, t_med, t_lo);
-
-      if (w_pos) {
-        s_hi  += t_hi;
-        s_med += t_med;
-      } else {
-        s_hi  -= t_hi;
-        s_med -= t_med;
-      }
-    }
-
-    // subtract the consumed part
-    I -= ((uint64_t)w << j);
-
-    // prepare next iteration
-    i -= 1;
-    j -= 8;
-  }
-
-  for (int i = 0; i < 8; i++) {
-    if (w_pos) {
-      s_lo += t_lo;
-    } else {
-      s_lo -= t_lo;
-    }
-  }
-
-  if (fabs(s_hi) >= RANGE_MAX) {
-    int k = (int)(round(fabs(s_hi) / RANGE_MAX));
-
-    double c_hi = (int)((k * RANGE_MAX) / pow(2, -49)) * pow(2, -49);
-    double c_med = (int)((k * RANGE_MAX - c_hi) / pow(2, -99)) * pow(2, -99);
-    double c_lo = (k * RANGE_MAX - c_hi - c_med);
-
-    printf("k: %d; s_hi: %.10f; c_hi: %.10f; c_med: %.10f; c_lo: %.10f\n", k, s_hi, c_hi, c_med, c_lo);
-
-    if (s_hi > 0) {
-      s_hi += c_hi;
-      s_med += c_med;
-      s_lo += c_lo;
-    } else {
-      s_hi -= c_hi;
-      s_med -= c_med;
-      s_lo -= c_lo;
-    }
-  }
-
-  if (fabs(s_hi) > pow(2, -14)){
-    double tmp = s_med + s_lo;
-    // fast2sum
-    y_hi = s_hi + tmp;
-    double z = y_hi - s_hi;
-    y_lo = tmp - z;
-
-  } else if (s_hi == 0.0) {
-    // fast2sum
-    y_hi = s_med + s_lo;
-    double z = y_hi - s_med;
-    y_lo = s_lo - z;
-
-  } else {
-    // fast2sum
-    y_hi = s_hi + s_med;
-    double z = y_hi - s_hi;
-    y_lo = s_med - z + s_lo;
-  }
-
-  //printf("S_HI: %.17g\n", s_hi);
-  // printf("(y_hi: %.10f; y_lo: %.10f", y_hi, y_lo);
-
-  return y_hi + y_lo;
-}
-
-typedef int int4;
-typedef union { int4 i[2]; double x; double d; } mynumber;
-
-static const double s1 = -0x1.5555555555555p-3;   /* -0.16666666666666666     */
-static const double s2 = 0x1.1111111110ECEp-7;    /*  0.0083333333333323288   */
-static const double s3 = -0x1.A01A019DB08B8p-13;  /* -0.00019841269834414642  */
-static const double s4 = 0x1.71DE27B9A7ED9p-19;   /*  2.755729806860771e-06   */
-static const double s5 = -0x1.ADDFFC2FCDF59p-26;  /* -2.5022014848318398e-08  */
-static const double aa = -0x1.5558000000000p-3;   /* -0.1666717529296875      */
-static const double bb = 0x1.5555555556E24p-18;   /*  5.0862630208387126e-06  */
-static const double big = 0x1.8000000000000p45;   /*  52776558133248          */
-static const double hp0 = 0x1.921FB54442D18p0;    /*  1.5707963267948966      */
-static const double hp1 = 0x1.1A62633145C07p-54;  /*  6.123233995736766e-17   */
-static const double mp1 = 0x1.921FB58000000p0;    /*  1.5707963407039642      */
-static const double mp2 = -0x1.DDE973C000000p-27; /* -1.3909067564377153e-08  */
-static const double mp3 = -0x1.CB3B399D747F2p-55; /* -4.9789962505147994e-17  */
-static const double pp3 = -0x1.CB3B398000000p-55; /* -4.9789962314799099e-17  */
-static const double pp4 = -0x1.d747f23e32ed7p-83; /* -1.9034889620193266e-25  */
-static const double hpinv = 0x1.45F306DC9C883p-1; /*  0.63661977236758138     */
-static const double toint = 0x1.8000000000000p52; /*  6755399441055744        */
-
-/* Reduce range of x to within PI/2 with abs (x) < 105414350.  The high part
-   is written to *a, the low part to *da.  Range reduction is accurate to 136
-   bits so that when x is large and *a very close to zero, all 53 bits of *a
-   are correct.  */
-static __always_inline int4
-reduce_sincos (double x, double *a, double *da)
-{
-  mynumber v;
-
-  double t = (x * hpinv + toint);
-  double xn = t - toint;
-  v.x = t;
-  double y = (x - xn * mp1) - xn * mp2;
-  int4 n = v.i[0] & 3;
-
-  double b, db, t1, t2;
-  t1 = xn * pp3;
-  t2 = y - t1;
-  db = (y - t2) - t1;
-
-  t1 = xn * pp4;
-  b = t2 - t1;
-  db += (t2 - b) - t1;
-
-  *a = b;
-  *da = db;
-  return n;
-}
-
-
 int get_quadrant(double x) {
-  int quadrant = 0;
+  int quadrant;
   double reduced_range;
-  double w = fabs(x);
+  int n;
 
-  if (w < 8.0) {
-    reduced_range = fmod(x, RANGE_MAX);
-    quadrant = floor(reduced_range / M_PI_2);
-    quadrant = (quadrant + 4) % 4; // prevents problems with negative quadrants.
+  n = floor(x * ONE_OVER_RANGE);
+  reduced_range = x - n * RANGE_MAX;
+  quadrant = floor(reduced_range * ONE_OVER_PI_2);
+  quadrant = (quadrant < 0) ? ((quadrant + 4) % 4) : quadrant;
+
+  return quadrant;
+}
+
+
+void get_simd_quadrant(double *src, double *quad, double *range) {
+    SDOUBLE x   = LOAD_DOU_VEC(src);
+    SDOUBLE two_pi = LOAD_DOU(RANGE_MAX);
+    SDOUBLE one_over_2_pi = LOAD_DOU(ONE_OVER_RANGE);
+    SDOUBLE one_over_pi_2 = LOAD_DOU(ONE_OVER_PI_2);
+
+    // works but is potentially negative
+    SDOUBLE n = MUL_DOU(x, one_over_2_pi);
+    n = FLOOR_S(n);
+
+
+    SDOUBLE range_multiple = MUL_DOU(n, two_pi);
+    SDOUBLE in_range = SUB_DOUBLE_S(x, range_multiple); // in [0, 2 * pi]
+
+    n = MUL_DOU(in_range, one_over_pi_2);
+    n = FLOOR_S(n);
+
+    SIMD_TO_DOUBLE_VEC(quad, n);
+    SIMD_TO_DOUBLE_VEC(range, in_range);
+}
+
+void sin_simd(double *x, double *res, size_t n, float prec) {
+  double *quadrants = malloc(MAX_SIMD_DOUBLES * sizeof(int));
+  double *reduced_range = malloc(MAX_SIMD_DOUBLES * sizeof(double));
+
+  double *partial_values = malloc(MAX_SIMD_DOUBLES * sizeof(double));
+  
+  for (int i = 0; i < n; i+= MAX_SIMD_DOUBLES) {
+    for (int j = 0; j < MAX_SIMD_DOUBLES; j++) {
+      partial_values[j] = x[i+j];
+    }
+
+    get_simd_quadrant(partial_values, quadrants, reduced_range);
+    PRINT_ARRAY(quadrants, 4);
   }
-  if (8.0 <= w && w < pow(2, 63) - 1) {
-    printf("\n\n Starting Brisbarre for x=%.17g\n", w);
+}
 
-    reduced_range = brisebarre_range_reduction(w);
+// Helper: generate a uniform random double in [0, 1]
+static inline double uniform01(void) {
+  unsigned long long high = (unsigned long long)rand();
+  unsigned long long low = (unsigned long long)rand();
+  unsigned long long combined = (high << 31) | low;
+  return (double)combined / (double)((1ULL << 62) - 1);
+}
 
-    printf("(Brisebarre %.10f) ", reduced_range);
+// Main function: fill vector with uniform random doubles in [lower, upper]
+void fill_uniform(double lower, double upper, size_t n, double *vec) {
+  if (upper < lower) {
+    fprintf(stderr, "Error: upper bound < lower bound.\n");
+    return;
+  }
+  double range = upper - lower;
+  for (size_t i = 0; i < n; i++) {
+    vec[i] = lower + uniform01() * range;
+  }
+}
 
-    quadrant = floor(reduced_range / M_PI_2);
+int random_test() {
+  srand((unsigned)time(NULL));
+
+  size_t n = 1000000000;
+  double lower = 6.5;
+  double upper = 1000000000.0;
+
+  double *vec = malloc(n * sizeof(double));
+
+  if (!vec) {
+    perror("malloc");
+    return 1;
   }
 
-  return quadrant % 4;
+  fill_uniform(lower, upper, n, vec);
+
+  START_CLOCK;
+
+  for (int i = 0; i < n; i++) {
+    get_quadrant(vec[i]);
+  }
+
+  END_CLOCK("Quadrant Calculation WARMUP");
+
+  START_CLOCK;
+
+  for (int i = 0; i < n; i++) {
+    get_quadrant(vec[i]);
+  }
+
+  END_CLOCK("Quadrant Calculation       ");
+
+  free(vec);
 }
 
 
@@ -244,7 +141,7 @@ int get_quadrant(double x) {
 int main(void) {
 
   UglyCaseTriplet ugly_tests[] = {
-    {0.0, "0", 0}, 
+    {0.0, "0", 0},
     {M_PI_2, "pi / 2", 1},
     {M_PI, "pi", 2},
     {M_PI * 1.5, "1.5 * pi", 3},
@@ -255,13 +152,13 @@ int main(void) {
     {-M_PI * 1.5, "- 1.5 * pi", 1},
     {-M_PI * 2.0, "- 2.0 * pi", 0},
 
-    {nextafter(0.0, -INFINITY), "0 - eps", 3}, 
+    {nextafter(0.0, -INFINITY), "0 - eps", 3},
     {nextafter(M_PI_2, -INFINITY), "pi / 2 - eps", 0},
     {nextafter(M_PI, -INFINITY), "pi - eps", 1},
     {nextafter(M_PI * 1.5, -INFINITY), "1.5 * pi - eps", 2},
     {nextafter(M_PI * 2.0, -INFINITY), "2.0 * pi - eps", 3},
 
-    {nextafter(0.0, INFINITY),  "0 + eps", 0}, 
+    {nextafter(0.0, INFINITY),  "0 + eps", 0},
     {nextafter(M_PI_2, INFINITY), "pi / 2 + eps", 1},
     {nextafter(M_PI, INFINITY), "pi + eps", 2},
     {nextafter(M_PI * 1.5, INFINITY), "1.5 * pi + eps", 3},
@@ -294,12 +191,12 @@ int main(void) {
     {305.5, "305.5", 2},
 
     // The following examples have at the start of all 8 columns as long values
-    // 0, which should make the calculation of t exact. 
+    // 0, which should make the calculation of t exact.
     {6316927.0, "6316927", 0},
     {6324095.0, "6324095", 3},
     {1077952576.0, "1077952576", 3},
 
-    // The following have at the start of some 8 columns as long a 1, 
+    // The following have at the start of some 8 columns as long a 1,
     // which should destroy the calculation of t
     {6356612.0, "6356612.0", 0},
     {6356612.0, "6356612.0", 0},
@@ -314,7 +211,7 @@ int main(void) {
 
     //  {pow(2, 57) * M_PI, "pi * 2^58", 0},
 
-    //  // Those are the edge cases where it stops working 
+    //  // Those are the edge cases where it stops working
     //  {nextafter(M_PI * 2.0 * INT_MAX, -INFINITY), "2 * pi * intmax - eps", 3},
 
     //  {M_PI * 2.0 * INT_MAX, "2 * pi * intmax", 0},
@@ -335,13 +232,15 @@ int main(void) {
     //  {61000687969105996493672285664758005575629682910825211579427204492165120.0, "approx 6.1 * 10^70", 2}
   };
 
-  int n = sizeof(ugly_tests) / sizeof(ugly_tests[0]); 
+  int n = sizeof(ugly_tests) / sizeof(ugly_tests[0]);
   bool correct_results_own[n];
-  bool correct_results_glibc[n];
+  int quadrants[n];
 
   for (int i = 0; i < n; i++) {
     int q = get_quadrant(ugly_tests[i].value);
+    quadrants[n] = q;
     printf("  %-25s is in quadrant %d", ugly_tests[i].name, q);
+
     if (q == ugly_tests[i].quadrant) {
       printf(" Correct:  True (%d)\n", ugly_tests[i].quadrant); // ]]
       correct_results_own[i] = true;
@@ -349,30 +248,18 @@ int main(void) {
       correct_results_own[i] = false;
       printf(" Correct: \033[31mFalse\033[0m (%d)\n", ugly_tests[i].quadrant); // ]]
     }
-
-    double a;
-    double da;
-    int4 glibc_q = reduce_sincos(ugly_tests[i].value, &a, &da);
-    if (glibc_q == ugly_tests[i].quadrant) {
-      printf("glibc-implementation: in quadrant %d; Correct:  True (%d)\n", glibc_q, ugly_tests[i].quadrant);
-      correct_results_glibc[i] = true;
-    } else {
-      correct_results_glibc[i] = false;
-      printf("glibc-implementation: in quadrant %d; Correct: \033[31mFalse\033[0m (%d)\n", glibc_q, ugly_tests[i].quadrant);
-    }
   }
 
-  printf("\n+---------------------------+-------+-------+\n");
-  printf("| Value%-20s |  own  | glibc |\n", "");
-  printf("+---------------------------+-------+-------+\n");
-  for (int i = 0; i < n; i++){
-    printf("| %-25s | %-5s | %-5s |\n", ugly_tests[i].name, correct_results_own[i] ? "True" : "False", correct_results_glibc[i] ? "True" : "False");
-  }
-  printf("+---------------------------+-------+-------+\n");
-  // print_double_bits(ugly_tests[1].value);
   
+  double *test_values = malloc(n * sizeof(double));
+  double *test_results = malloc(n * sizeof(double));
 
+  for (int i = 0; i < n; i++) {
+    test_values[i] = ugly_tests[i].value;
+  }
+
+  sin_simd(test_values, test_results, n, 0.1);
   // random_test();
   return 0;
 }
-// gcc range_reduction.c bit_printing.c -o range_reduction -lm && ./range_reduction
+// gcc range_reduction.c bit_printing.c -o range_reduction -lm -mavx -O2 && ./range_reduction

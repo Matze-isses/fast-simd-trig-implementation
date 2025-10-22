@@ -1,4 +1,8 @@
-// ######################## Test with uniform numbers for speed #######################################
+#include "clock_utils.h"
+#include <float.h>
+#include <limits.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 // Helper: generate a uniform random double in [0, 1]
 static inline double uniform01(void) {
@@ -18,39 +22,4 @@ void fill_uniform(double lower, double upper, size_t n, double *vec) {
   for (size_t i = 0; i < n; i++) {
     vec[i] = lower + uniform01() * range;
   }
-}
-
-int random_test() {
-  srand((unsigned)time(NULL));
-
-  size_t n = 1000000000;
-  double lower = 6.5;
-  double upper = 1000000000.0;
-
-  double *vec = malloc(n * sizeof(double));
-
-  if (!vec) {
-    perror("malloc");
-    return 1;
-  }
-
-  fill_uniform(lower, upper, n, vec);
-
-  START_CLOCK;
-
-  for (int i = 0; i < n; i++) {
-    get_quadrant(vec[i]);
-  }
-
-  END_CLOCK("Quadrant Calculation WARMUP");
-
-  START_CLOCK;
-
-  for (int i = 0; i < n; i++) {
-    get_quadrant(vec[i]);
-  }
-
-  END_CLOCK("Quadrant Calculation       ");
-
-  free(vec);
 }
