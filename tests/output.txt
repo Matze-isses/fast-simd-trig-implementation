@@ -1,0 +1,5 @@
+
+The test is executed for n=1000000 test-values within the interval [0.000000, 10000000000000000735758738477112498397576062152177456799245857901351759143802190202050679656153088.000000].
+Test values are generated! Starting calculation.
+The results are obtained! Starting error calculation.
+Absolut Error glibc: 0

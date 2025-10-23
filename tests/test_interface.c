@@ -55,3 +55,5 @@ int main(int argc, char *argv[]) {
 
   return 0;
 }
+
+// gcc test_interface.c value_generation.c sin_arb.c -o test -lm -mavx -O2 -lflint -Wall -Wextra && ./test 1000000 0 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
