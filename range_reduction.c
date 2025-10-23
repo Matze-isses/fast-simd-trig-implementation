@@ -19,6 +19,7 @@ const double TWO_POW_NEG_99 = pow(2, -99);
 const double ONE_OVER_RANGE = 1 / RANGE_MAX;
 const double ONE_OVER_PI_2 = 1 / M_PI_2;
 const int MAX_SIMD_DOUBLES = (int)(SIMD_LENGTH / 64);
+const int MAX_SIMD_FLOAT = (int)(SIMD_LENGTH / 32);
 const int TAYLOR_DEGREE = 8;
 
 
@@ -54,7 +55,6 @@ void get_simd_quadrant_double(double *src, double *quad, double *range) {
     // works but is potentially negative
     SDOUBLE n = MUL_DOUBLE_S(x, one_over_2_pi);
     n = FLOOR_DOUBLE_S(n);
-
 
     SDOUBLE range_multiple = MUL_DOUBLE_S(n, two_pi);
     SDOUBLE in_range = SUB_DOUBLE_S(x, range_multiple); // in [0, 2 * pi]
@@ -72,7 +72,7 @@ void get_simd_quadrant_float(float *src, float *quad, float *range) {
   SFLOAT one_over_2_pi = LOAD_FLOAT((float) ONE_OVER_RANGE);
   SFLOAT one_over_pi_2 = LOAD_FLOAT((float) ONE_OVER_PI_2);
 
-  SFLOAT n = MUL_FLOAT_S(x, one_over_pi_2);
+  SFLOAT n = MUL_FLOAT_S(x, one_over_2_pi);
   n = FLOOR_FLOAT_S(n);
 
   SFLOAT range_multiple = MUL_FLOAT_S(n, two_pi);
@@ -85,27 +85,19 @@ void get_simd_quadrant_float(float *src, float *quad, float *range) {
   SIMD_TO_FLOAT_VEC(range, in_range);
 }
 
-/*
- * It is assumed that the src vector has the correct length given the AVX version and that
- * the ranges are already reduced to [0, pi/2]. This function only works for calculating the 
- * values in the first quadrant.
- */
-void taylor_sin(double *src, double *res) {
-}
-
 void sin_simd_float(float *x, float *res, size_t n, float prec) {
-  float *quadrants = malloc(MAX_SIMD_DOUBLES * sizeof(int));
-  float *reduced_range = malloc(MAX_SIMD_DOUBLES * sizeof(float));
-  float *partial_values = malloc(MAX_SIMD_DOUBLES * sizeof(float));
+  float *quadrants = malloc(MAX_SIMD_FLOAT * sizeof(float));
+  float *reduced_range = malloc(MAX_SIMD_FLOAT * sizeof(float));
+  float *partial_values = malloc(MAX_SIMD_FLOAT * sizeof(float));
   
-  for (int i = 0; i < n; i+= MAX_SIMD_DOUBLES) {
-    for (int j = 0; j < MAX_SIMD_DOUBLES; j++) {
+  for (int i = 0; i < n; i+= MAX_SIMD_FLOAT) {
+    for (int j = 0; j < MAX_SIMD_FLOAT; j++) {
       partial_values[j] = x[i+j];
     }
 
     get_simd_quadrant_float(partial_values, quadrants, reduced_range);
     
-    for (int j = 0; j < MAX_SIMD_DOUBLES; j++) {
+    for (int j = 0; j < MAX_SIMD_FLOAT; j++) {
       res[i+j] = quadrants[j];
     }
   }
@@ -295,16 +287,29 @@ int main(void) {
   }
 
   
+  // Test with float values
   float* test_values_float = malloc(n * sizeof(float));
   float* test_results_float = malloc(n * sizeof(float));
-
-  double *test_values = malloc(n * sizeof(double));
-  double *test_results = malloc(n * sizeof(double));
+  for (int i = 0; i < n; i++) { test_values_float[i] = (float)ugly_tests[i].value; }
+  sin_simd_float(test_values_float, test_results_float, n, 0.1);
 
   for (int i = 0; i < n; i++) {
-    test_values[i] = ugly_tests[i].value;
+    int q = (int)round(test_results_float[i]);
+    printf("(SIMD FLOAT)  %-25s is in quadrant %d", ugly_tests[i].name, q);
+
+    if (q == ugly_tests[i].quadrant) {
+      printf(" Correct:  True (%d)\n", ugly_tests[i].quadrant); // ]]
+      correct_results_own[i] = true;
+    } else {
+      correct_results_own[i] = false;
+      printf(" Correct: \033[31mFalse\033[0m (%d)\n", ugly_tests[i].quadrant); // ]]
+    }
   }
 
+  // test with double values
+  double *test_values = malloc(n * sizeof(double));
+  double *test_results = malloc(n * sizeof(double));
+  for (int i = 0; i < n; i++) { test_values[i] = ugly_tests[i].value; }
   sin_simd(test_values, test_results, n, 0.1);
 
   for (int i = 0; i < n; i++) {
@@ -322,33 +327,10 @@ int main(void) {
 
   free(test_values);
   free(test_results);
-
-
-  printf("\n\nHere\n\n");
-
-  for (int i = 0; i < n; i++) {
-    test_values_float[i] = (float)ugly_tests[i].value;
-  }
-
-  sin_simd_float(test_values_float, test_results_float, n, 0.1);
-
-  for (int i = 0; i < n; i++) {
-    int q = (int)round(test_results_float[i]);
-    printf("(SIMD FLOAT)  %-25s is in quadrant %d", ugly_tests[i].name, q);
-
-    if (q == ugly_tests[i].quadrant) {
-      printf(" Correct:  True (%d)\n", ugly_tests[i].quadrant); // ]]
-      correct_results_own[i] = true;
-    } else {
-      correct_results_own[i] = false;
-      printf(" Correct: \033[31mFalse\033[0m (%d)\n", ugly_tests[i].quadrant); // ]]
-    }
-  }
-
-  random_test();
-
   free(test_values_float);
   free(test_results_float);
+
+  // random_test();
   return 0;
 }
 // gcc range_reduction.c bit_printing.c -o range_reduction -lm -mavx -O2 && ./range_reduction
