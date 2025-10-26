@@ -32,6 +32,7 @@
 
 
 
+
 #define PRINT_M256D(reg) do {                                \
     double vals[4];                                          \
     _mm256_storeu_pd(vals, (reg));                           \
