@@ -1,5 +1,7 @@
 import math
 
+x = input("Degree of the taylor polynom: ")
+degree = int(x)
 a = math.pi / 4
 coeffs = []
 
@@ -9,7 +11,7 @@ coeffs = []
 # 2: -sin
 # 3: -cos
 # 4: sin ...
-for n in range(8):
+for n in range(degree):
     if n % 4 == 0:
         deriv = math.sin(a)
     elif n % 4 == 1:

@@ -30,7 +30,8 @@
 #define SUB_FLOAT_S _mm256_sub_ps
 #define FLOOR_FLOAT_S _mm256_floor_ps
 
-
+void sin_simd_float(float *x, float *res, size_t n, float prec);
+void sin_simd(double *x, double *res, size_t n, float prec);
 
 
 #define PRINT_M256D(reg) do {                                \

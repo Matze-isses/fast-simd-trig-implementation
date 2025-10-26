@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "test_interface.h"
+#include "../range_reduction.h"
 
 int main(int argc, char *argv[]) {
   if (argc != 4) {
@@ -24,7 +25,9 @@ int main(int argc, char *argv[]) {
   double *test_values = malloc(n * sizeof(double));
 
   double *correct_results = malloc(n * sizeof(double));
+  double *own_results = malloc(n * sizeof(double));
   double *glibc_results = malloc(n * sizeof(double));
+
 
   if (!test_values) {
     perror("malloc");
@@ -40,18 +43,37 @@ int main(int argc, char *argv[]) {
   #pragma omp parallel for
   for (int i = 0; i < n; i++){
     correct_results[i] = correct_result_sin(test_values[i]);
-    glibc_results[i] = sin(test_values[i]);
   }
+
+  printf(" ------- Own Script Execution ------- \n\n");
+  START_CLOCK;
+  sin_simd(test_values, own_results, n, 0.1);
+  END_CLOCK("Time needed by own implementiation ");
+
+  START_CLOCK;
+  for (int i = 0; i < n; i++) { glibc_results[i] = sin(test_values[i]); }
+  END_CLOCK("Time needed by glibc               ");
+
 
   // user information for the current state of the script
   printf("The results are obtained! Starting error calculation.\n");
 
   double abs_error = 0;
+  double abs_error_glibc = 0;
   for (int i = 0; i < n; i++){
-    abs_error += abs(correct_results[i] - glibc_results[i]);
+    abs_error += fabs(correct_results[i] - own_results[i]);
+    abs_error_glibc += fabs(correct_results[i] - glibc_results[i]);
   }
 
-  printf("Absolut Error glibc: %.17g\n", abs_error);
+  printf("Accumulated Absolut Error Own   Results: %.17g\n", abs_error);
+  printf("Accumulated Absolut Error glibc Results: %.17g\n", abs_error_glibc);
+
+  printf("\nAbsolut Error Own   Results: %.17g\n", abs_error/n);
+  printf("Absolut Error glibc Results: %.17g\n", abs_error_glibc/n);
+  free(test_values);
+  free(correct_results);
+  free(own_results);
+  free(glibc_results);
 
   return 0;
 }

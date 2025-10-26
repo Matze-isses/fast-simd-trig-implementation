@@ -20,50 +20,34 @@ const double ONE_OVER_RANGE = 1 / RANGE_MAX;
 const double ONE_OVER_PI_2 = 1 / M_PI_2;
 const int MAX_SIMD_DOUBLES = (int)(SIMD_LENGTH / 64);
 const int MAX_SIMD_FLOAT = (int)(SIMD_LENGTH / 32);
-const int TAYLOR_DEGREE = 8;
+
+const int TAYLOR_DEGREE = 12;
+const int TAYLOR_LAST_COEFF = TAYLOR_DEGREE - 1;
+const int TAYLOR_LOOP_INTERATIONS = TAYLOR_DEGREE - 2;
+
+const double TAYLOR_COEFF[] = {
+  0.70710678118654746,
+  0.70710678118654757,
+  -0.35355339059327373,
+  -0.11785113019775793,
+  0.029462782549439476,
+  0.0058925565098878968,
+  -0.00098209275164798252,
+  -0.00014029896452114038,
+  1.7537370565142544e-05,
+  1.9485967294602834e-06,
+  -1.948596729460283e-07,
+  -1.7714515722366212e-08
+};
 
 
-
-typedef struct {
-  double value;
-  const char *name;
-  int quadrant;
-} UglyCaseTriplet;
-
-
-int get_quadrant(double x) {
-  int quadrant;
-  double reduced_range;
+int get_reduced_range(double x, int *quadrant, double *reduced_range) {
   int n;
 
   n = floor(x * ONE_OVER_RANGE);
-  reduced_range = x - n * RANGE_MAX;
-  quadrant = floor(reduced_range * ONE_OVER_PI_2);
-  quadrant = (quadrant < 0) ? ((quadrant + 4) % 4) : quadrant;
-
-  return quadrant;
-}
-
-
-// When using the -O2 this is faster. For non optimized code this is slower.
-void get_simd_quadrant_double(double *src, double *quad, double *range) {
-    SDOUBLE x   = LOAD_DOUBLE_VEC(src);
-    SDOUBLE two_pi = LOAD_DOUBLE(RANGE_MAX);
-    SDOUBLE one_over_2_pi = LOAD_DOUBLE(ONE_OVER_RANGE);
-    SDOUBLE one_over_pi_2 = LOAD_DOUBLE(ONE_OVER_PI_2);
-
-    // works but is potentially negative
-    SDOUBLE n = MUL_DOUBLE_S(x, one_over_2_pi);
-    n = FLOOR_DOUBLE_S(n);
-
-    SDOUBLE range_multiple = MUL_DOUBLE_S(n, two_pi);
-    SDOUBLE in_range = SUB_DOUBLE_S(x, range_multiple); // in [0, 2 * pi]
-
-    n = MUL_DOUBLE_S(in_range, one_over_pi_2);
-    n = FLOOR_DOUBLE_S(n);
-
-    SIMD_TO_DOUBLE_VEC(quad, n);
-    SIMD_TO_DOUBLE_VEC(range, in_range);
+  *reduced_range = x - n * RANGE_MAX;
+  *quadrant = floor(*reduced_range * ONE_OVER_PI_2);
+  *quadrant = (*quadrant < 0) ? ((*quadrant + 4) % 4) : *quadrant;
 }
 
 void get_simd_quadrant_float(float *src, float *quad, float *range) {
@@ -90,7 +74,7 @@ void sin_simd_float(float *x, float *res, size_t n, float prec) {
   float *reduced_range = malloc(MAX_SIMD_FLOAT * sizeof(float));
   float *partial_values = malloc(MAX_SIMD_FLOAT * sizeof(float));
   
-  for (int i = 0; i < n; i+= MAX_SIMD_FLOAT) {
+  for (int i = 0; i < (int)n; i+= MAX_SIMD_FLOAT) {
     for (int j = 0; j < MAX_SIMD_FLOAT; j++) {
       partial_values[j] = x[i+j];
     }
@@ -107,230 +91,103 @@ void sin_simd_float(float *x, float *res, size_t n, float prec) {
   free(partial_values);
 }
 
+// When using the -O2 this is faster. For non optimized code this is slower.
+void get_simd_quadrant_double(double *src, double *quad, double *range) {
+}
 
-void sin_simd(double *x, double *res, size_t n, float prec) {
-  double *quadrants = malloc(MAX_SIMD_DOUBLES * sizeof(double));
-  double *reduced_range = malloc(MAX_SIMD_DOUBLES * sizeof(double));
+
+double taylor_eval(double x, double a, const double coeffs[], int n) {
+    double result = coeffs[n - 1];
+    for (int i = n - 2; i >= 0; --i) {
+        result = result * (x - a) + coeffs[i];
+    }
+    return result;
+}
+
+void sin_simd(double *input, double *res, size_t n, float prec) {
   double *partial_values = malloc(MAX_SIMD_DOUBLES * sizeof(double));
+  double *quadrants = malloc(MAX_SIMD_DOUBLES * sizeof(double));
+
+  SDOUBLE two_pi = LOAD_DOUBLE(RANGE_MAX);
+  SDOUBLE one_over_2_pi = LOAD_DOUBLE(ONE_OVER_RANGE);
+  SDOUBLE one_over_pi_2 = LOAD_DOUBLE(ONE_OVER_PI_2);
+  SDOUBLE simd_pi_2 = LOAD_DOUBLE(M_PI_2);
+  SDOUBLE center_point = LOAD_DOUBLE(0.5 * M_PI_2);
   
-  for (int i = 0; i < n; i+= MAX_SIMD_DOUBLES) {
+  #pragma omp parallel for
+  for (int i = 0; i < (int)n; i+= MAX_SIMD_DOUBLES) {
     for (int j = 0; j < MAX_SIMD_DOUBLES; j++) {
-      partial_values[j] = x[i+j];
+      partial_values[j] = input[i+j];
     }
 
-    get_simd_quadrant_double(partial_values, quadrants, reduced_range);
+    SDOUBLE x   = LOAD_DOUBLE_VEC(partial_values);
+
+
+    // works but is potentially negative
+    SDOUBLE ranges_away = MUL_DOUBLE_S(x, one_over_2_pi);
+    SDOUBLE num_ranges_away = FLOOR_DOUBLE_S(ranges_away);
+    SDOUBLE range_multiple = MUL_DOUBLE_S(num_ranges_away, two_pi);
+    SDOUBLE in_outer_range = SUB_DOUBLE_S(x, range_multiple); // in [0, 2 * pi]
+
+    SDOUBLE small_ranges_away = MUL_DOUBLE_S(in_outer_range, one_over_pi_2);
+    SDOUBLE simd_quadrants = FLOOR_DOUBLE_S(small_ranges_away);
+    SDOUBLE small_subtraction_amount = MUL_DOUBLE_S(simd_quadrants, simd_pi_2);
+    SDOUBLE in_range = SUB_DOUBLE_S(in_outer_range, small_subtraction_amount);
+
+    SDOUBLE centered_values = SUB_DOUBLE_S(in_range, center_point);
+
+
+    double first[] = {
+      TAYLOR_COEFF[TAYLOR_LAST_COEFF], 
+      TAYLOR_COEFF[TAYLOR_LAST_COEFF], 
+      TAYLOR_COEFF[TAYLOR_LAST_COEFF], 
+      TAYLOR_COEFF[TAYLOR_LAST_COEFF]
+    };
+
+    SDOUBLE result = LOAD_DOUBLE_VEC(first);
+
+    for (int j = TAYLOR_LOOP_INTERATIONS; j >= 0; --j) {
+      SDOUBLE coeff = LOAD_DOUBLE(TAYLOR_COEFF[j]);
+      result = MUL_DOUBLE_S(result, centered_values);
+      result = ADD_DOUBLE_S(result, coeff);
+    }
     
-    for (int j = 0; j < MAX_SIMD_DOUBLES; j++) {
-      res[i+j] = quadrants[j];
+    SIMD_TO_DOUBLE_VEC(quadrants, simd_quadrants); 
+    SIMD_TO_DOUBLE_VEC(&res[i], result); 
+
+    for (int j = 0; j < 4; j++) {
+      if (quadrants[j] == 1) {
+        res[i+j] = 1 - res[i+j];
+      } else if (quadrants[j] == 2) {
+        res[i+j] = - res[i+j];
+      } else if (quadrants[j] == 3) {
+        res[i+j] = res[i+j] - 1;
+      }
     }
   }
 
-  free(quadrants);
-  free(reduced_range);
-  free(partial_values);
-}
+ 
+  int num_left_over = (n % 4);
 
-// Helper: generate a uniform random double in [0, 1]
-static inline double uniform01(void) {
-  unsigned long long high = (unsigned long long)rand();
-  unsigned long long low = (unsigned long long)rand();
-  unsigned long long combined = (high << 31) | low;
-  return (double)combined / (double)((1ULL << 62) - 1);
-}
+  #pragma omp parallel for
+  for (int i = n - num_left_over; i < (int)n; i++) {
+    double reduced_range;
+    int quadrant;
+    get_reduced_range(input[i], &quadrant, &reduced_range);
+    res[i] = taylor_eval(reduced_range, 0.5 * M_PI_2, TAYLOR_COEFF, TAYLOR_DEGREE);
 
-// Main function: fill vector with uniform random doubles in [lower, upper]
-void fill_uniform(double lower, double upper, size_t n, double *vec) {
-  if (upper < lower) {
-    fprintf(stderr, "Error: upper bound < lower bound.\n");
-    return;
-  }
-  double range = upper - lower;
-  for (size_t i = 0; i < n; i++) {
-    vec[i] = lower + uniform01() * range;
-  }
-}
-
-int random_test() {
-  srand((unsigned)time(NULL));
-
-  size_t n = 1000000000;
-  double lower = 6.5;
-  double upper = 1000000000.0;
-
-  double *vec = malloc(n * sizeof(double));
-  double *res = malloc(n * sizeof(double));
-
-  if (!vec) {
-    perror("malloc");
-    return 1;
-  }
-
-  fill_uniform(lower, upper, n, vec);
-
-  START_CLOCK;
-
-  for (int i = 0; i < n; i++) {
-    res[i] = get_quadrant(vec[i]);
-  }
-
-  END_CLOCK("Quadrant Calculation WARMUP");
-
-  START_CLOCK;
-
-  for (int i = 0; i < n; i++) {
-    res[i] = get_quadrant(vec[i]);
-  }
-
-  END_CLOCK("Quadrant Calculation       ");
-
-  START_CLOCK;
-
-  sin_simd(vec, res, n, 0.1);
-
-  END_CLOCK("Quadrant Calculation SIMD");
-
-  free(vec);
-}
-
-
-// ######################## Test with ugly values #######################################
-
-// Example usage
-int main(void) {
-
-  UglyCaseTriplet ugly_tests[] = {
-    {0.0, "0", 0},
-    {M_PI_2, "pi / 2", 1},
-    {M_PI, "pi", 2},
-    {M_PI * 1.5, "1.5 * pi", 3},
-    {M_PI * 2.0, "2.0 * pi", 0},
-
-    {-M_PI_2, "- pi / 2", 3},
-    {-M_PI, "- pi", 2},
-    {-M_PI * 1.5, "- 1.5 * pi", 1},
-    {-M_PI * 2.0, "- 2.0 * pi", 0},
-
-    {nextafter(0.0, -INFINITY), "0 - eps", 3},
-    {nextafter(M_PI_2, -INFINITY), "pi / 2 - eps", 0},
-    {nextafter(M_PI, -INFINITY), "pi - eps", 1},
-    {nextafter(M_PI * 1.5, -INFINITY), "1.5 * pi - eps", 2},
-    {nextafter(M_PI * 2.0, -INFINITY), "2.0 * pi - eps", 3},
-
-    {nextafter(0.0, INFINITY),  "0 + eps", 0},
-    {nextafter(M_PI_2, INFINITY), "pi / 2 + eps", 1},
-    {nextafter(M_PI, INFINITY), "pi + eps", 2},
-    {nextafter(M_PI * 1.5, INFINITY), "1.5 * pi + eps", 3},
-    {nextafter(M_PI * 2.0, INFINITY), "2.0 * pi + eps", 0},
-
-    {nextafter(-M_PI_2, INFINITY), "-pi / 2 + eps", 3},
-    {nextafter(-M_PI, INFINITY), "-pi + eps", 2},
-    {nextafter(-M_PI * 1.5, INFINITY), "-1.5 * pi + eps", 1},
-    {nextafter(-M_PI * 2.0, INFINITY), "-2.0 * pi + eps", 0},
-
-    {nextafter(M_PI * 16.5, INFINITY), "16.5 * pi + eps", 1},
-    {nextafter(M_PI * 17.0, INFINITY), "17.0 * pi + eps", 2},
-    {nextafter(M_PI * 17.5, INFINITY), "17.5 * pi + eps", 3},
-    {nextafter(M_PI * 18.0, INFINITY), "18.0 * pi + eps", 0},
-
-
-    {nextafter(- M_PI * 16.5, INFINITY), "- 16.5 * pi + eps", 3},
-    {nextafter(- M_PI * 17.0, INFINITY), "- 17.0 * pi + eps", 2},
-    {nextafter(- M_PI * 17.5, INFINITY), "- 17.5 * pi + eps", 1},
-    {nextafter(- M_PI * 18.0, INFINITY), "- 18.0 * pi + eps", 0},
-
-    {44.5, "44.5", 0},
-    {46.25, "46.25", 1},
-    {47.5, "47.5", 2},
-    {49.75, "49.75", 3},
-
-    {255.0, "255.0", 2},
-
-    {302.0, "302.0", 0},
-    {305.5, "305.5", 2},
-
-    // The following examples have at the start of all 8 columns as long values
-    // 0, which should make the calculation of t exact.
-    {6316927.0, "6316927", 0},
-    {6324095.0, "6324095", 3},
-    {1077952576.0, "1077952576", 3},
-
-    // The following have at the start of some 8 columns as long a 1,
-    // which should destroy the calculation of t
-    {6356612.0, "6356612.0", 0},
-    {6356612.0, "6356612.0", 0},
-    {6356630.0, "6356630.0", 0},
-    {6324223.0, "6324223.0", 1},
-    {6356632.0, "6356632.0", 1},
-    {6356991.0, "6356991.0", 2},
-    {6356608.0, "6356608.0", 2},
-    {6356628.0, "6356628.0", 3},
-    {6356635.0, "6356635.0", 3},
-    {23788.5, "23788.5", 0},
-  };
-
-  int n = sizeof(ugly_tests) / sizeof(ugly_tests[0]);
-  bool correct_results_own[n];
-  int quadrants[n];
-
-  for (int i = 0; i < n; i++) {
-    int q = get_quadrant(ugly_tests[i].value);
-    quadrants[n] = q;
-    printf("  %-25s is in quadrant %d", ugly_tests[i].name, q);
-
-    if (q == ugly_tests[i].quadrant) {
-      printf(" Correct:  True (%d)\n", ugly_tests[i].quadrant); // ]]
-      correct_results_own[i] = true;
-    } else {
-      correct_results_own[i] = false;
-      printf(" Correct: \033[31mFalse\033[0m (%d)\n", ugly_tests[i].quadrant); // ]]
+    if (quadrant == 1) {
+      res[i] = 1 - res[i];
+    } else if (quadrant == 2) {
+      res[i] = - res[i];
+    } else if (quadrant == 3) {
+      res[i] = res[i] - 1;
     }
   }
-
   
-  // Test with float values
-  float* test_values_float = malloc(n * sizeof(float));
-  float* test_results_float = malloc(n * sizeof(float));
-  for (int i = 0; i < n; i++) { test_values_float[i] = (float)ugly_tests[i].value; }
-  sin_simd_float(test_values_float, test_results_float, n, 0.1);
 
-  for (int i = 0; i < n; i++) {
-    int q = (int)round(test_results_float[i]);
-    printf("(SIMD FLOAT)  %-25s is in quadrant %d", ugly_tests[i].name, q);
-
-    if (q == ugly_tests[i].quadrant) {
-      printf(" Correct:  True (%d)\n", ugly_tests[i].quadrant); // ]]
-      correct_results_own[i] = true;
-    } else {
-      correct_results_own[i] = false;
-      printf(" Correct: \033[31mFalse\033[0m (%d)\n", ugly_tests[i].quadrant); // ]]
-    }
-  }
-
-  // test with double values
-  double *test_values = malloc(n * sizeof(double));
-  double *test_results = malloc(n * sizeof(double));
-  for (int i = 0; i < n; i++) { test_values[i] = ugly_tests[i].value; }
-  sin_simd(test_values, test_results, n, 0.1);
-
-  for (int i = 0; i < n; i++) {
-    int q = (int)round(test_results[i]);
-    printf("(SIMD DOUBLE)  %-25s is in quadrant %d", ugly_tests[i].name, q);
-
-    if (q == ugly_tests[i].quadrant) {
-      printf(" Correct:  True (%d)\n", ugly_tests[i].quadrant); // ]]
-      correct_results_own[i] = true;
-    } else {
-      correct_results_own[i] = false;
-      printf(" Correct: \033[31mFalse\033[0m (%d)\n", ugly_tests[i].quadrant); // ]]
-    }
-  }
-
-  free(test_values);
-  free(test_results);
-  free(test_values_float);
-  free(test_results_float);
-
-  // random_test();
-  return 0;
+  free(partial_values);
+  free(quadrants);
 }
+
 // gcc range_reduction.c bit_printing.c -o range_reduction -lm -mavx -O2 && ./range_reduction
