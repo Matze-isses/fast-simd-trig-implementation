@@ -24,7 +24,6 @@ const int MAX_SIMD_FLOAT = (int)(SIMD_LENGTH / 32);
 const int TAYLOR_DEGREE = 12;
 const int TAYLOR_LAST_COEFF = TAYLOR_DEGREE - 1;
 const int TAYLOR_LOOP_INTERATIONS = TAYLOR_DEGREE - 2;
-
 const double TAYLOR_COEFF[] = {
   0.70710678118654746,
   0.70710678118654757,
@@ -37,7 +36,15 @@ const double TAYLOR_COEFF[] = {
   1.7537370565142544e-05,
   1.9485967294602834e-06,
   -1.948596729460283e-07,
-  -1.7714515722366212e-08
+  -1.7714515722366212e-08,
+  1.4762096435305173e-09,
+  1.1355458796388596e-10,
+  -8.1110419974204248e-12,
+  -5.4073613316136172e-13,
+  3.3796008322585101e-14,
+  1.98800048956383e-15,
+  -1.1044447164243498e-16,
+  -5.8128669285492101e-18
 };
 
 
@@ -91,10 +98,6 @@ void sin_simd_float(float *x, float *res, size_t n, float prec) {
   free(partial_values);
 }
 
-// When using the -O2 this is faster. For non optimized code this is slower.
-void get_simd_quadrant_double(double *src, double *quad, double *range) {
-}
-
 
 double taylor_eval(double x, double a, const double coeffs[], int n) {
     double result = coeffs[n - 1];
@@ -143,7 +146,6 @@ void sin_simd(double *input, double *res, size_t n, float prec) {
       TAYLOR_COEFF[TAYLOR_LAST_COEFF], 
       TAYLOR_COEFF[TAYLOR_LAST_COEFF]
     };
-
     SDOUBLE result = LOAD_DOUBLE_VEC(first);
 
     for (int j = TAYLOR_LOOP_INTERATIONS; j >= 0; --j) {
@@ -157,11 +159,11 @@ void sin_simd(double *input, double *res, size_t n, float prec) {
 
     for (int j = 0; j < 4; j++) {
       if (quadrants[j] == 1) {
-        res[i+j] = 1 - res[i+j];
+        res[i+j] = sqrt(1 - res[i+j] * res[i+j]);
       } else if (quadrants[j] == 2) {
         res[i+j] = - res[i+j];
       } else if (quadrants[j] == 3) {
-        res[i+j] = res[i+j] - 1;
+        res[i+j] = - sqrt(1 - res[i+j] * res[i+j]);
       }
     }
   }
@@ -177,11 +179,11 @@ void sin_simd(double *input, double *res, size_t n, float prec) {
     res[i] = taylor_eval(reduced_range, 0.5 * M_PI_2, TAYLOR_COEFF, TAYLOR_DEGREE);
 
     if (quadrant == 1) {
-      res[i] = 1 - res[i];
+      res[i] = sqrt(1 - (res[i] * res[i]));
     } else if (quadrant == 2) {
       res[i] = - res[i];
     } else if (quadrant == 3) {
-      res[i] = res[i] - 1;
+      res[i] = - sqrt(1 - (res[i] * res[i]));
     }
   }
   
