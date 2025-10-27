@@ -133,17 +133,16 @@ void sin_simd(double *input, double *res, size_t n, float prec) {
       result = MUL_DOUBLE_S(result, centered_values);
       result = ADD_DOUBLE_S(result, coeff);
     }
-    
-    SIMD_TO_DOUBLE_VEC(quadrants, simd_quadrants); 
-    SIMD_TO_DOUBLE_VEC(&res[i], result); 
 
-    for (int j = 0; j < 4; j++) {
-      switch ((int)quadrants[j]) {
-        case 1:
-          res[i+j] = - res[i+j];
-          break;
-      }
-    }
+    SDOUBLE quadrant_multiplier = LOAD_DOUBLE(-2.0);
+    SDOUBLE addition_vector = LOAD_DOUBLE(1.0);
+
+    SDOUBLE multiplied_quadrants = MUL_DOUBLE_S(simd_quadrants, quadrant_multiplier); 
+    SDOUBLE quadrant_evaluation = ADD_DOUBLE_S(multiplied_quadrants, addition_vector);
+
+    SDOUBLE quadrant_evaluated_result = MUL_DOUBLE_S(result, quadrant_evaluation);
+    
+    SIMD_TO_DOUBLE_VEC(&res[i], quadrant_evaluated_result); 
   }
 
  
