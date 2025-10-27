@@ -9,7 +9,8 @@
 #include "../range_reduction.h"
 
 int main(int argc, char *argv[]) {
-  if (argc != 4) {
+
+  if (argc < 3) {
     fprintf(stderr, "Usage: %s n lower upper\n", argv[0]);
     return 1;
   }
@@ -18,7 +19,13 @@ int main(int argc, char *argv[]) {
   double lower = atof(argv[2]);
   double upper = atof(argv[3]);
 
-  printf("\nThe test is executed for n=%d test-values within the interval [%f, %f].\n", n, lower, upper);
+  int test_size = (argc > 4) ? atoi(argv[4]) : n;
+
+  printf("\n Test Setup \n----------------------------------------------------------------------------------------------------\n");
+  printf("Input Interval:                       [%f, %f]\n", lower, upper);
+  printf("Number of inputs (speed test):        n=%d\n", n);
+  printf("Number of inputs (error calculation): n=%d\n", test_size);
+  printf("----------------------------------------------------------------------------------------------------\n\n");
 
   srand((unsigned)time(NULL));
 
@@ -37,43 +44,63 @@ int main(int argc, char *argv[]) {
   fill_uniform(lower, upper, n, test_values);
   
   // user information for the current state of the script
-  printf("Test values are generated! Starting calculation.\n");
+  printf("Test values are generated! Starting calculation of correct results.\n");
 
-  // precision test
-  #pragma omp parallel for
-  for (int i = 0; i < n; i++){
-    correct_results[i] = correct_result_sin(test_values[i]);
-  }
 
-  printf(" ------- Own Script Execution ------- \n\n");
+  printf("\n -------- Own Script Execution ---------- \n\n");
   START_CLOCK;
   sin_simd(test_values, own_results, n, 0.1);
-  END_CLOCK("Time needed by own implementiation ");
+  END_CLOCK("\n\n ------- End Own Script Execution ------- \n\nTime needed by own implementiation ");
 
   START_CLOCK;
   for (int i = 0; i < n; i++) { glibc_results[i] = sin(test_values[i]); }
   END_CLOCK("Time needed by glibc               ");
 
+  printf("\n -------- Second Own Script Execution ---------- \n\n");
+  START_CLOCK;
+  sin_simd(test_values, own_results, n, 0.1);
+  END_CLOCK("\n\n ------- Second End Own Script Execution ------- \n\nTime needed by own implementiation (second) ");
+
+  START_CLOCK;
+  for (int i = 0; i < n; i++) { glibc_results[i] = sin(test_values[i]); }
+  END_CLOCK("Time needed by glibc (second)               ");
+  // precision test
+
 
   // user information for the current state of the script
-  printf("The results are obtained! Starting error calculation.\n");
+  printf("\nThe results are obtained! Starting error calculation.\n");
 
-  double abs_error = 0;
-  double abs_error_glibc = 0;
-  for (int i = 0; i < n; i++){
-    abs_error += fabs(correct_results[i] - own_results[i]);
-    abs_error_glibc += fabs(correct_results[i] - glibc_results[i]);
+  double *correct_results_partial = malloc(test_size * sizeof(double));
+  double *glibc_results_partial = malloc(test_size * sizeof(double));
+  double *own_results_partial = malloc(test_size * sizeof(double));
+
+  double *test_values_partial = malloc(test_size * sizeof(double));
+
+  for (int i = 0; i < test_size; i++) {
+    correct_results_partial[i] = correct_results[i];
+    glibc_results_partial[i] = glibc_results[i];
+    own_results_partial[i] = own_results[i];
+    test_values_partial[i] = test_values[i];
   }
+
+  double abs_error = compare_results(test_values_partial, own_results_partial, test_size);
+  double abs_error_glibc = compare_results(test_values_partial, glibc_results_partial, test_size);
 
   printf("Accumulated Absolut Error Own   Results: %.17g\n", abs_error);
   printf("Accumulated Absolut Error glibc Results: %.17g\n", abs_error_glibc);
 
   printf("\nAbsolut Error Own   Results: %.17g\n", abs_error/n);
   printf("Absolut Error glibc Results: %.17g\n", abs_error_glibc/n);
+
   free(test_values);
   free(correct_results);
-  free(own_results);
   free(glibc_results);
+  free(own_results);
+
+  free(correct_results_partial);
+  free(glibc_results_partial);
+  free(own_results_partial);
+  free(test_values_partial);
 
   return 0;
 }

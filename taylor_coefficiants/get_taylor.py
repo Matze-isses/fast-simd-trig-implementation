@@ -13,13 +13,13 @@ coeffs = []
 # 4: sin ...
 for n in range(degree):
     if n % 4 == 0:
-        deriv = math.sin(a)
-    elif n % 4 == 1:
         deriv = math.cos(a)
-    elif n % 4 == 2:
+    elif n % 4 == 1:
         deriv = -math.sin(a)
-    else:  # n % 4 == 3
+    elif n % 4 == 2:
         deriv = -math.cos(a)
+    else:  # n % 4 == 3
+        deriv = math.sin(a)
     
     coeff = deriv / math.factorial(n)
     coeffs.append(coeff)

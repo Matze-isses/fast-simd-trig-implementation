@@ -6,7 +6,7 @@
 
 
 void fill_uniform(double lower, double upper, size_t n, double *vec);
-double correct_result_sin(double x);
+double compare_results(double *x, double *y, size_t n);
 
 #endif
 

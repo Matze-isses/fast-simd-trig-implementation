@@ -1,10 +1,13 @@
 #ifndef RANGE_REDUCTION
 #define RANGE_REDUCTION 1
 
+#pragma once
 #include <immintrin.h>
 
-#define SIMD_LENGTH (256)
+#define __AVX2__ 1
+#if defined(__AVX2__)
 
+#define SIMD_LENGTH (256)
 
 // Double I/O
 #define SDOUBLE __m256d
@@ -29,10 +32,6 @@
 #define ADD_FLOAT_S _mm256_add_ps
 #define SUB_FLOAT_S _mm256_sub_ps
 #define FLOOR_FLOAT_S _mm256_floor_ps
-
-void sin_simd_float(float *x, float *res, size_t n, float prec);
-void sin_simd(double *x, double *res, size_t n, float prec);
-
 
 #define PRINT_M256D(reg) do {                                \
     double vals[4];                                          \
@@ -59,4 +58,27 @@ void sin_simd(double *x, double *res, size_t n, float prec);
     printf("]\n");                                                   \
 } while (0)
 
+#endif // __AVX2__ 
+
+#if defined(__AVX512__) && defined(__AVX512F__)
+
+#define SIMD_LENGTH (512)
+
+// Double I/O
+#define SDOUBLE __m512d
+#define LOAD_DOUBLE _mm512_set1_pd
+#define LOAD_DOUBLE_VEC _mm512_loadu_pd
+#define SIMD_TO_DOUBLE_VEC _mm512_storeu_pd
+
+// Double Operations
+#define MUL_DOUBLE_S _mm512_mul_pd
+#define ADD_DOUBLE_S _mm512_add_pd
+#define SUB_DOUBLE_S _mm512_sub_pd
+
+// this will cause trouble
+#define FLOOR_DOUBLE_S _mm512_floor_pd
+
+#endif
+
+void sin_simd(double *x, double *res, size_t n, float prec);
 #endif

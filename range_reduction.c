@@ -24,7 +24,7 @@ const int MAX_SIMD_FLOAT = (int)(SIMD_LENGTH / 32);
 const int TAYLOR_DEGREE = 12;
 const int TAYLOR_LAST_COEFF = TAYLOR_DEGREE - 1;
 const int TAYLOR_LOOP_INTERATIONS = TAYLOR_DEGREE - 2;
-const double TAYLOR_COEFF[] = {
+const double TAYLOR_COEFF_SIN[] = {
   0.70710678118654746,
   0.70710678118654757,
   -0.35355339059327373,
@@ -45,6 +45,29 @@ const double TAYLOR_COEFF[] = {
   1.98800048956383e-15,
   -1.1044447164243498e-16,
   -5.8128669285492101e-18
+};
+
+const double TAYLOR_COEFF_COS[] = {
+0.70710678118654757,
+-0.70710678118654746,
+-0.35355339059327379,
+0.11785113019775791,
+0.029462782549439483,
+-0.0058925565098878951,
+-0.00098209275164798274,
+0.00014029896452114036,
+1.7537370565142548e-05,
+-1.948596729460283e-06,
+-1.9485967294602832e-07,
+1.7714515722366209e-08,
+1.4762096435305176e-09,
+-1.1355458796388595e-10,
+-8.1110419974204264e-12,
+5.4073613316136162e-13,
+3.3796008322585108e-14,
+-1.9880004895638296e-15,
+-1.10444471642435e-16,
+5.8128669285492093e-18
 };
 
 
@@ -111,11 +134,11 @@ void sin_simd(double *input, double *res, size_t n, float prec) {
   double *partial_values = malloc(MAX_SIMD_DOUBLES * sizeof(double));
   double *quadrants = malloc(MAX_SIMD_DOUBLES * sizeof(double));
 
-  SDOUBLE two_pi = LOAD_DOUBLE(RANGE_MAX);
-  SDOUBLE one_over_2_pi = LOAD_DOUBLE(ONE_OVER_RANGE);
-  SDOUBLE one_over_pi_2 = LOAD_DOUBLE(ONE_OVER_PI_2);
-  SDOUBLE simd_pi_2 = LOAD_DOUBLE(M_PI_2);
-  SDOUBLE center_point = LOAD_DOUBLE(0.5 * M_PI_2);
+  const SDOUBLE two_pi = LOAD_DOUBLE(RANGE_MAX);
+  const SDOUBLE one_over_2_pi = LOAD_DOUBLE(ONE_OVER_RANGE);
+  const SDOUBLE one_over_pi_2 = LOAD_DOUBLE(ONE_OVER_PI_2);
+  const SDOUBLE simd_pi_2 = LOAD_DOUBLE(M_PI_2);
+  const SDOUBLE center_point = LOAD_DOUBLE(0.5 * M_PI_2);
   
   #pragma omp parallel for
   for (int i = 0; i < (int)n; i+= MAX_SIMD_DOUBLES) {
@@ -140,16 +163,10 @@ void sin_simd(double *input, double *res, size_t n, float prec) {
     SDOUBLE centered_values = SUB_DOUBLE_S(in_range, center_point);
 
 
-    double first[] = {
-      TAYLOR_COEFF[TAYLOR_LAST_COEFF], 
-      TAYLOR_COEFF[TAYLOR_LAST_COEFF], 
-      TAYLOR_COEFF[TAYLOR_LAST_COEFF], 
-      TAYLOR_COEFF[TAYLOR_LAST_COEFF]
-    };
-    SDOUBLE result = LOAD_DOUBLE_VEC(first);
+    SDOUBLE result = LOAD_DOUBLE(TAYLOR_COEFF_SIN[TAYLOR_LAST_COEFF]);
 
     for (int j = TAYLOR_LOOP_INTERATIONS; j >= 0; --j) {
-      SDOUBLE coeff = LOAD_DOUBLE(TAYLOR_COEFF[j]);
+      SDOUBLE coeff = LOAD_DOUBLE(TAYLOR_COEFF_SIN[j]);
       result = MUL_DOUBLE_S(result, centered_values);
       result = ADD_DOUBLE_S(result, coeff);
     }
@@ -158,12 +175,18 @@ void sin_simd(double *input, double *res, size_t n, float prec) {
     SIMD_TO_DOUBLE_VEC(&res[i], result); 
 
     for (int j = 0; j < 4; j++) {
-      if (quadrants[j] == 1) {
-        res[i+j] = sqrt(1 - res[i+j] * res[i+j]);
-      } else if (quadrants[j] == 2) {
-        res[i+j] = - res[i+j];
-      } else if (quadrants[j] == 3) {
-        res[i+j] = - sqrt(1 - res[i+j] * res[i+j]);
+      switch ((int)quadrants[j]) {
+        case 1:
+          res[i+j] = sqrt(1 - res[i+j] * res[i+j]);
+          break;
+        case 2:
+          res[i+j] = - res[i+j];
+          break;
+        case 3:
+          res[i+j] = - sqrt(1 - res[i+j] * res[i+j]);
+          break;
+        default:
+          break;
       }
     }
   }
@@ -176,7 +199,7 @@ void sin_simd(double *input, double *res, size_t n, float prec) {
     double reduced_range;
     int quadrant;
     get_reduced_range(input[i], &quadrant, &reduced_range);
-    res[i] = taylor_eval(reduced_range, 0.5 * M_PI_2, TAYLOR_COEFF, TAYLOR_DEGREE);
+    res[i] = taylor_eval(reduced_range, 0.5 * M_PI_2, TAYLOR_COEFF_SIN, TAYLOR_DEGREE);
 
     if (quadrant == 1) {
       res[i] = sqrt(1 - (res[i] * res[i]));
