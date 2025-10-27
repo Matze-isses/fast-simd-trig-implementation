@@ -14,37 +14,41 @@
 const double END_FRIENDLY_RANGE = M_PI * 2.0 * INT_MAX;
 
 const double RANGE_MAX = M_PI * 2.0;
-const double TWO_POW_NEG_49 = pow(2, -49);
-const double TWO_POW_NEG_99 = pow(2, -99);
+const double SMALL_RANGE = M_PI;
+const double RANGE_CENTER = M_PI_2;
+
 const double ONE_OVER_RANGE = 1 / RANGE_MAX;
+const double ONE_OVER_SMALL_RANGE = 1 / SMALL_RANGE;
+
 const double ONE_OVER_PI_2 = 1 / M_PI_2;
+
 const int MAX_SIMD_DOUBLES = (int)(SIMD_LENGTH / 64);
 const int MAX_SIMD_FLOAT = (int)(SIMD_LENGTH / 32);
 
-const int TAYLOR_DEGREE = 12;
+const int TAYLOR_DEGREE = 20;
 const int TAYLOR_LAST_COEFF = TAYLOR_DEGREE - 1;
 const int TAYLOR_LOOP_INTERATIONS = TAYLOR_DEGREE - 2;
 const double TAYLOR_COEFF_SIN[] = {
-  0.70710678118654746,
-  0.70710678118654757,
-  -0.35355339059327373,
-  -0.11785113019775793,
-  0.029462782549439476,
-  0.0058925565098878968,
-  -0.00098209275164798252,
-  -0.00014029896452114038,
-  1.7537370565142544e-05,
-  1.9485967294602834e-06,
-  -1.948596729460283e-07,
-  -1.7714515722366212e-08,
-  1.4762096435305173e-09,
-  1.1355458796388596e-10,
-  -8.1110419974204248e-12,
-  -5.4073613316136172e-13,
-  3.3796008322585101e-14,
-  1.98800048956383e-15,
-  -1.1044447164243498e-16,
-  -5.8128669285492101e-18
+  1,
+  6.123233995736766e-17,
+  -0.5,
+  -1.020538999289461e-17,
+  0.041666666666666664,
+  5.102694996447305e-19,
+  -0.0013888888888888889,
+  -1.2149273801065012e-20,
+  2.4801587301587302e-05,
+  1.6873991390368072e-22,
+  -2.7557319223985888e-07,
+  -1.5339992173061884e-24,
+  2.08767569878681e-09,
+  9.8333283160653097e-27,
+  -1.1470745597729725e-11,
+  -4.6825372933644332e-29,
+  4.7794773323873853e-14,
+  1.7215210637369241e-31,
+  -1.5619206968586225e-16,
+  -5.0336873208681989e-34
 };
 
 const double TAYLOR_COEFF_COS[] = {
@@ -71,7 +75,7 @@ const double TAYLOR_COEFF_COS[] = {
 };
 
 
-int get_reduced_range(double x, int *quadrant, double *reduced_range) {
+void get_reduced_range(double x, int *quadrant, double *reduced_range) {
   int n;
 
   n = floor(x * ONE_OVER_RANGE);
@@ -79,48 +83,6 @@ int get_reduced_range(double x, int *quadrant, double *reduced_range) {
   *quadrant = floor(*reduced_range * ONE_OVER_PI_2);
   *quadrant = (*quadrant < 0) ? ((*quadrant + 4) % 4) : *quadrant;
 }
-
-void get_simd_quadrant_float(float *src, float *quad, float *range) {
-  SFLOAT x = LOAD_FLOAT_VEC(src);
-  SFLOAT two_pi = LOAD_FLOAT((float) RANGE_MAX);
-  SFLOAT one_over_2_pi = LOAD_FLOAT((float) ONE_OVER_RANGE);
-  SFLOAT one_over_pi_2 = LOAD_FLOAT((float) ONE_OVER_PI_2);
-
-  SFLOAT n = MUL_FLOAT_S(x, one_over_2_pi);
-  n = FLOOR_FLOAT_S(n);
-
-  SFLOAT range_multiple = MUL_FLOAT_S(n, two_pi);
-  SFLOAT in_range = SUB_FLOAT_S(x, range_multiple); // in [0, 2 * pi]
-
-  n = MUL_FLOAT_S(in_range, one_over_pi_2);
-  n = FLOOR_FLOAT_S(n);
-
-  SIMD_TO_FLOAT_VEC(quad, n);
-  SIMD_TO_FLOAT_VEC(range, in_range);
-}
-
-void sin_simd_float(float *x, float *res, size_t n, float prec) {
-  float *quadrants = malloc(MAX_SIMD_FLOAT * sizeof(float));
-  float *reduced_range = malloc(MAX_SIMD_FLOAT * sizeof(float));
-  float *partial_values = malloc(MAX_SIMD_FLOAT * sizeof(float));
-  
-  for (int i = 0; i < (int)n; i+= MAX_SIMD_FLOAT) {
-    for (int j = 0; j < MAX_SIMD_FLOAT; j++) {
-      partial_values[j] = x[i+j];
-    }
-
-    get_simd_quadrant_float(partial_values, quadrants, reduced_range);
-    
-    for (int j = 0; j < MAX_SIMD_FLOAT; j++) {
-      res[i+j] = quadrants[j];
-    }
-  }
-
-  free(quadrants);
-  free(reduced_range);
-  free(partial_values);
-}
-
 
 double taylor_eval(double x, double a, const double coeffs[], int n) {
     double result = coeffs[n - 1];
@@ -136,9 +98,10 @@ void sin_simd(double *input, double *res, size_t n, float prec) {
 
   const SDOUBLE two_pi = LOAD_DOUBLE(RANGE_MAX);
   const SDOUBLE one_over_2_pi = LOAD_DOUBLE(ONE_OVER_RANGE);
-  const SDOUBLE one_over_pi_2 = LOAD_DOUBLE(ONE_OVER_PI_2);
-  const SDOUBLE simd_pi_2 = LOAD_DOUBLE(M_PI_2);
-  const SDOUBLE center_point = LOAD_DOUBLE(0.5 * M_PI_2);
+  const SDOUBLE one_over_small_range = LOAD_DOUBLE(ONE_OVER_SMALL_RANGE);
+
+  const SDOUBLE small_range = LOAD_DOUBLE(SMALL_RANGE);
+  const SDOUBLE center_point = LOAD_DOUBLE(RANGE_CENTER);
   
   #pragma omp parallel for
   for (int i = 0; i < (int)n; i+= MAX_SIMD_DOUBLES) {
@@ -155,9 +118,9 @@ void sin_simd(double *input, double *res, size_t n, float prec) {
     SDOUBLE range_multiple = MUL_DOUBLE_S(num_ranges_away, two_pi);
     SDOUBLE in_outer_range = SUB_DOUBLE_S(x, range_multiple); // in [0, 2 * pi]
 
-    SDOUBLE small_ranges_away = MUL_DOUBLE_S(in_outer_range, one_over_pi_2);
+    SDOUBLE small_ranges_away = MUL_DOUBLE_S(in_outer_range, one_over_small_range);
     SDOUBLE simd_quadrants = FLOOR_DOUBLE_S(small_ranges_away);
-    SDOUBLE small_subtraction_amount = MUL_DOUBLE_S(simd_quadrants, simd_pi_2);
+    SDOUBLE small_subtraction_amount = MUL_DOUBLE_S(simd_quadrants, small_range);
     SDOUBLE in_range = SUB_DOUBLE_S(in_outer_range, small_subtraction_amount);
 
     SDOUBLE centered_values = SUB_DOUBLE_S(in_range, center_point);
@@ -177,15 +140,7 @@ void sin_simd(double *input, double *res, size_t n, float prec) {
     for (int j = 0; j < 4; j++) {
       switch ((int)quadrants[j]) {
         case 1:
-          res[i+j] = sqrt(1 - res[i+j] * res[i+j]);
-          break;
-        case 2:
           res[i+j] = - res[i+j];
-          break;
-        case 3:
-          res[i+j] = - sqrt(1 - res[i+j] * res[i+j]);
-          break;
-        default:
           break;
       }
     }

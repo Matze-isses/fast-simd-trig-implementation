@@ -67,40 +67,43 @@ int main(int argc, char *argv[]) {
   // precision test
 
 
-  // user information for the current state of the script
-  printf("\nThe results are obtained! Starting error calculation.\n");
+  if (test_size > 0) {
+    // user information for the current state of the script
+    printf("\nThe results are obtained! Starting error calculation.\n");
 
-  double *correct_results_partial = malloc(test_size * sizeof(double));
-  double *glibc_results_partial = malloc(test_size * sizeof(double));
-  double *own_results_partial = malloc(test_size * sizeof(double));
+    double *correct_results_partial = malloc(test_size * sizeof(double));
+    double *glibc_results_partial = malloc(test_size * sizeof(double));
+    double *own_results_partial = malloc(test_size * sizeof(double));
 
-  double *test_values_partial = malloc(test_size * sizeof(double));
+    double *test_values_partial = malloc(test_size * sizeof(double));
 
-  for (int i = 0; i < test_size; i++) {
-    correct_results_partial[i] = correct_results[i];
-    glibc_results_partial[i] = glibc_results[i];
-    own_results_partial[i] = own_results[i];
-    test_values_partial[i] = test_values[i];
+    for (int i = 0; i < test_size; i++) {
+      correct_results_partial[i] = correct_results[i];
+      glibc_results_partial[i] = glibc_results[i];
+      own_results_partial[i] = own_results[i];
+      test_values_partial[i] = test_values[i];
+    }
+
+    double abs_error = compare_results(test_values_partial, own_results_partial, test_size);
+    double abs_error_glibc = compare_results(test_values_partial, glibc_results_partial, test_size);
+
+    printf("Accumulated Absolut Error Own   Results: %.17g\n", abs_error);
+    printf("Accumulated Absolut Error glibc Results: %.17g\n", abs_error_glibc);
+
+    printf("\nAbsolut Error Own   Results: %.17g\n", abs_error/n);
+    printf("Absolut Error glibc Results: %.17g\n", abs_error_glibc/n);
+
+    free(correct_results_partial);
+    free(glibc_results_partial);
+    free(own_results_partial);
+    free(test_values_partial);
   }
-
-  double abs_error = compare_results(test_values_partial, own_results_partial, test_size);
-  double abs_error_glibc = compare_results(test_values_partial, glibc_results_partial, test_size);
-
-  printf("Accumulated Absolut Error Own   Results: %.17g\n", abs_error);
-  printf("Accumulated Absolut Error glibc Results: %.17g\n", abs_error_glibc);
-
-  printf("\nAbsolut Error Own   Results: %.17g\n", abs_error/n);
-  printf("Absolut Error glibc Results: %.17g\n", abs_error_glibc/n);
 
   free(test_values);
   free(correct_results);
   free(glibc_results);
   free(own_results);
 
-  free(correct_results_partial);
-  free(glibc_results_partial);
-  free(own_results_partial);
-  free(test_values_partial);
 
   return 0;
 }
