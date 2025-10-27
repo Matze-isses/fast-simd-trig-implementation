@@ -90,8 +90,8 @@ int main(int argc, char *argv[]) {
     printf("Accumulated Absolut Error Own   Results: %.17g\n", abs_error);
     printf("Accumulated Absolut Error glibc Results: %.17g\n", abs_error_glibc);
 
-    printf("\nAbsolut Error Own   Results: %.17g\n", abs_error/n);
-    printf("Absolut Error glibc Results: %.17g\n", abs_error_glibc/n);
+    printf("\nAbsolut Error Own   Results: %.17g\n", abs_error/test_size);
+    printf("Absolut Error glibc Results: %.17g\n", abs_error_glibc/test_size);
 
     free(correct_results_partial);
     free(glibc_results_partial);

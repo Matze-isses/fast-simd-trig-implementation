@@ -51,29 +51,6 @@ const double TAYLOR_COEFF_SIN[] = {
   -5.0336873208681989e-34
 };
 
-const double TAYLOR_COEFF_COS[] = {
-0.70710678118654757,
--0.70710678118654746,
--0.35355339059327379,
-0.11785113019775791,
-0.029462782549439483,
--0.0058925565098878951,
--0.00098209275164798274,
-0.00014029896452114036,
-1.7537370565142548e-05,
--1.948596729460283e-06,
--1.9485967294602832e-07,
-1.7714515722366209e-08,
-1.4762096435305176e-09,
--1.1355458796388595e-10,
--8.1110419974204264e-12,
-5.4073613316136162e-13,
-3.3796008322585108e-14,
--1.9880004895638296e-15,
--1.10444471642435e-16,
-5.8128669285492093e-18
-};
-
 
 void get_reduced_range(double x, int *quadrant, double *reduced_range) {
   int n;
@@ -102,6 +79,9 @@ void sin_simd(double *input, double *res, size_t n, float prec) {
 
   const SDOUBLE small_range = LOAD_DOUBLE(SMALL_RANGE);
   const SDOUBLE center_point = LOAD_DOUBLE(RANGE_CENTER);
+
+  const SDOUBLE quadrant_multiplier = LOAD_DOUBLE(-2.0);
+  const SDOUBLE addition_vector = LOAD_DOUBLE(1.0);
   
   #pragma omp parallel for
   for (int i = 0; i < (int)n; i+= MAX_SIMD_DOUBLES) {
@@ -111,20 +91,18 @@ void sin_simd(double *input, double *res, size_t n, float prec) {
 
     SDOUBLE x   = LOAD_DOUBLE_VEC(partial_values);
 
-
     // works but is potentially negative
     SDOUBLE ranges_away = MUL_DOUBLE_S(x, one_over_2_pi);
     SDOUBLE num_ranges_away = FLOOR_DOUBLE_S(ranges_away);
     SDOUBLE range_multiple = MUL_DOUBLE_S(num_ranges_away, two_pi);
-    SDOUBLE in_outer_range = SUB_DOUBLE_S(x, range_multiple); // in [0, 2 * pi]
+    SDOUBLE in_outer_range = SUB_DOUBLE_S(x, range_multiple);                       // in [0, 2 * pi]
 
     SDOUBLE small_ranges_away = MUL_DOUBLE_S(in_outer_range, one_over_small_range);
-    SDOUBLE simd_quadrants = FLOOR_DOUBLE_S(small_ranges_away);
+    SDOUBLE simd_quadrants = FLOOR_DOUBLE_S(small_ranges_away);                     // used later
     SDOUBLE small_subtraction_amount = MUL_DOUBLE_S(simd_quadrants, small_range);
-    SDOUBLE in_range = SUB_DOUBLE_S(in_outer_range, small_subtraction_amount);
+    SDOUBLE in_range = SUB_DOUBLE_S(in_outer_range, small_subtraction_amount);      // in smaller range
 
     SDOUBLE centered_values = SUB_DOUBLE_S(in_range, center_point);
-
 
     SDOUBLE result = LOAD_DOUBLE(TAYLOR_COEFF_SIN[TAYLOR_LAST_COEFF]);
 
@@ -134,12 +112,9 @@ void sin_simd(double *input, double *res, size_t n, float prec) {
       result = ADD_DOUBLE_S(result, coeff);
     }
 
-    SDOUBLE quadrant_multiplier = LOAD_DOUBLE(-2.0);
-    SDOUBLE addition_vector = LOAD_DOUBLE(1.0);
 
     SDOUBLE multiplied_quadrants = MUL_DOUBLE_S(simd_quadrants, quadrant_multiplier); 
     SDOUBLE quadrant_evaluation = ADD_DOUBLE_S(multiplied_quadrants, addition_vector);
-
     SDOUBLE quadrant_evaluated_result = MUL_DOUBLE_S(result, quadrant_evaluation);
     
     SIMD_TO_DOUBLE_VEC(&res[i], quadrant_evaluated_result); 
