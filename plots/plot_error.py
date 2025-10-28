@@ -1,28 +1,65 @@
+import ctypes
+import matplotlib.pyplot as plt
+import numpy as np
+
+# Load the shared library
+lib = ctypes.CDLL("./libtest_object.so")
+
+# Declare argument and return types
+lib.test_sin_time.argtypes = [ctypes.c_int, ctypes.c_double, ctypes.c_double, ctypes.c_int]
+lib.test_sin_time.restype = ctypes.c_double
+
+lib.test_tan_time.argtypes = [ctypes.c_int, ctypes.c_double, ctypes.c_double, ctypes.c_int]
+lib.test_tan_time.restype = ctypes.c_double
+
+lib.test_sin_accuracy.argtypes = [ctypes.c_int, ctypes.c_double, ctypes.c_double, ctypes.c_int]
+lib.test_sin_accuracy.restype = ctypes.c_double
+
+lib.test_tan_accuracy.argtypes = [ctypes.c_int, ctypes.c_double, ctypes.c_double, ctypes.c_int]
+lib.test_tan_accuracy.restype = ctypes.c_double
 
 
-# test for n=10000000 taylor degree=20
-range_error = [
-    (100, 1.2343188695942889e-15),
-    (1000, 1.2380184849082801e-14),
-    (10000, 1.240280798539982e-13),
-    (100000, 1.2403548626095734e-12),
-    (1000000, 1.2406962236109498e-11),
-    (10000000, 1.2413036696304116e-10),
-    (100000000, 1.2409026529266322e-09)
-]
+plausible_test_size = 10000000
 
-# test for n=10000000 range end= 100000
-taylor_error = [
-    (10, 2.2553813834605779e-06),
-    (11, 3.5858459356458913e-08),
-    (12, 3.5847614544889314e-08),
-    (13, 4.2179357747422692e-10),
-    (14, 4.2207798517218336e-10),
-    (15, 4.62570811545513e-12),
-    (16, 4.6210194596833524e-12),
-    (17, 1.2418371498720676e-12),
-    (18, 1.2421083616199779e-12),
-    (19, 1.2400904079944078e-12),
-    (20, 1.2405224639630778e-12),
-]
 
+def taylor2error(max_degree=10):
+    lower_bound = 0
+    upper_bound = 10000
+    taylor_degrees = list(range(1, max_degree+1))
+    errors = []
+
+    # taylor to error comparison
+    for i in taylor_degrees:
+        print(f"Current Taylor Degree: {i}/{max_degree}", end=" ")
+        error = lib.test_sin_accuracy(i, lower_bound, upper_bound, plausible_test_size)
+        errors.append(error)
+        print(f"Had Error: {error}")
+    
+    plt.plot(taylor_degrees, np.log(np.array(errors)), "x-") 
+    plt.xlabel("Taylor Degree")
+    plt.ylabel("Log Error")
+    plt.title("Log Error for Increasing Taylor Degree")
+    plt.savefig("./plots/deg2error")
+    plt.show()
+
+
+taylor2error()
+
+# Example usage
+taylor_degree = 10
+lower_bound = 0.0
+upper_bound = 3.14
+
+test_size = 1000000
+
+time_sin = lib.test_sin_time(taylor_degree, lower_bound, upper_bound, test_size)
+print(f"sin time: {time_sin:.6f} s")
+
+time_tan = lib.test_tan_time(taylor_degree, lower_bound, upper_bound, test_size)
+print(f"tan time: {time_tan:.6f} s")
+
+accuracy_sin = lib.test_sin_accuracy(taylor_degree, lower_bound, upper_bound, test_size)
+print(f"sin mean abs error: {accuracy_sin:.6e}")
+
+accuracy_tan = lib.test_tan_accuracy(taylor_degree, lower_bound, upper_bound, test_size)
+print(f"tan mean abs error: {accuracy_tan:.6e}")

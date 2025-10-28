@@ -17,8 +17,11 @@
 
 // Double Operations
 #define MUL_DOUBLE_S _mm256_mul_pd
+#define DIV_DOUBLE_S _mm256_div_pd
+
 #define ADD_DOUBLE_S _mm256_add_pd
 #define SUB_DOUBLE_S _mm256_sub_pd
+
 #define FLOOR_DOUBLE_S _mm256_floor_pd
 
 // Float I/O
@@ -56,6 +59,6 @@
 
 #endif
 
-void sin_simd(double *input, double *res, size_t n, float prec);
-void tan_simd(double *input, double *res, size_t n, float prec);
+void sin_simd(double *input, double *res, size_t n, int prec);
+void tan_simd(double *input, double *res, size_t n, int prec);
 #endif

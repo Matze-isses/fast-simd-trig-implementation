@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) {
 
   printf("\n -------- Own Script Execution ---------- \n\n");
   START_CLOCK;
-  sin_simd(test_values, own_results, n, 20.0);
+  sin_simd(test_values, own_results, n, 20);
   END_CLOCK("\n\n ------- End Own Script Execution ------- \n\nTime needed by own implementiation ");
 
   if (eval_glibc) {
@@ -62,7 +62,7 @@ int main(int argc, char *argv[]) {
 
   printf("\n -------- Second Own Script Execution ---------- \n\n");
   START_CLOCK;
-  sin_simd(test_values, own_results, n, 20.0);
+  sin_simd(test_values, own_results, n, 20);
   END_CLOCK("\n\n ------- Second End Own Script Execution ------- \n\nTime needed by own implementiation (second) ");
 
   if (eval_glibc) {
@@ -124,4 +124,4 @@ int main(int argc, char *argv[]) {
   return 0;
 }
 
-// gcc test_interface.c value_generation.c sin_arb.c -o test -lm -mavx -O2 -lflint -Wall -Wextra && ./test 1000000 0 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+// gcc ./tests/test_interface_sin.c ./tests/value_generation.c ./tests/trig_arb_comparison.c ./trig_simd.c ./tests/test_object.c -o test -lm -mavx -mavx2 -mfma -O2 -lflint -Wextra && ./test 12 0 100 0
