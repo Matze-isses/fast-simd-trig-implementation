@@ -1,5 +1,6 @@
 import math
 import sympy as sp
+from multiprocessing import Pool
 
 # --- Inputs ---
 func_choice = input("Function (sin, cos, tan): ").strip().lower()
@@ -51,23 +52,37 @@ if func_choice in ("sin", "cos"):
     dpoly = sp.diff(poly, x)
 
 elif func_choice == "tan":
-    # For tan, expand around a = 0 (safe)
-    a = 0 
+    START_N = 21        # first derivative order
+    NUM_PROCESSES = 8  # number of parallel processes
+    # -------------------------
 
+    a = 0.0
     xs = sp.Symbol('x')
     f = sp.tan(xs)
-    coeffs = []
-    for n in range(degree):
-        if (n % 2 == 0 and a == 0):
-            coeffs.append(0.0)
-            print("{:.17g},".format(float(coeffs[-1])))
-            continue
-        deriv_n = sp.diff(f, xs, n)
-        deriv_at_a = deriv_n.subs(xs, a)
-        coeffs.append(sp.simplify(deriv_at_a / math.factorial(n)))
-        print("{:.17g},".format(float(coeffs[-1])))
 
-    poly = build_poly_from_coeffs(coeffs, 0)
+    def tan_coeff_at(n_a):
+        """Worker: compute n-th Taylor coefficient of tan at point a."""
+        n, a_local = n_a
+        if a_local == 0 and n % 2 == 0:
+            return (n, 0.0)
+        deriv_n = sp.diff(f, xs, n)
+        val = deriv_n.subs(xs, a_local) / math.factorial(n)
+        try:
+            return (n, float(val))
+        except Exception:
+            return (n, float(sp.N(val)))
+
+    indices = list(range(START_N, degree, 2))
+    coeffs = [0.0] * degree  # preallocate
+
+    # Run in parallel — print as soon as each coefficient is done
+    with Pool(processes=NUM_PROCESSES) as pool:
+        for n, c in pool.imap_unordered(tan_coeff_at, [(i, a) for i in indices]):
+            coeffs[n] = c
+            print(f"{n}=" + "{:.17g},".format(float(c)))
+
+    # Optionally build the polynomial afterward (once all are computed)
+    poly = build_poly_from_coeffs(coeffs, a)
     dpoly = sp.diff(poly, x)
 
 else:
