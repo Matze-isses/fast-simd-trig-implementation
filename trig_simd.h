@@ -56,5 +56,6 @@
 
 #endif
 
-void sin_simd(double *x, double *res, size_t n, float prec);
+void sin_simd(double *input, double *res, size_t n, float prec);
+void tan_simd(double *input, double *res, size_t n, float prec);
 #endif

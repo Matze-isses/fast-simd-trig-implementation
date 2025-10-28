@@ -12,9 +12,9 @@
 
 const double END_FRIENDLY_RANGE = M_PI * 2.0 * INT_MAX;
 
-const double RANGE_MAX = M_PI * 2.0;
-const double SMALL_RANGE = M_PI;
-const double RANGE_CENTER = M_PI_2;
+const double RANGE_MAX = M_PI;
+const double SMALL_RANGE = M_PI_2;
+const double RANGE_CENTER = 0;
 
 const double ONE_OVER_RANGE = 1 / RANGE_MAX;
 const double ONE_OVER_SMALL_RANGE = 1 / SMALL_RANGE;
@@ -24,31 +24,53 @@ const double ONE_OVER_PI_2 = 1 / M_PI_2;
 const int MAX_SIMD_DOUBLES = (int)(SIMD_LENGTH / 64);
 const int MAX_SIMD_FLOAT = (int)(SIMD_LENGTH / 32);
 
-const int TAYLOR_DEGREE = 20;
+const int TAYLOR_DEGREE = 22;
 const int TAYLOR_LAST_COEFF = TAYLOR_DEGREE - 1;
 const int TAYLOR_LOOP_INTERATIONS = TAYLOR_DEGREE - 2;
+const double TAYLOR_COEFF_TAN[] = {
+  0,
+  1,
+  0,
+  0.33333333333333331,
+  0,
+  0.13333333333333333,
+  0,
+  0.053968253968253971,
+  0,
+  0.021869488536155203,
+  0,
+  0.0088632355299021973,
+  0,
+  0.0035921280365724811,
+  0,
+  0.0014558343870513183,
+  0,
+  0.00059002744094558595,
+  0,
+  0.00023912911424355248,
+  0,
+  9.6915379569294509e-05,
+  0,
+  3.9278323883316833e-05,
+  0,
+  1.5918905069328964e-05,
+  0,
+};
+/*
 const double TAYLOR_COEFF_SIN[] = {
   1,
-  6.123233995736766e-17,
-  -0.5,
-  -1.020538999289461e-17,
-  0.041666666666666664,
-  5.102694996447305e-19,
-  -0.0013888888888888889,
-  -1.2149273801065012e-20,
-  2.4801587301587302e-05,
-  1.6873991390368072e-22,
-  -2.7557319223985888e-07,
-  -1.5339992173061884e-24,
-  2.08767569878681e-09,
-  9.8333283160653097e-27,
-  -1.1470745597729725e-11,
-  -4.6825372933644332e-29,
-  4.7794773323873853e-14,
-  1.7215210637369241e-31,
-  -1.5619206968586225e-16,
-  -5.0336873208681989e-34
+  0.33333333333333331,
+  2.0/15.0,
+  17.0/315.0,
+  62.0/2835.0,
+  1382.0/155925.0,
+  21844.0/6081075.0,
+  929569.0/638512875.0,
+  6404582.0/10854718875.0,
+  443861162.0/1856156927625.0,
+  18888466084.0/194896477400625.0, // 21 degree
 };
+*/
 
 
 void get_reduced_range(double x, int *quadrant, double *reduced_range) {
@@ -67,11 +89,12 @@ double taylor_eval(double x, double a, const double coeffs[], int n) {
     }
     return result;
 }
-void tan_simd(double *input, double *res, size_t n, float prec) {
-  // other script just written to provide header issues
+
+void sin_simd(double *input, double *res, size_t n, float prec){
+  // other script just written to prevent header issues
 }
 
-void sin_simd(double *input, double *res, size_t n, float prec) {
+void tan_simd(double *input, double *res, size_t n, float prec) {
   const SDOUBLE two_pi = LOAD_DOUBLE(RANGE_MAX);
   const SDOUBLE one_over_2_pi = LOAD_DOUBLE(ONE_OVER_RANGE);
   const SDOUBLE one_over_small_range = LOAD_DOUBLE(ONE_OVER_SMALL_RANGE);
@@ -98,11 +121,12 @@ void sin_simd(double *input, double *res, size_t n, float prec) {
     const SDOUBLE in_range = SUB_DOUBLE_S(in_outer_range, small_subtraction_amount);      // in smaller range
 
     const SDOUBLE centered_values = SUB_DOUBLE_S(in_range, center_point);
+    const SDOUBLE centered_values_squared = MUL_DOUBLE_S(centered_values, centered_values);
 
-    SDOUBLE result = LOAD_DOUBLE(TAYLOR_COEFF_SIN[TAYLOR_LAST_COEFF]);
+    SDOUBLE result = LOAD_DOUBLE(TAYLOR_COEFF_TAN[TAYLOR_LAST_COEFF]);
 
     for (int j = TAYLOR_LOOP_INTERATIONS; j >= 0; --j) {
-      SDOUBLE coeff = LOAD_DOUBLE(TAYLOR_COEFF_SIN[j]);
+      SDOUBLE coeff = LOAD_DOUBLE(TAYLOR_COEFF_TAN[j]);
       result = MUL_DOUBLE_S(result, centered_values);
       result = ADD_DOUBLE_S(result, coeff);
     }
@@ -122,7 +146,7 @@ void sin_simd(double *input, double *res, size_t n, float prec) {
     double reduced_range;
     int quadrant;
     get_reduced_range(input[i], &quadrant, &reduced_range);
-    res[i] = taylor_eval(reduced_range, 0.5 * M_PI_2, TAYLOR_COEFF_SIN, TAYLOR_DEGREE);
+    res[i] = taylor_eval(reduced_range, 0.5 * M_PI_2, TAYLOR_COEFF_TAN, TAYLOR_DEGREE);
 
     if (quadrant == 1) {
       res[i] = sqrt(1 - (res[i] * res[i]));

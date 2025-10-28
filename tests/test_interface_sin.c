@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "test_interface.h"
-#include "../sin_simd.h"
+#include "../trig_simd.h"
 
 int main(int argc, char *argv[]) {
 

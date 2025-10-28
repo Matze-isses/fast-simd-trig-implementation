@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "test_interface.h"
-#include "../sin_simd.h"
+#include "../trig_simd.h"
 
 int main(int argc, char *argv[]) {
 
@@ -19,7 +19,7 @@ int main(int argc, char *argv[]) {
   double lower = atof(argv[2]);
   double upper = atof(argv[3]);
 
-  bool eval_glibc = false;
+  const bool eval_glibc = true;
 
   int test_size = (argc > 4) ? atoi(argv[4]) : n;
 
@@ -51,36 +51,31 @@ int main(int argc, char *argv[]) {
 
   printf("\n -------- Own Script Execution ---------- \n\n");
   START_CLOCK;
-  sin_simd(test_values, own_results, n, 0.1);
+  tan_simd(test_values, own_results, n, 0.1);
   END_CLOCK("\n\n ------- End Own Script Execution ------- \n\nTime needed by own implementiation ");
 
+
+  // Evaluate glibc if local constant is set
   if (eval_glibc) {
     START_CLOCK;
-    for (int i = 0; i < n; i++) { glibc_results[i] = sin(test_values[i]); }
+    for (int i = 0; i < n; i++) { glibc_results[i] = tan(test_values[i]); }
     END_CLOCK("Time needed by glibc               ");
   }
 
+
   printf("\n -------- Second Own Script Execution ---------- \n\n");
   START_CLOCK;
-  sin_simd(test_values, own_results, n, 0.1);
+  tan_simd(test_values, own_results, n, 0.1);
   END_CLOCK("\n\n ------- Second End Own Script Execution ------- \n\nTime needed by own implementiation (second) ");
 
+
+  // Evaluate glibc if local constant is set
   if (eval_glibc) {
     START_CLOCK;
-    for (int i = 0; i < n; i++) { glibc_results[i] = sin(test_values[i]); }
+    for (int i = 0; i < n; i++) { glibc_results[i] = tan(test_values[i]); }
     END_CLOCK("Time needed by glibc (second)               ");
   }
 
-
-  /*
-  double total_time = 0.0;
-  for (int i = 0; i < 10; i++) {
-    START_TCLOCK;
-    sin_simd(test_values, own_results, n, 0.1);
-    total_time += GET_TCLOCK;    
-  }
-  printf("\n10 Evaluations for the own implementation took on average %.17g ms\n", total_time/10);
-  */
 
   // precision test
   if (test_size > 0) {
@@ -100,8 +95,8 @@ int main(int argc, char *argv[]) {
       test_values_partial[i] = test_values[i];
     }
 
-    double abs_error = compare_results(test_values_partial, own_results_partial, test_size);
-    double abs_error_glibc = compare_results(test_values_partial, glibc_results_partial, test_size);
+    double abs_error = compare_results_tan(test_values_partial, own_results_partial, test_size);
+    double abs_error_glibc = compare_results_tan(test_values_partial, glibc_results_partial, test_size);
 
     printf("Accumulated Absolut Error Own   Results: %.17g\n", abs_error);
     printf("Accumulated Absolut Error glibc Results: %.17g\n", abs_error_glibc);
@@ -123,5 +118,3 @@ int main(int argc, char *argv[]) {
 
   return 0;
 }
-
-// gcc test_interface.c value_generation.c sin_arb.c -o test -lm -mavx -O2 -lflint -Wall -Wextra && ./test 1000000 0 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
