@@ -24,7 +24,7 @@ const double ONE_OVER_PI_2 = 1 / M_PI_2;
 const int MAX_SIMD_DOUBLES = (int)(SIMD_LENGTH / 64);
 const int MAX_SIMD_FLOAT = (int)(SIMD_LENGTH / 32);
 
-const int TAYLOR_DEGREE = 22;
+const int TAYLOR_DEGREE = 21;
 const int TAYLOR_LAST_COEFF = TAYLOR_DEGREE - 1;
 const int TAYLOR_LOOP_INTERATIONS = TAYLOR_DEGREE - 2;
 const double TAYLOR_COEFF_TAN[] = {
@@ -56,21 +56,6 @@ const double TAYLOR_COEFF_TAN[] = {
   1.5918905069328964e-05,
   0,
 };
-/*
-const double TAYLOR_COEFF_SIN[] = {
-  1,
-  0.33333333333333331,
-  2.0/15.0,
-  17.0/315.0,
-  62.0/2835.0,
-  1382.0/155925.0,
-  21844.0/6081075.0,
-  929569.0/638512875.0,
-  6404582.0/10854718875.0,
-  443861162.0/1856156927625.0,
-  18888466084.0/194896477400625.0, // 21 degree
-};
-*/
 
 
 void get_reduced_range(double x, int *quadrant, double *reduced_range) {
@@ -78,8 +63,9 @@ void get_reduced_range(double x, int *quadrant, double *reduced_range) {
 
   n = floor(x * ONE_OVER_RANGE);
   *reduced_range = x - n * RANGE_MAX;
-  *quadrant = floor(*reduced_range * ONE_OVER_PI_2);
+  *quadrant = floor(*reduced_range * ONE_OVER_SMALL_RANGE);
   *quadrant = (*quadrant < 0) ? ((*quadrant + 4) % 4) : *quadrant;
+  *reduced_range -= *quadrant * SMALL_RANGE;
 }
 
 double taylor_eval(double x, double a, const double coeffs[], int n) {
@@ -125,9 +111,9 @@ void tan_simd(double *input, double *res, size_t n, float prec) {
 
     SDOUBLE result = LOAD_DOUBLE(TAYLOR_COEFF_TAN[TAYLOR_LAST_COEFF]);
 
-    for (int j = TAYLOR_LOOP_INTERATIONS; j >= 0; --j) {
+    for (int j = TAYLOR_LOOP_INTERATIONS; j >= 0; j-=2) {
       SDOUBLE coeff = LOAD_DOUBLE(TAYLOR_COEFF_TAN[j]);
-      result = MUL_DOUBLE_S(result, centered_values);
+      result = MUL_DOUBLE_S(result, centered_values_squared);
       result = ADD_DOUBLE_S(result, coeff);
     }
 
@@ -146,14 +132,10 @@ void tan_simd(double *input, double *res, size_t n, float prec) {
     double reduced_range;
     int quadrant;
     get_reduced_range(input[i], &quadrant, &reduced_range);
-    res[i] = taylor_eval(reduced_range, 0.5 * M_PI_2, TAYLOR_COEFF_TAN, TAYLOR_DEGREE);
+    res[i] = taylor_eval(reduced_range, 0, TAYLOR_COEFF_TAN, TAYLOR_DEGREE);
 
     if (quadrant == 1) {
-      res[i] = sqrt(1 - (res[i] * res[i]));
-    } else if (quadrant == 2) {
-      res[i] = - res[i];
-    } else if (quadrant == 3) {
-      res[i] = - sqrt(1 - (res[i] * res[i]));
+      res[i] = -res[i];
     }
   }
 }
