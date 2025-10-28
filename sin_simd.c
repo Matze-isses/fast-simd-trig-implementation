@@ -72,6 +72,10 @@ void tan_simd(double *input, double *res, size_t n, float prec) {
 }
 
 void sin_simd(double *input, double *res, size_t n, float prec) {
+  const int taylor_degree = (int)prec;
+  const int taylor_last_coeff = taylor_degree - 1;
+  const int taylor_loop_iteration = taylor_degree - 2;
+  
   const SDOUBLE two_pi = LOAD_DOUBLE(RANGE_MAX);
   const SDOUBLE one_over_2_pi = LOAD_DOUBLE(ONE_OVER_RANGE);
   const SDOUBLE one_over_small_range = LOAD_DOUBLE(ONE_OVER_SMALL_RANGE);
@@ -99,9 +103,9 @@ void sin_simd(double *input, double *res, size_t n, float prec) {
 
     const SDOUBLE centered_values = SUB_DOUBLE_S(in_range, center_point);
 
-    SDOUBLE result = LOAD_DOUBLE(TAYLOR_COEFF_SIN[TAYLOR_LAST_COEFF]);
+    SDOUBLE result = LOAD_DOUBLE(TAYLOR_COEFF_SIN[taylor_last_coeff]);
 
-    for (int j = TAYLOR_LOOP_INTERATIONS; j >= 0; --j) {
+    for (int j = taylor_loop_iteration; j >= 0; --j) {
       SDOUBLE coeff = LOAD_DOUBLE(TAYLOR_COEFF_SIN[j]);
       result = MUL_DOUBLE_S(result, centered_values);
       result = ADD_DOUBLE_S(result, coeff);

@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) {
 
   printf("\n -------- Own Script Execution ---------- \n\n");
   START_CLOCK;
-  sin_simd(test_values, own_results, n, 0.1);
+  sin_simd(test_values, own_results, n, 20.0);
   END_CLOCK("\n\n ------- End Own Script Execution ------- \n\nTime needed by own implementiation ");
 
   if (eval_glibc) {
@@ -62,7 +62,7 @@ int main(int argc, char *argv[]) {
 
   printf("\n -------- Second Own Script Execution ---------- \n\n");
   START_CLOCK;
-  sin_simd(test_values, own_results, n, 0.1);
+  sin_simd(test_values, own_results, n, 20.0);
   END_CLOCK("\n\n ------- Second End Own Script Execution ------- \n\nTime needed by own implementiation (second) ");
 
   if (eval_glibc) {

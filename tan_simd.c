@@ -10,8 +10,6 @@
 #define MAX_EXACT_INT (9007199254740992)
 #define LONG_RANGE_END (57952155664616982739.0)
 
-const double END_FRIENDLY_RANGE = M_PI * 2.0 * INT_MAX;
-
 const double RANGE_MAX = M_PI;
 const double SMALL_RANGE = M_PI_2;
 const double RANGE_CENTER = 0;
@@ -24,9 +22,10 @@ const double ONE_OVER_PI_2 = 1 / M_PI_2;
 const int MAX_SIMD_DOUBLES = (int)(SIMD_LENGTH / 64);
 const int MAX_SIMD_FLOAT = (int)(SIMD_LENGTH / 32);
 
-const int TAYLOR_DEGREE = 21;
+const int TAYLOR_DEGREE = 27;
 const int TAYLOR_LAST_COEFF = TAYLOR_DEGREE - 1;
 const int TAYLOR_LOOP_INTERATIONS = TAYLOR_DEGREE - 2;
+
 const double TAYLOR_COEFF_TAN[] = {
   0,
   1,
@@ -55,6 +54,7 @@ const double TAYLOR_COEFF_TAN[] = {
   0,
   1.5918905069328964e-05,
   0,
+  6.4516892156554306e-06
 };
 
 
@@ -81,11 +81,12 @@ void sin_simd(double *input, double *res, size_t n, float prec){
 }
 
 void tan_simd(double *input, double *res, size_t n, float prec) {
-  const SDOUBLE two_pi = LOAD_DOUBLE(RANGE_MAX);
-  const SDOUBLE one_over_2_pi = LOAD_DOUBLE(ONE_OVER_RANGE);
-  const SDOUBLE one_over_small_range = LOAD_DOUBLE(ONE_OVER_SMALL_RANGE);
+  const SDOUBLE range_max = LOAD_DOUBLE(RANGE_MAX);
+  const SDOUBLE one_over_range_max = LOAD_DOUBLE(ONE_OVER_RANGE);
 
   const SDOUBLE small_range = LOAD_DOUBLE(SMALL_RANGE);
+  const SDOUBLE one_over_small_range = LOAD_DOUBLE(ONE_OVER_SMALL_RANGE);
+
   const SDOUBLE center_point = LOAD_DOUBLE(RANGE_CENTER);
 
   const SDOUBLE quadrant_multiplier = LOAD_DOUBLE(-2.0);
@@ -96,32 +97,28 @@ void tan_simd(double *input, double *res, size_t n, float prec) {
     SDOUBLE x   = LOAD_DOUBLE_VEC(&input[i]);
 
     // works but is potentially negative
-    const SDOUBLE ranges_away = MUL_DOUBLE_S(x, one_over_2_pi);
+    const SDOUBLE ranges_away = MUL_DOUBLE_S(x, one_over_range_max);
     const SDOUBLE num_ranges_away = FLOOR_DOUBLE_S(ranges_away);
-    const SDOUBLE range_multiple = MUL_DOUBLE_S(num_ranges_away, two_pi);
+    const SDOUBLE range_multiple = MUL_DOUBLE_S(num_ranges_away, range_max);
     const SDOUBLE in_outer_range = SUB_DOUBLE_S(x, range_multiple);                       // in [0, 2 * pi]
 
     const SDOUBLE small_ranges_away = MUL_DOUBLE_S(in_outer_range, one_over_small_range);
-    const SDOUBLE simd_quadrants = FLOOR_DOUBLE_S(small_ranges_away);                     // used later
-    const SDOUBLE small_subtraction_amount = MUL_DOUBLE_S(simd_quadrants, small_range);
-    const SDOUBLE in_range = SUB_DOUBLE_S(in_outer_range, small_subtraction_amount);      // in smaller range
+    const SDOUBLE small_range_sub_part = FLOOR_DOUBLE_S(small_ranges_away);                     // used later
+    const SDOUBLE move_second_half_vec = MUL_DOUBLE_S(small_range_sub_part, range_max);
 
-    const SDOUBLE centered_values = SUB_DOUBLE_S(in_range, center_point);
-    const SDOUBLE centered_values_squared = MUL_DOUBLE_S(centered_values, centered_values);
+    // this is checked and it is the correct range
+    const SDOUBLE in_range = SUB_DOUBLE_S(in_outer_range, move_second_half_vec);
 
     SDOUBLE result = LOAD_DOUBLE(TAYLOR_COEFF_TAN[TAYLOR_LAST_COEFF]);
 
-    for (int j = TAYLOR_LOOP_INTERATIONS; j >= 0; j-=2) {
+    for (int j = TAYLOR_LOOP_INTERATIONS; j >= 0; --j) {
       SDOUBLE coeff = LOAD_DOUBLE(TAYLOR_COEFF_TAN[j]);
-      result = MUL_DOUBLE_S(result, centered_values_squared);
+      result = MUL_DOUBLE_S(result, in_range);
       result = ADD_DOUBLE_S(result, coeff);
     }
 
-    const SDOUBLE multiplied_quadrants = MUL_DOUBLE_S(simd_quadrants, quadrant_multiplier); 
-    const SDOUBLE quadrant_evaluation = ADD_DOUBLE_S(multiplied_quadrants, addition_vector);
-    const SDOUBLE quadrant_evaluated_result = MUL_DOUBLE_S(result, quadrant_evaluation);
 
-    SIMD_TO_DOUBLE_VEC(&res[i], quadrant_evaluated_result); 
+    SIMD_TO_DOUBLE_VEC(&res[i], result); 
   }
 
  
@@ -140,4 +137,4 @@ void tan_simd(double *input, double *res, size_t n, float prec) {
   }
 }
 
-// gcc ./tests/test_interface_sin.c ./tests/value_generation.c ./tests/sin_arb.c ./sin_simd.c -o test -lm -mavx -mavx2 -mfma -O2 -lflint -Wextra && ./test 12 0 100 0
+// gcc ./tests/test_interface_tan.c ./tests/value_generation.c ./tests/trig_arb_comparison.c ./tan_simd.c -o test -lm -mavx -mavx2 -mfma -O2 -lflint -Wextra && ./test 100000000 0 1000 100000000
