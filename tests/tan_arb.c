@@ -5,7 +5,7 @@
 const slong PRECISION = 512;
 
 
-double compare_results_sin(double *x, double *y, size_t n) {
+double compare_results_tan(double *x, double *y, size_t n) {
   // Error should be continously added to and is therefore set before
   // i do not want to go into vector operations with flint...
   arb_t error;
