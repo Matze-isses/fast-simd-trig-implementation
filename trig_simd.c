@@ -86,26 +86,34 @@ const double TAYLOR_COEFF_SIN[] = {
 };
 
 const double TAYLOR_COEFF_TAN[] = {
+  0,
   1,
-  6.123233995736766e-17,
-  -0.5,
-  -1.020538999289461e-17,
-  0.041666666666666664,
-  5.102694996447305e-19,
-  -0.0013888888888888889,
-  -1.2149273801065012e-20,
-  2.4801587301587302e-05,
-  1.6873991390368072e-22,
-  -2.7557319223985888e-07,
-  -1.5339992173061884e-24,
-  2.08767569878681e-09,
-  9.8333283160653097e-27,
-  -1.1470745597729725e-11,
-  -4.6825372933644332e-29,
-  4.7794773323873853e-14,
-  1.7215210637369241e-31,
-  -1.5619206968586225e-16,
-  -5.0336873208681989e-34
+  0,
+  0.33333333333333331,
+  0,
+  0.13333333333333333,
+  0,
+  0.053968253968253971,
+  0,
+  0.021869488536155203,
+  0,
+  0.0088632355299021973,
+  0,
+  0.0035921280365724811,
+  0,
+  0.0014558343870513183,
+  0,
+  0.00059002744094558595,
+  0,
+  0.00023912911424355248,
+  0,
+  9.6915379569294509e-05,
+  0,
+  3.9278323883316833e-05,
+  0,
+  1.5918905069328964e-05,
+  0,
+  6.4516892156554306e-06
 };
 
 
@@ -225,24 +233,18 @@ void tan_simd(double *input, double *res, size_t n, int prec) {
     const SDOUBLE small_ranges_away = MUL_DOUBLE_S(in_outer_range, one_over_small_range);
     const SDOUBLE small_range_sub_part = FLOOR_DOUBLE_S(small_ranges_away);                     // used later
     const SDOUBLE move_second_half_vec = MUL_DOUBLE_S(small_range_sub_part, range_max);
+    PRINT_M256D(move_second_half_vec);
 
     // this is checked and it is the correct range
-    const SDOUBLE in_range_sin = in_outer_range;
-    const SDOUBLE in_range_cos = ADD_DOUBLE_S(in_range_sin, pi_2);
+    const SDOUBLE in_range = in_outer_range;
 
-    SDOUBLE sin_results = LOAD_DOUBLE(TAYLOR_COEFF_TAN[taylor_last_coeff]);
-    SDOUBLE cos_results = LOAD_DOUBLE(TAYLOR_COEFF_TAN[taylor_last_coeff]);
+    SDOUBLE result = LOAD_DOUBLE(TAYLOR_COEFF_TAN[taylor_last_coeff]);
 
     for (int j = taylor_loop_iteration; j >= 0; --j) {
       SDOUBLE coeff = LOAD_DOUBLE(TAYLOR_COEFF_TAN[j]);
-      sin_results = MUL_DOUBLE_S(sin_results, in_range_sin);
-      cos_results = MUL_DOUBLE_S(cos_results, in_range_cos);
-
-      sin_results = ADD_DOUBLE_S(sin_results, coeff);
-      cos_results = ADD_DOUBLE_S(cos_results, coeff);
+      result = MUL_DOUBLE_S(result, in_range);
+      result = ADD_DOUBLE_S(result, coeff);
     }
-
-    const SDOUBLE result = DIV_DOUBLE_S(sin_results, cos_results);
 
     SIMD_TO_DOUBLE_VEC(&res[i], result); 
   }

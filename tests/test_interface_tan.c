@@ -19,8 +19,6 @@ int main(int argc, char *argv[]) {
   double lower = atof(argv[2]);
   double upper = atof(argv[3]);
 
-  printf("\n\n\n\n.17g", test_sin_time(20, lower, upper, n));
-
   const bool eval_glibc = true;
 
   int test_size = (argc > 4) ? atoi(argv[4]) : n;
