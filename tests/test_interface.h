@@ -13,5 +13,8 @@ double test_tan_accuracy(int taylor_degree, double lower_bound, double upper_bou
 double test_tan_time(int taylor_degree, double lower_bound, double upper_bound, int test_size);
 double test_sin_accuracy(int taylor_degree, double lower_bound, double upper_bound, int test_size);
 
+double test_glibc_sin_time(int taylor_degree, double lower_bound, double upper_bound, int test_size);
+
+
 #endif
 
