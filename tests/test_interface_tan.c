@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) {
 
   printf("\n -------- Own Script Execution ---------- \n\n");
   START_CLOCK;
-  tan_simd(test_values, own_results, n, 0.1);
+  tan_simd(test_values, own_results, n, 20);
   END_CLOCK("\n\n ------- End Own Script Execution ------- \n\nTime needed by own implementiation ");
 
 
@@ -60,20 +60,6 @@ int main(int argc, char *argv[]) {
     START_CLOCK;
     for (int i = 0; i < n; i++) { glibc_results[i] = tan(test_values[i]); }
     END_CLOCK("Time needed by glibc               ");
-  }
-
-
-  printf("\n -------- Second Own Script Execution ---------- \n\n");
-  START_CLOCK;
-  tan_simd(test_values, own_results, n, 0.1);
-  END_CLOCK("\n\n ------- Second End Own Script Execution ------- \n\nTime needed by own implementiation (second) ");
-
-
-  // Evaluate glibc if local constant is set
-  if (eval_glibc) {
-    START_CLOCK;
-    for (int i = 0; i < n; i++) { glibc_results[i] = tan(test_values[i]); }
-    END_CLOCK("Time needed by glibc (second)               ");
   }
 
 

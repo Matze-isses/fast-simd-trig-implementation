@@ -203,9 +203,12 @@ void sin_simd(double *input, double *res, size_t n, int prec) {
 
 
 void tan_simd(double *input, double *res, size_t n, int prec) {
+  const double cutoff = 0.07;
   const int taylor_degree = (int)prec;
   const int taylor_last_coeff = taylor_degree - 1;
   const int taylor_loop_iteration = taylor_degree - 2;  
+
+  double *approx_check = malloc(MAX_SIMD_DOUBLES * sizeof(double));
 
   const SDOUBLE pi_2 = LOAD_DOUBLE(M_PI_2);
 
@@ -233,11 +236,8 @@ void tan_simd(double *input, double *res, size_t n, int prec) {
     const SDOUBLE small_ranges_away = MUL_DOUBLE_S(in_outer_range, one_over_small_range);
     const SDOUBLE small_range_sub_part = FLOOR_DOUBLE_S(small_ranges_away);                     // used later
     const SDOUBLE move_second_half_vec = MUL_DOUBLE_S(small_range_sub_part, range_max);
-    PRINT_M256D(move_second_half_vec);
 
-    // this is checked and it is the correct range
-    const SDOUBLE in_range = in_outer_range;
-
+    const SDOUBLE in_range = SUB_DOUBLE_S(in_outer_range, move_second_half_vec);
     SDOUBLE result = LOAD_DOUBLE(TAYLOR_COEFF_TAN[taylor_last_coeff]);
 
     for (int j = taylor_loop_iteration; j >= 0; --j) {
@@ -245,8 +245,16 @@ void tan_simd(double *input, double *res, size_t n, int prec) {
       result = MUL_DOUBLE_S(result, in_range);
       result = ADD_DOUBLE_S(result, coeff);
     }
+    // PRINT_M256D(result);
 
+    SIMD_TO_DOUBLE_VEC(approx_check, in_range);
     SIMD_TO_DOUBLE_VEC(&res[i], result); 
+
+    for (int j = 0; j < MAX_SIMD_DOUBLES; j++) {
+      if (M_PI_2 - fabs(approx_check[j]) < cutoff) {
+        res[i + j] = 1 / approx_check[j]; 
+      }
+    }
   }
 
  
@@ -261,6 +269,10 @@ void tan_simd(double *input, double *res, size_t n, int prec) {
 
     if (quadrant == 1) {
       res[i] = -res[i];
+    }
+
+    if (M_PI_2 - fabs(reduced_range) < cutoff) {
+      res[i] = 1 / reduced_range; 
     }
   }
 }
