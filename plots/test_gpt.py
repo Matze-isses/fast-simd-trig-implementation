@@ -1,14 +1,15 @@
+
 import json
 from datetime import datetime
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.widgets import Slider, Button, SpanSelector  # <-- added SpanSelector
-
+from matplotlib.widgets import Slider, Button, SpanSelector  # <-- kept
+# Note: No seaborn; pure matplotlib
 
 class InteractivePlot:
     def __init__(self, top_degree, bot_degree, xlim=(-2*np.pi, 2*np.pi)) -> None:
-        self.top_degree = int(top_degree)
-        self.bot_degree = int(bot_degree)
+        self.top_degree = int(top_degree)   # number of coefficients a0..a_{n-1}
+        self.bot_degree = int(bot_degree)   # number of coefficients b0..b_{m-1}
 
         self.x = np.linspace(xlim[0], xlim[1], 10000)
         self.xlim = xlim
@@ -22,8 +23,10 @@ class InteractivePlot:
         self.line_err = None
 
         # Sliders
-        self.sliders_top = []
-        self.sliders_bot = []
+        self.sliders_top = []          # coefficients for numerator P
+        self.sliders_bot = []          # coefficients for denominator Q
+        self.sliders_top_cent = []     # centers for numerator terms (length top_degree-1)
+        self.sliders_bot_cent = []     # centers for denominator terms (length bot_degree-1)
 
         # State
         self.state_path = "interactive_plot_state.json"
@@ -37,21 +40,41 @@ class InteractivePlot:
         self._orig_ylim_top = None
         self._orig_ylim_bot = None
 
-    # --- polynomial evaluator (Horner) ---
-    def eval_sliders(self, x, *coeffs):
+    # --- polynomial evaluator with per-term centers ---
+    # Implements: y = c[0] + sum_{k=1}^{n-1} c[k] * (x - centers[k-1])**k
+    # centers length must be n-1; centers[k-1] used for power k
+    def eval_with_centers(self, x, coeffs, centers):
+        n = len(coeffs)
         y = np.zeros_like(x, dtype=float)
-        for a in reversed(coeffs):
-            y = y * x + a
+        if n == 0:
+            return y
+        y = y + coeffs[0]
+        for k in range(1, n):
+            # centers index k-1
+            a = centers[k-1] if (k-1) < len(centers) else 0.0
+            y = y + coeffs[k] * (x - a) ** k
         return y
 
     def plot(self):
-        n_sliders = self.top_degree + self.bot_degree
-        self.fig = plt.figure(figsize=(10, 7 + 0.32 * max(1, n_sliders)))
+        # Count sliders for layout
+        n_coeff_top = self.top_degree
+        n_coeff_bot = self.bot_degree
+        n_cent_top  = max(0, self.top_degree - 1)
+        n_cent_bot  = max(0, self.bot_degree - 1)
+
+        # Height based on the max stack in any slider column
+        max_stack_per_cell = max(n_coeff_top, n_coeff_bot, n_cent_top, n_cent_bot, 1)
+        self.fig = plt.figure(figsize=(12, 7 + 0.32 * max_stack_per_cell))
+
+        # 3 rows: plots, plots, controls; 3 cols: plots | coeff sliders | center sliders
         gs = self.fig.add_gridspec(
-            nrows=4, ncols=1,
-            height_ratios=[4, 3, 0.22 * max(1, n_sliders), 0.2],
-            hspace=0.30
+            nrows=3, ncols=3,
+            height_ratios=[4, 3, 0.9],   # third row for controls
+            width_ratios=[2.1, 1.25, 1.25],
+            hspace=0.30, wspace=0.28
         )
+
+        # Plots (col 0)
         self.ax_top = self.fig.add_subplot(gs[0, 0])
         self.ax_bot = self.fig.add_subplot(gs[1, 0], sharex=self.ax_top)
 
@@ -66,9 +89,13 @@ class InteractivePlot:
         init_top = self._taylor_coeffs_tan(self.top_degree) if self.top_degree else []
         init_bot = [1.0] + [0.0] * (self.bot_degree - 1) if self.bot_degree else []
 
-        # Initial curves
-        P = self.eval_sliders(self.x, *init_top) if self.top_degree else np.zeros_like(self.x)
-        Q = self.eval_sliders(self.x, *init_bot) if self.bot_degree else np.ones_like(self.x)
+        # Initial centers: zeros (length degree-1)
+        init_top_cent = [0.0] * max(0, self.top_degree - 1)
+        init_bot_cent = [0.0] * max(0, self.bot_degree - 1)
+
+        # Initial curves using center-aware evaluator
+        P = self.eval_with_centers(self.x, init_top, init_top_cent) if self.top_degree else np.zeros_like(self.x)
+        Q = self.eval_with_centers(self.x, init_bot, init_bot_cent) if self.bot_degree else np.ones_like(self.x)
         R = self._safe_ratio(P, Q)
         T = self._safe_tan(self.x)
         E = self._safe_abs_error(R, T)
@@ -88,52 +115,92 @@ class InteractivePlot:
         # Autoscale bottom to error initially
         self._autoscale_error_axis(E, xlim=self._orig_xlim)
 
-        # Sliders area
-        sliders_ax = self.fig.add_subplot(gs[2, 0])
-        sliders_ax.axis("off")
+        # --- Slider parent axes ---
+        # Column 1: coefficient sliders (row 0: numerator, row 1: denominator)
+        coeff_top_ax_parent = self.fig.add_subplot(gs[0, 1])
+        coeff_top_ax_parent.set_title("P Coefficients", fontsize=10)
+        coeff_top_ax_parent.axis("off")
 
+        coeff_bot_ax_parent = self.fig.add_subplot(gs[1, 1])
+        coeff_bot_ax_parent.set_title("Q Coefficients", fontsize=10)
+        coeff_bot_ax_parent.axis("off")
+
+        # Column 2: center sliders (row 0: numerator, row 1: denominator)
+        cent_top_ax_parent = self.fig.add_subplot(gs[0, 2])
+        cent_top_ax_parent.set_title("P Centers", fontsize=10)
+        cent_top_ax_parent.axis("off")
+
+        cent_bot_ax_parent = self.fig.add_subplot(gs[1, 2])
+        cent_bot_ax_parent.set_title("Q Centers", fontsize=10)
+        cent_bot_ax_parent.axis("off")
+
+        # Slider helpers
         def degree_range(i: int):
+            # same ranges you used for coefficients; reuse for centers too
             r = 2.0 / (i + 1.0)
             return -r, r
 
-        def add_slider(y0, label, vinit, vmin, vmax):
+        def add_slider(parent_ax, y0, label, vinit, vmin, vmax):
             rect = [0.06, y0, 0.88, 0.065]
-            ax = sliders_ax.inset_axes(rect)
+            ax = parent_ax.inset_axes(rect)
             vinit = float(np.clip(vinit, vmin, vmax))
             s = Slider(ax=ax, label=label, valmin=vmin, valmax=vmax, valinit=vinit, valstep=1e-5)
             return s
 
         pad = 0.082
-        ycursor = 0.92
 
-        # Top sliders
+        # --- Top (P) coefficient sliders in (0,1) ---
+        ycursor = 0.92
         for i in range(self.top_degree):
             vmin, vmax = degree_range(i)
             vinit = init_top[i] if i < len(init_top) else 0.0
-            s = add_slider(ycursor, f"a{i}", vinit=vinit, vmin=vmin, vmax=vmax)
+            s = add_slider(coeff_top_ax_parent, ycursor, f"a{i}", vinit=vinit, vmin=vmin, vmax=vmax)
             s.on_changed(self._on_any_change)
             self.sliders_top.append(s)
             ycursor -= pad
 
-        # Bottom sliders
+        # --- Bottom (Q) coefficient sliders in (1,1) ---
+        ycursor = 0.92
         for j in range(self.bot_degree):
             vmin, vmax = degree_range(j)
             vinit = init_bot[j] if j < len(init_bot) else 0.0
-            s = add_slider(ycursor, f"b{j}", vinit=vinit, vmin=vmin, vmax=vmax)
+            s = add_slider(coeff_bot_ax_parent, ycursor, f"b{j}", vinit=vinit, vmin=vmin, vmax=vmax)
             s.on_changed(self._on_any_change)
             self.sliders_bot.append(s)
             ycursor -= pad
 
-        # --- Controls row ---
-        controls_ax = self.fig.add_subplot(gs[3, 0])
+        # --- Top (P) center sliders in (0,2) ---
+        # centers indices correspond to powers k=1..n-1, we label as a_c0 for k=1, a_c1 for k=2, ...
+        ycursor = 0.92
+        for i in range(max(0, self.top_degree - 1)):
+            # reuse degree_range with index i for a practical bound
+            vmin, vmax = degree_range(i)
+            vinit = init_top_cent[i]
+            s = add_slider(cent_top_ax_parent, ycursor, f"a_c{i}", vinit=vinit, vmin=vmin, vmax=vmax)
+            s.on_changed(self._on_any_change)
+            self.sliders_top_cent.append(s)
+            ycursor -= pad
+
+        # --- Bottom (Q) center sliders in (1,2) ---
+        ycursor = 0.92
+        for j in range(max(0, self.bot_degree - 1)):
+            vmin, vmax = degree_range(j)
+            vinit = init_bot_cent[j]
+            s = add_slider(cent_bot_ax_parent, ycursor, f"b_c{j}", vinit=vinit, vmin=vmin, vmax=vmax)
+            s.on_changed(self._on_any_change)
+            self.sliders_bot_cent.append(s)
+            ycursor -= pad
+
+        # --- Controls row (span all columns) ---
+        controls_ax = self.fig.add_subplot(gs[2, :])
         controls_ax.axis("off")
 
-        load_ax = controls_ax.inset_axes([0.02, 0.15, 0.15, 0.70])
-        save_ax = controls_ax.inset_axes([0.19, 0.15, 0.15, 0.70])
-        reset_ax = controls_ax.inset_axes([0.36, 0.15, 0.15, 0.70])
-        fix_ax   = controls_ax.inset_axes([0.53, 0.15, 0.18, 0.70])
-        zoom_ax  = controls_ax.inset_axes([0.73, 0.15, 0.24, 0.70])  # new
-        home_ax  = controls_ax.inset_axes([0.73, 0.02, 0.24, 0.10])  # tiny bar below zoom
+        load_ax = controls_ax.inset_axes([0.02, 0.15, 0.12, 0.70])
+        save_ax = controls_ax.inset_axes([0.16, 0.15, 0.12, 0.70])
+        reset_ax = controls_ax.inset_axes([0.30, 0.15, 0.12, 0.70])
+        fix_ax   = controls_ax.inset_axes([0.44, 0.15, 0.16, 0.70])
+        zoom_ax  = controls_ax.inset_axes([0.62, 0.15, 0.22, 0.70])  # kept
+        home_ax  = controls_ax.inset_axes([0.86, 0.15, 0.12, 0.70])  # moved on same row for clarity
 
         load_btn = Button(load_ax, "Load")
         save_btn = Button(save_ax, "Save")
@@ -211,7 +278,6 @@ class InteractivePlot:
             # Avoid zero-height view
             delta = 1.0 if ymax == 0 else abs(ymax) * 0.5
             ymin, ymax = ymin - delta, ymax + delta
-        # add small proportional padding
         span = ymax - ymin
         self.ax_top.set_ylim(ymin - pad*span, ymax + pad*span)
 
@@ -219,10 +285,15 @@ class InteractivePlot:
     def _on_any_change(self, _):
         if self._suspend_update:
             return
+        # gather coefficients
         a = [s.val for s in self.sliders_top]
         b = [s.val for s in self.sliders_bot]
-        P = self.eval_sliders(self.x, *a)
-        Q = self.eval_sliders(self.x, *b)
+        # gather centers (length degree-1)
+        ac = [s.val for s in self.sliders_top_cent]
+        bc = [s.val for s in self.sliders_bot_cent]
+
+        P = self.eval_with_centers(self.x, a, ac) if a else np.zeros_like(self.x)
+        Q = self.eval_with_centers(self.x, b, bc) if b else np.ones_like(self.x)
         R = self._safe_ratio(P, Q)
         T = self._safe_tan(self.x)
         E = self._safe_abs_error(R, T)
@@ -240,7 +311,7 @@ class InteractivePlot:
         self.fig.canvas.draw_idle()
 
     def _on_reset(self, _event):
-        for s in self.sliders_top + self.sliders_bot:
+        for s in self.sliders_top + self.sliders_bot + self.sliders_top_cent + self.sliders_bot_cent:
             s.reset()
 
     # --- Zoom controls ---
@@ -254,9 +325,7 @@ class InteractivePlot:
             return
         if xmin > xmax:
             xmin, xmax = xmax, xmin
-        # Set new x-limits (sharex syncs bottom)
         self.ax_top.set_xlim(xmin, xmax)
-        # Re-run autoscale for y in this window
         R = self.line_ratio.get_ydata()
         T = self.line_tan.get_ydata()
         E = self.line_err.get_ydata()
@@ -265,15 +334,12 @@ class InteractivePlot:
         self.fig.canvas.draw_idle()
 
     def _on_home_view(self, _event):
-        # Restore original limits
         if self._orig_xlim is not None:
             self.ax_top.set_xlim(*self._orig_xlim)
         if self._orig_ylim_top is not None:
             self.ax_top.set_ylim(*self._orig_ylim_top)
         if self._orig_ylim_bot is not None and not self._auto_ylims:
-            # Only restore fixed limits if autoscaling is disabled
             self.ax_bot.set_ylim(*self._orig_ylim_bot)
-        # If autoscaling is enabled, recompute for full range
         R = self.line_ratio.get_ydata()
         T = self.line_tan.get_ydata()
         E = self.line_err.get_ydata()
@@ -285,13 +351,12 @@ class InteractivePlot:
     def _on_fix_toggle(self, _event):
         self._auto_ylims = not self._auto_ylims
         self.fix_btn.label.set_text("Fix Y-Limits" if self._auto_ylims else "Auto Y-Limits")
-        # If re-enabling autoscale, refresh immediately under current view
         if self._auto_ylims:
             E = self.line_err.get_ydata()
             self._autoscale_error_axis(E)
         self.fig.canvas.draw_idle()
 
-    # --- Save/Load helpers (unchanged) ---
+    # --- Save/Load helpers (centers included) ---
     def _collect_state(self):
         return {
             "timestamp": datetime.now().isoformat(timespec="seconds"),
@@ -300,11 +365,14 @@ class InteractivePlot:
             "bot_degree": self.bot_degree,
             "sliders_top": [s.val for s in self.sliders_top],
             "sliders_bot": [s.val for s in self.sliders_bot],
+            "sliders_top_cent": [s.val for s in self.sliders_top_cent],
+            "sliders_bot_cent": [s.val for s in self.sliders_bot_cent],
         }
 
     def _apply_state(self, state):
         self._suspend_update = True
         try:
+            # coeffs
             for i, v in enumerate(state.get("sliders_top", [])):
                 if i < len(self.sliders_top):
                     vmin, vmax = (-2.0 / (i + 1.0), 2.0 / (i + 1.0))
@@ -313,6 +381,15 @@ class InteractivePlot:
                 if j < len(self.sliders_bot):
                     vmin, vmax = (-2.0 / (j + 1.0), 2.0 / (j + 1.0))
                     self.sliders_bot[j].set_val(float(np.clip(v, vmin, vmax)))
+            # centers
+            for i, v in enumerate(state.get("sliders_top_cent", [])):
+                if i < len(self.sliders_top_cent):
+                    vmin, vmax = (-2.0 / (i + 1.0), 2.0 / (i + 1.0))
+                    self.sliders_top_cent[i].set_val(float(np.clip(v, vmin, vmax)))
+            for j, v in enumerate(state.get("sliders_bot_cent", [])):
+                if j < len(self.sliders_bot_cent):
+                    vmin, vmax = (-2.0 / (j + 1.0), 2.0 / (j + 1.0))
+                    self.sliders_bot_cent[j].set_val(float(np.clip(v, vmin, vmax)))
         finally:
             self._suspend_update = False
         self._on_any_change(None)
