@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include "test_interface.h"
 #include "../trig_simd.h"
+#include "../cmeasure/cmeasure.h"
+#include "../cmeasure/CrystalClockInC.h"
 
 int main(int argc, char *argv[]) {
 
@@ -49,10 +51,6 @@ int main(int argc, char *argv[]) {
   printf("Test values are generated! Starting calculation of correct results.\n");
 
 
-  printf("\n -------- Own Script Execution ---------- \n\n");
-  START_CLOCK;
-  sin_simd(test_values, own_results, n, 20);
-  END_CLOCK("\n\n ------- End Own Script Execution ------- \n\nTime needed by own implementiation ");
 
   if (eval_glibc) {
     START_CLOCK;
@@ -60,10 +58,33 @@ int main(int argc, char *argv[]) {
     END_CLOCK("Time needed by glibc               ");
   }
 
-  printf("\n -------- Second Own Script Execution ---------- \n\n");
+  printf("\n -------- Own Script WARMUP Execution ---------- \n\n");
   START_CLOCK;
+
   sin_simd(test_values, own_results, n, 20);
-  END_CLOCK("\n\n ------- Second End Own Script Execution ------- \n\nTime needed by own implementiation (second) ");
+
+  END_CLOCK("\n\n ------- End Own Script WARMUP Execution ------- \n\nTime needed by own implementiation (second) ");
+
+
+  // Cristal Clock Setup
+  uint64_t own_execution_cycles = 0;  
+  double own_execution_ms = 0;
+  struct CrystalClock clk;
+
+  printf("\n\n ---------- Own Script Execution ------------ \n\n");
+  clk._begin = current();
+
+  sin_simd(test_values, own_results, n, 20);
+
+  clk._end   = current();
+  printf("\n -------- End Own Script Execution ---------- \n\n");
+
+
+  own_execution_cycles = own_execution_cycles + cycles1(clk);
+  own_execution_ms = own_execution_ms + duration_ms1(clk);
+
+  printf("Execution Time Cristal Clock MS: %.17g\n", own_execution_ms);
+
 
   if (eval_glibc) {
     START_CLOCK;
