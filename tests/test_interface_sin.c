@@ -50,26 +50,23 @@ int main(int argc, char *argv[]) {
   // user information for the current state of the script
   printf("Test values are generated! Starting calculation of correct results.\n");
 
-
-
-  if (eval_glibc) {
-    START_CLOCK;
-    for (int i = 0; i < n; i++) { glibc_results[i] = sin(test_values[i]); }
-    END_CLOCK("Time needed by glibc               ");
-  }
+  // Cristal Clock Setup
+  uint64_t own_execution_cycles_warmup = 0, own_execution_cycles = 0;
+  double own_execution_ms_warmup = 0, own_execution_ms = 0;
+  struct CrystalClock clk;
 
   printf("\n -------- Own Script WARMUP Execution ---------- \n\n");
-  START_CLOCK;
+  clk._begin = current();
 
   sin_simd(test_values, own_results, n, 20);
 
-  END_CLOCK("\n\n ------- End Own Script WARMUP Execution ------- \n\nTime needed by own implementiation (second) ");
+  clk._end   = current();
+  printf("\n ------- End Own Script WARMUP Execution ------- \n");
 
+  own_execution_cycles_warmup = own_execution_cycles_warmup + cycles1(clk);
+  own_execution_ms_warmup = own_execution_ms_warmup + duration_ms1(clk);
+  printf("WARMUP Execution Time Cristal Clock MS: %.17g\n", own_execution_ms_warmup);
 
-  // Cristal Clock Setup
-  uint64_t own_execution_cycles = 0;  
-  double own_execution_ms = 0;
-  struct CrystalClock clk;
 
   printf("\n\n ---------- Own Script Execution ------------ \n\n");
   clk._begin = current();

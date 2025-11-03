@@ -135,6 +135,7 @@ double taylor_eval(double x, double a, const double coeffs[], int n) {
 }
 
 void sin_simd(double *input, double *res, size_t n, int prec) {
+// TIME: 1329.5143421658272
   const int taylor_degree = (int)prec;
   const int taylor_last_coeff = taylor_degree - 1;
   const int taylor_loop_iteration = taylor_degree - 2;
@@ -149,11 +150,12 @@ void sin_simd(double *input, double *res, size_t n, int prec) {
   const SDOUBLE quadrant_multiplier = LOAD_DOUBLE(-2.0);
   const SDOUBLE addition_vector = LOAD_DOUBLE(1.0);
   
-  #pragma omp parallel for
+  // #pragma omp parallel for // <- had no effect on time
   for (int i = 0; i < (int) n; i += MAX_SIMD_DOUBLES) {
     SDOUBLE x   = LOAD_DOUBLE_VEC(&input[i]);
 
     // works but is potentially negative
+    // TIME: Next to columns together need 0.00011985585770504838
     const SDOUBLE ranges_away = MUL_DOUBLE_S(x, one_over_2_pi);
     const SDOUBLE num_ranges_away = FLOOR_DOUBLE_S(ranges_away);
     const SDOUBLE range_multiple = MUL_DOUBLE_S(num_ranges_away, two_pi);
@@ -165,7 +167,6 @@ void sin_simd(double *input, double *res, size_t n, int prec) {
     const SDOUBLE in_range = SUB_DOUBLE_S(in_outer_range, small_subtraction_amount);      // in smaller range
 
     const SDOUBLE centered_values = SUB_DOUBLE_S(in_range, center_point);
-
     SDOUBLE result = LOAD_DOUBLE(TAYLOR_COEFF_SIN[taylor_last_coeff]);
 
     for (int j = taylor_loop_iteration; j >= 0; --j) {
