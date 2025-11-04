@@ -9,6 +9,31 @@ Tested 3 Separate times in the following order
 
 The test inputs stayed the same and the output array is the same for all tests. So the outputs get overwritten each time.
 
+
+# Checking for the precision
+The search for the largest element is really expensive. 
+Maybe a quicksort algorithm would be kind of usefull but then the results must be remapped what could also take really long.
+
+## One Execution
+TIME OC: 867.28815699999996
+TIME CC: 856.35544410073157
+
+```c
+for (size_t i = 1; i < n; ++i) { if (input[i] > max_element) max_element = input[i]; }
+res[0] = (double)max_element;
+```
+
+## Two Executions
+TIME OC: 1429.213712
+TIME CC: 1455.0524009631931
+
+```c 
+for (size_t i = 1; i < n; ++i) { if (input[i] > max_element) max_element = input[i]; }
+res[0] = (double)max_element;
+for (size_t i = 1; i < n; ++i) { if (input[i] > max_element) max_element = input[i-1]; }
+res[1] = (double)max_element;
+```
+
 # Plane Loop
 
 ## Function call

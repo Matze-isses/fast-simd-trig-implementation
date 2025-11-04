@@ -27,23 +27,6 @@ const double ONE_OVER_SMALL_RANGE_SIN = 1 / SMALL_RANGE_SIN;
 
 const double RANGE_CENTER_SIN = 0;
 
-
-// ---------- TAN -----------
-const double RANGE_MAX_TAN = M_PI;
-const double SMALL_RANGE_TAN = M_PI_2;
-const double RANGE_CENTER_TAN = 0;
-const double ONE_OVER_RANGE_TAN = 1 / RANGE_MAX_TAN;
-const double ONE_OVER_SMALL_RANGE_TAN = 1 / SMALL_RANGE_TAN;
-
-const double ONE_OVER_PI_2 = 1 / M_PI_2;
-
-const int MAX_SIMD_DOUBLES = (int)(SIMD_LENGTH / 64);
-const int MAX_SIMD_FLOAT = (int)(SIMD_LENGTH / 32);
-
-const int TAYLOR_DEGREE = 20;
-const int TAYLOR_LAST_COEFF = TAYLOR_DEGREE - 1;
-const int TAYLOR_LOOP_INTERATIONS = TAYLOR_DEGREE - 2;
-
 const int SIZE_TAYLOR_COEFF = 20;
 const double TAYLOR_COEFF_SIN[] = {
   1,
@@ -68,6 +51,23 @@ const double TAYLOR_COEFF_SIN[] = {
   -4.9024697565135435e-47,
   2.9893108271424046e-50,
 };
+
+// ---------- TAN -----------
+const double RANGE_MAX_TAN = M_PI;
+const double SMALL_RANGE_TAN = M_PI_2;
+const double RANGE_CENTER_TAN = 0;
+const double ONE_OVER_RANGE_TAN = 1 / RANGE_MAX_TAN;
+const double ONE_OVER_SMALL_RANGE_TAN = 1 / SMALL_RANGE_TAN;
+
+const double ONE_OVER_PI_2 = 1 / M_PI_2;
+
+const int MAX_SIMD_DOUBLES = (int)(SIMD_LENGTH / 64);
+const int MAX_SIMD_FLOAT = (int)(SIMD_LENGTH / 32);
+
+const int TAYLOR_DEGREE = 20;
+const int TAYLOR_LAST_COEFF = TAYLOR_DEGREE - 1;
+const int TAYLOR_LOOP_INTERATIONS = TAYLOR_DEGREE - 2;
+
 
 const double TAYLOR_COEFF_TAN[] = {
   0,
@@ -142,7 +142,7 @@ static inline int taylor_degree_from_prec(double max_input, double req_prec) {
       used_coeffs += 1;
 
       if (used_coeffs >= SIZE_TAYLOR_COEFF) {
-        printf("[WARNING] The Input precision cannot be reached! The best possible precision is %.17g, which is used", total_loss);
+        printf("[WARNING] The required precision of sin_simd cannot be reached! The best possible precision is %.17g, which is used!", total_loss);
         break;
       }
     }
@@ -154,13 +154,8 @@ static inline int taylor_degree_from_prec(double max_input, double req_prec) {
 }
 
 void sin_simd(double *input, double *res, size_t n, double prec) {
-// TIME: 1329.5143421658272
-  
   double max_element = input[0];
-  for (size_t i = 1; i < n; ++i) {
-    if (input[i] > max_element) max_element = input[i];
-  }
-
+  for (size_t i = 1; i < n; ++i) { if (input[i] > max_element) max_element = input[i]; }
   int taylor_degree = taylor_degree_from_prec(max_element, prec);
 
   const int taylor_last_coeff = taylor_degree - 1;
