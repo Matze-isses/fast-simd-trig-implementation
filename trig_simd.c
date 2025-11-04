@@ -205,7 +205,7 @@ void sin_simd(double *input, double *res, size_t n, int prec) {
 
     SDOUBLE result = LOAD_DOUBLE(TAYLOR_COEFF_SIN[taylor_last_coeff]);
 
-    for (int j = taylor_loop_iteration; j >= 0; --j) {
+    for (int j = taylor_loop_iteration; j >= 0; j-=2) {
       SDOUBLE coeff = LOAD_DOUBLE(TAYLOR_COEFF_SIN[j]);
       result = MUL_DOUBLE_S(result, in_range);
       result = ADD_DOUBLE_S(result, coeff);
@@ -277,7 +277,7 @@ void tan_simd(double *input, double *res, size_t n, int prec) {
     const SDOUBLE in_range = SUB_DOUBLE_S(in_outer_range, move_second_half_vec);
     SDOUBLE result = LOAD_DOUBLE(TAYLOR_COEFF_TAN[taylor_last_coeff]);
 
-    for (int j = taylor_loop_iteration; j >= 0; j-=2) {
+    for (int j = taylor_loop_iteration; j >= 0; --j) {
       SDOUBLE coeff = LOAD_DOUBLE(TAYLOR_COEFF_TAN[j]);
       result = MUL_DOUBLE_S(result, in_range);
       result = ADD_DOUBLE_S(result, coeff);
