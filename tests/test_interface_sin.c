@@ -61,21 +61,25 @@ int main(int argc, char *argv[]) {
   sin_simd(test_values, own_results, n, 20);
 
   clk._end   = current();
-  printf("\n ------- End Own Script WARMUP Execution ------- \n");
+  printf("\n ------- End Own Script WARMUP Execution ------- \n\n");
 
   own_execution_cycles_warmup = own_execution_cycles_warmup + cycles1(clk);
   own_execution_ms_warmup = own_execution_ms_warmup + duration_ms1(clk);
   printf("WARMUP Execution Time Cristal Clock MS: %.17g\n", own_execution_ms_warmup);
 
 
+  printf("\n -------- Own Script Own Clock Execution ---------- \n\n");
   START_TCLOCK;
   sin_simd(test_values, own_results, n, 20);
   double own_time = GET_TCLOCK;
+  printf("\n ------- End Own Script Own Clock Execution ------- \n\n");
 
 
+  printf("\n -------- Own Script Cristal Clock Execution ---------- \n\n");
   clk._begin = current();
   sin_simd(test_values, own_results, n, 20);
   clk._end   = current();
+  printf("\n ------- End Own Script Cristal Clock Execution ------- \n\n");
 
   own_execution_ms = duration_ms1(clk);
   printf("TIME OC: %.17g\n", own_time);

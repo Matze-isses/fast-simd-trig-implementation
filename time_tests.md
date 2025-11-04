@@ -1,6 +1,23 @@
 
 
-# The Loop Overall
+# General Test Params:
+n=1000000000
+Tested 3 Separate times in the following order
+- Warmup
+- With Own Clock
+- With Cristal Clock 
+
+The test inputs stayed the same and the output array is the same for all tests. So the outputs get overwritten each time.
+
+# Plane Loop
+
+## Function call
+TIME OC: 1336.8112080000001
+TIME CC: 1323.1885089965103
+
+## Function call without loop
+TIME OC: 0.000137
+TIME CC: 1.2864116937051667e-05
 
 
 # Range Reduction

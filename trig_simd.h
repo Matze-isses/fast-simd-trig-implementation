@@ -24,6 +24,12 @@
 
 #define FLOOR_DOUBLE_S _mm256_floor_pd
 
+// for (a, b, c) does return (a * b) + c
+#define FMADD_PD _mm256_fmadd_pd 
+#define ABS_PD(a) \
+    _mm256_max_pd((a), _mm256_mul_pd(_mm256_set1_pd(-1.0), (a)))
+#define CEIL_PD _mm256_ceil_pd
+
 // Float I/O
 #define SFLOAT __m256
 #define LOAD_FLOAT _mm256_set1_ps
