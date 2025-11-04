@@ -143,6 +143,7 @@ double taylor_eval(double x, double a, const double coeffs[], int n) {
 
 void sin_simd(double *input, double *res, size_t n, int prec) {
 // TIME: 1329.5143421658272
+
   const int taylor_degree = (int)prec;
   const int taylor_last_coeff = taylor_degree - 1;
   const int taylor_loop_iteration = taylor_degree - 2;
@@ -202,9 +203,9 @@ void sin_simd(double *input, double *res, size_t n, int prec) {
 
     const SDOUBLE mirroring = MUL_DOUBLE_S(spi, q3);
 
-    // all values are eighter in the first or in the thierd quadrant
+    // all values mirroringare eighter in the first or in the thierd quadrant
     in_outer_range = SUB_DOUBLE_S(mirroring, in_outer_range);
-    PRINT_M256D(in_outer_range);
+    in_outer_range = ABS_PD(in_outer_range);
 
     const SDOUBLE small_ranges_away1 = MUL_DOUBLE_S(in_outer_range, one_over_small_range);
     const SDOUBLE q11 = FLOOR_DOUBLE_S(small_ranges_away1);
