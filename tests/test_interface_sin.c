@@ -68,20 +68,18 @@ int main(int argc, char *argv[]) {
   printf("WARMUP Execution Time Cristal Clock MS: %.17g\n", own_execution_ms_warmup);
 
 
-  printf("\n\n ---------- Own Script Execution ------------ \n\n");
-  clk._begin = current();
-
+  START_TCLOCK;
   sin_simd(test_values, own_results, n, 20);
+  double own_time = GET_TCLOCK;
 
+
+  clk._begin = current();
+  sin_simd(test_values, own_results, n, 20);
   clk._end   = current();
-  printf("\n -------- End Own Script Execution ---------- \n\n");
 
-
-  own_execution_cycles = own_execution_cycles + cycles1(clk);
-  own_execution_ms = own_execution_ms + duration_ms1(clk);
-
-  printf("Execution Time Cristal Clock MS: %.17g\n", own_execution_ms);
-
+  own_execution_ms = duration_ms1(clk);
+  printf("TIME OC: %.17g\n", own_time);
+  printf("TIME CC: %.17g\n", own_execution_ms);
 
   if (eval_glibc) {
     START_CLOCK;
