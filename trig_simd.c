@@ -190,7 +190,7 @@ void sin_simd(double *input, double *res, size_t n, int prec) {
     // [1, 0, 1, 4] -> [0, 1, 0, 3]
     const SDOUBLE q3 = ABS_PD(SUB_DOUBLE_S(q2, ones));
 
-    // q3 * pi gives the mirroring points
+    // q3 * pi gives the mirroring points, where 0 and 2 do not need to be mirrored
     const SDOUBLE mirroring = MUL_DOUBLE_S(spi, q3);
 
     // all values mirroringare eighter in the first or in the thierd quadrant
@@ -203,12 +203,11 @@ void sin_simd(double *input, double *res, size_t n, int prec) {
     const SDOUBLE small_subtraction_amount = MUL_DOUBLE_S(q11, small_range);
     const SDOUBLE in_range = SUB_DOUBLE_S(in_outer_range, small_subtraction_amount);
 
-    const SDOUBLE centered_values = SUB_DOUBLE_S(in_range, center_point);
     SDOUBLE result = LOAD_DOUBLE(TAYLOR_COEFF_SIN[taylor_last_coeff]);
 
     for (int j = taylor_loop_iteration; j >= 0; --j) {
       SDOUBLE coeff = LOAD_DOUBLE(TAYLOR_COEFF_SIN[j]);
-      result = MUL_DOUBLE_S(result, centered_values);
+      result = MUL_DOUBLE_S(result, in_range);
       result = ADD_DOUBLE_S(result, coeff);
     }
 
@@ -278,11 +277,12 @@ void tan_simd(double *input, double *res, size_t n, int prec) {
     const SDOUBLE in_range = SUB_DOUBLE_S(in_outer_range, move_second_half_vec);
     SDOUBLE result = LOAD_DOUBLE(TAYLOR_COEFF_TAN[taylor_last_coeff]);
 
-    for (int j = taylor_loop_iteration; j >= 0; --j) {
+    for (int j = taylor_loop_iteration; j >= 0; j-=2) {
       SDOUBLE coeff = LOAD_DOUBLE(TAYLOR_COEFF_TAN[j]);
       result = MUL_DOUBLE_S(result, in_range);
       result = ADD_DOUBLE_S(result, coeff);
     }
+
     // PRINT_M256D(result);
 
     SIMD_TO_DOUBLE_VEC(approx_check, in_range);

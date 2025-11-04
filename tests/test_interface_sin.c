@@ -39,6 +39,7 @@ int main(int argc, char *argv[]) {
   double *glibc_results = malloc(n * sizeof(double));
 
 
+
   if (!test_values) {
     perror("malloc");
     return 1;
@@ -57,7 +58,7 @@ int main(int argc, char *argv[]) {
   printf("\n -------- Own Script WARMUP Execution ---------- \n\n");
   clk._begin = current();
 
-  sin_simd(test_values, own_results, n, 20);
+  sin_simd(test_values, own_results, n, taylor_degree);
 
   clk._end   = current();
   printf("\n ------- End Own Script WARMUP Execution ------- \n\n");
@@ -67,16 +68,17 @@ int main(int argc, char *argv[]) {
   printf("WARMUP Execution Time Cristal Clock MS: %.17g\n", own_execution_ms_warmup);
 
 
+  int taylor_degree = 21;
   printf("\n -------- Own Script Own Clock Execution ---------- \n\n");
   START_TCLOCK;
-  sin_simd(test_values, own_results, n, 19);
+  sin_simd(test_values, own_results, n, taylor_degree);
   double own_time = GET_TCLOCK;
   printf("\n ------- End Own Script Own Clock Execution ------- \n\n");
 
 
   printf("\n -------- Own Script Cristal Clock Execution ---------- \n\n");
   clk._begin = current();
-  sin_simd(test_values, own_results, n, 19);
+  sin_simd(test_values, own_results, n, taylor_degree);
   clk._end   = current();
   printf("\n ------- End Own Script Cristal Clock Execution ------- \n\n");
 
