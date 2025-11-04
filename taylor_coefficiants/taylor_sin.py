@@ -18,7 +18,7 @@ a = None  # expansion point
 
 if func_choice in ("sin", "cos"):
     # Preserve your original behavior: expand around a = pi/2
-    a = math.pi / 4
+    a = 0
 
     # Use your derivative-cycle logic, selecting the right start (sin vs cos)
     if func_choice == "sin":

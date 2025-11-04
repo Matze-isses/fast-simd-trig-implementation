@@ -11,7 +11,6 @@
 #include "../cmeasure/CrystalClockInC.h"
 
 int main(int argc, char *argv[]) {
-
   if (argc < 3) {
     fprintf(stderr, "Usage: %s n lower upper\n", argv[0]);
     return 1;
@@ -21,7 +20,7 @@ int main(int argc, char *argv[]) {
   double lower = atof(argv[2]);
   double upper = atof(argv[3]);
 
-  bool eval_glibc = false;
+  bool eval_glibc = true;
 
   int test_size = (argc > 4) ? atoi(argv[4]) : n;
 
@@ -70,14 +69,14 @@ int main(int argc, char *argv[]) {
 
   printf("\n -------- Own Script Own Clock Execution ---------- \n\n");
   START_TCLOCK;
-  sin_simd(test_values, own_results, n, 20);
+  sin_simd(test_values, own_results, n, 19);
   double own_time = GET_TCLOCK;
   printf("\n ------- End Own Script Own Clock Execution ------- \n\n");
 
 
   printf("\n -------- Own Script Cristal Clock Execution ---------- \n\n");
   clk._begin = current();
-  sin_simd(test_values, own_results, n, 20);
+  sin_simd(test_values, own_results, n, 19);
   clk._end   = current();
   printf("\n ------- End Own Script Cristal Clock Execution ------- \n\n");
 

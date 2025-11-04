@@ -21,7 +21,7 @@ const double ONE_OVER_RANGE_SIN = 1 / RANGE_MAX_SIN;
 const double ONE_OVER_MED_RANGE_SIN = 1 / MED_RANGE_SIN;
 const double ONE_OVER_SMALL_RANGE_SIN = 1 / SMALL_RANGE_SIN;
 
-const double RANGE_CENTER_SIN = M_PI_2 * 0.5;
+const double RANGE_CENTER_SIN = 0;
 
 
 // ---------- TAN -----------
@@ -40,56 +40,56 @@ const int TAYLOR_DEGREE = 20;
 const int TAYLOR_LAST_COEFF = TAYLOR_DEGREE - 1;
 const int TAYLOR_LOOP_INTERATIONS = TAYLOR_DEGREE - 2;
 const double TAYLOR_COEFF_SIN[] = {
-  0.70710678118654746,
-  0.70710678118654757,
-  -0.35355339059327373,
-  -0.11785113019775793,
-  0.029462782549439476,
-  0.0058925565098878968,
-  -0.00098209275164798252,
-  -0.00014029896452114038,
-  1.7537370565142544e-05,
-  1.9485967294602834e-06,
-  -1.948596729460283e-07,
-  -1.7714515722366212e-08,
-  1.4762096435305173e-09,
-  1.1355458796388596e-10,
-  -8.1110419974204248e-12,
-  -5.4073613316136172e-13,
-  3.3796008322585101e-14,
-  1.98800048956383e-15,
-  -1.1044447164243498e-16,
-  -5.8128669285492101e-18,
-  2.906433464274605e-19,
-  1.3840159353688595e-20,
-  -6.290981524403906e-22,
-  -2.7352093584364812e-23,
-  1.1396705660152005e-24,
-  4.5586822640608026e-26,
-  -1.7533393323310776e-27,
-  -6.4938493790039923e-29,
-  2.3192319210728538e-30,
-  7.99735145197536e-32,
-  -2.6657838173251193e-33,
-  -8.599302636532645e-35,
-  2.6872820739164512e-36,
-  8.1432790118680352e-38,
-  -2.3950820623141273e-39,
-  -6.843091606611794e-41,
-  1.9008587796143869e-42,
-  5.1374561611199656e-44,
-  -1.3519621476631486e-45,
-  -3.4665696093926892e-47,
-  8.6664240234817227e-49,
-  2.1137619569467618e-50,
-  -5.0327665641589559e-52,
-  -1.1704108288741759e-53,
-  2.6600246110776719e-55,
-  5.9111658023948287e-57,
-  -1.2850360439988754e-58,
-  -2.7341192425507995e-60,
-  5.6960817553141644e-62,
-  1.1624656643498297e-63
+  0,
+  1,
+  -0,
+  -0.16666666666666666,
+  0,
+  0.0083333333333333332,
+  -0,
+  -0.00019841269841269841,
+  0,
+  2.7557319223985893e-06,
+  -0,
+  -2.505210838544172e-08,
+  0,
+  1.6059043836821613e-10,
+  -0,
+  -7.6471637318198164e-13,
+  0,
+  2.8114572543455206e-15,
+  -0,
+  -8.2206352466243295e-18,
+  0,
+  1.9572941063391263e-20,
+  -0,
+  -3.8681701706306835e-23,
+  0,
+  6.4469502843844736e-26,
+  -0,
+  -9.183689863795546e-29,
+  0,
+  1.1309962886447718e-31,
+  -0,
+  -1.2161250415535181e-34,
+  0,
+  1.1516335620771951e-37,
+  -0,
+  -9.6775929586318907e-41,
+  0,
+  7.2654601791530714e-44,
+  -0,
+  -4.9024697565135435e-47,
+  0,
+  2.9893108271424046e-50,
+  -0,
+  -1.6552108677421951e-53,
+  0,
+  8.3596508471828045e-57,
+  -0,
+  -3.866628513960594e-60,
+  0,
+  1.6439747083165791e-63,
 };
 
 const double TAYLOR_COEFF_TAN[] = {
@@ -173,34 +173,24 @@ void sin_simd(double *input, double *res, size_t n, int prec) {
     const SDOUBLE range_multiple = MUL_DOUBLE_S(num_ranges_away, two_pi);
     SDOUBLE in_outer_range = SUB_DOUBLE_S(x, range_multiple);
 
+    // Gives Sign of the Result
     const SDOUBLE medium_ranges_away = MUL_DOUBLE_S(in_outer_range, one_over_med_range);
-    // Sign of the sin
     const SDOUBLE sign = FLOOR_DOUBLE_S(medium_ranges_away);
 
+    // Gives Quadrant of the result
     const SDOUBLE small_ranges_away = MUL_DOUBLE_S(in_outer_range, one_over_small_range);
-    // quadrant
     const SDOUBLE q = FLOOR_DOUBLE_S(small_ranges_away);
 
-    PRINT_M256D(q);
+    // [0, 1, 2, 3] -> [1, 0, 1, 2]
+    const SDOUBLE q1 = ABS_PD(SUB_DOUBLE_S(q, ones));
 
-    SDOUBLE q1 = SUB_DOUBLE_S(q, ones);
-    q1 = ABS_PD(q1); 
-    // PRINT_M256D(q1);
+    // [1, 0, 1, 2] -> [1, 0, 1, 4]
+    const SDOUBLE q2 = MUL_DOUBLE_S(q1, q1);
 
-    SDOUBLE q2 = MUL_DOUBLE_S(q1, q1);
-    // PRINT_M256D(q2);
+    // [1, 0, 1, 4] -> [0, 1, 0, 3]
+    const SDOUBLE q3 = ABS_PD(SUB_DOUBLE_S(q2, ones));
 
-    SDOUBLE q3 = SUB_DOUBLE_S(q2, ones);
-    // Those makes the quadrant to a vector for the mirroring points
-    // 0 -> 0
-    // 1 -> 1
-    // 2 -> 0
-    // 3 -> 3
-    q3 = ABS_PD(q3);
-
-    // PRINT_M256D(q3);
-
-
+    // q3 * pi gives the mirroring points
     const SDOUBLE mirroring = MUL_DOUBLE_S(spi, q3);
 
     // all values mirroringare eighter in the first or in the thierd quadrant
