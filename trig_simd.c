@@ -2,9 +2,13 @@
 #include <float.h>
 #include <limits.h>
 #include <math.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include "trig_simd.h"
+
+#include <string.h>   // just used for the error calculation
+                      
 #include "./util/bit_printing.h"
 
 #define MAX_EXACT_INT (9007199254740992)
@@ -39,57 +43,30 @@ const int MAX_SIMD_FLOAT = (int)(SIMD_LENGTH / 32);
 const int TAYLOR_DEGREE = 20;
 const int TAYLOR_LAST_COEFF = TAYLOR_DEGREE - 1;
 const int TAYLOR_LOOP_INTERATIONS = TAYLOR_DEGREE - 2;
+
+const int SIZE_TAYLOR_COEFF = 20;
 const double TAYLOR_COEFF_SIN[] = {
-  0,
   1,
-  -0,
   -0.16666666666666666,
-  0,
   0.0083333333333333332,
-  -0,
   -0.00019841269841269841,
-  0,
   2.7557319223985893e-06,
-  -0,
   -2.505210838544172e-08,
-  0,
   1.6059043836821613e-10,
-  -0,
   -7.6471637318198164e-13,
-  0,
   2.8114572543455206e-15,
-  -0,
   -8.2206352466243295e-18,
-  0,
   1.9572941063391263e-20,
-  -0,
   -3.8681701706306835e-23,
-  0,
   6.4469502843844736e-26,
-  -0,
   -9.183689863795546e-29,
-  0,
   1.1309962886447718e-31,
-  -0,
   -1.2161250415535181e-34,
-  0,
   1.1516335620771951e-37,
-  -0,
   -9.6775929586318907e-41,
-  0,
   7.2654601791530714e-44,
-  -0,
   -4.9024697565135435e-47,
-  0,
   2.9893108271424046e-50,
-  -0,
-  -1.6552108677421951e-53,
-  0,
-  8.3596508471828045e-57,
-  -0,
-  -3.866628513960594e-60,
-  0,
-  1.6439747083165791e-63,
 };
 
 const double TAYLOR_COEFF_TAN[] = {
@@ -141,10 +118,51 @@ double taylor_eval(double x, double a, const double coeffs[], int n) {
     return result;
 }
 
-void sin_simd(double *input, double *res, size_t n, int prec) {
-// TIME: 1329.5143421658272
+static inline int taylor_degree_from_prec(double max_input, double req_prec) {
+    uint64_t bits;
+    memcpy(&bits, &max_input, sizeof bits);
 
-  const int taylor_degree = (int)prec;
+    // extract 11-bit exponent field
+    int exp_bits = (int)((bits >> 52) & 0x7FF);
+
+    // subtract IEEE-754 bias (1023) + 1 due to the lost bit
+    int exponent =  exp_bits - 1023;
+    int bit_loss = 52 - exponent;
+    double item_loss = pow(2, -bit_loss);
+
+    // get taylor loss if used 0 degree
+    double taylor_loss = 0;
+    for (int i = 0; i < SIZE_TAYLOR_COEFF; i++) { taylor_loss += fabs(TAYLOR_COEFF_SIN[i]); }
+
+    int used_coeffs = 0;
+    double total_loss = item_loss + taylor_loss;
+
+    while (total_loss > req_prec) {
+      total_loss -= fabs(TAYLOR_COEFF_SIN[used_coeffs]);
+      used_coeffs += 1;
+
+      if (used_coeffs >= SIZE_TAYLOR_COEFF) {
+        printf("[WARNING] The Input precision cannot be reached! The best possible precision is %.17g, which is used", total_loss);
+        break;
+      }
+    }
+
+    used_coeffs += 1; // safety ensurance
+
+    // printf("Precision: %.17g -> Taylor Degree: %d\n", total_loss, used_coeffs);
+    return used_coeffs;
+}
+
+void sin_simd(double *input, double *res, size_t n, double prec) {
+// TIME: 1329.5143421658272
+  
+  double max_element = input[0];
+  for (size_t i = 1; i < n; ++i) {
+    if (input[i] > max_element) max_element = input[i];
+  }
+
+  int taylor_degree = taylor_degree_from_prec(max_element, prec);
+
   const int taylor_last_coeff = taylor_degree - 1;
   const int taylor_loop_iteration = taylor_degree - 2;
 
@@ -204,12 +222,15 @@ void sin_simd(double *input, double *res, size_t n, int prec) {
     const SDOUBLE in_range = SUB_DOUBLE_S(in_outer_range, small_subtraction_amount);
 
     SDOUBLE result = LOAD_DOUBLE(TAYLOR_COEFF_SIN[taylor_last_coeff]);
+    const SDOUBLE x_square = MUL_DOUBLE_S(in_range, in_range);
 
-    for (int j = taylor_loop_iteration; j >= 0; j-=2) {
+    for (int j = taylor_loop_iteration; j >= 0; j-=1) {
       SDOUBLE coeff = LOAD_DOUBLE(TAYLOR_COEFF_SIN[j]);
-      result = MUL_DOUBLE_S(result, in_range);
-      result = ADD_DOUBLE_S(result, coeff);
+      result = FMADD_PD(result, x_square, coeff);
     }
+
+    // to uneven the degrees
+    result = MUL_DOUBLE_S(result, in_range);
 
     const SDOUBLE multiplied_quadrants = MUL_DOUBLE_S(sign, quadrant_multiplier);
     const SDOUBLE quadrant_evaluation = ADD_DOUBLE_S(multiplied_quadrants, ones);

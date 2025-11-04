@@ -20,7 +20,7 @@ int main(int argc, char *argv[]) {
   double lower = atof(argv[2]);
   double upper = atof(argv[3]);
 
-  bool eval_glibc = true;
+  bool eval_glibc = false;
 
   int test_size = (argc > 4) ? atoi(argv[4]) : n;
 
@@ -38,6 +38,7 @@ int main(int argc, char *argv[]) {
   double *own_results = malloc(n * sizeof(double));
   double *glibc_results = malloc(n * sizeof(double));
 
+  double precision = 1e-14;
 
 
   if (!test_values) {
@@ -58,33 +59,32 @@ int main(int argc, char *argv[]) {
   printf("\n -------- Own Script WARMUP Execution ---------- \n\n");
   clk._begin = current();
 
-  sin_simd(test_values, own_results, n, taylor_degree);
+  sin_simd(test_values, own_results, n, precision);
 
   clk._end   = current();
   printf("\n ------- End Own Script WARMUP Execution ------- \n\n");
 
-  own_execution_cycles_warmup = own_execution_cycles_warmup + cycles1(clk);
-  own_execution_ms_warmup = own_execution_ms_warmup + duration_ms1(clk);
-  printf("WARMUP Execution Time Cristal Clock MS: %.17g\n", own_execution_ms_warmup);
+//own_execution_cycles_warmup = own_execution_cycles_warmup + cycles1(clk);
+//own_execution_ms_warmup = own_execution_ms_warmup + duration_ms1(clk);
+//printf("WARMUP Execution Time Cristal Clock MS: %.17g\n", own_execution_ms_warmup);
 
 
-  int taylor_degree = 21;
-  printf("\n -------- Own Script Own Clock Execution ---------- \n\n");
-  START_TCLOCK;
-  sin_simd(test_values, own_results, n, taylor_degree);
-  double own_time = GET_TCLOCK;
-  printf("\n ------- End Own Script Own Clock Execution ------- \n\n");
+//printf("\n -------- Own Script Own Clock Execution ---------- \n\n");
+//START_TCLOCK;
+//sin_simd(test_values, own_results, n, precision);
+//double own_time = GET_TCLOCK;
+//printf("\n ------- End Own Script Own Clock Execution ------- \n\n");
 
 
-  printf("\n -------- Own Script Cristal Clock Execution ---------- \n\n");
-  clk._begin = current();
-  sin_simd(test_values, own_results, n, taylor_degree);
-  clk._end   = current();
-  printf("\n ------- End Own Script Cristal Clock Execution ------- \n\n");
+//printf("\n -------- Own Script Cristal Clock Execution ---------- \n\n");
+//clk._begin = current();
+//sin_simd(test_values, own_results, n, precision);
+//clk._end   = current();
+//printf("\n ------- End Own Script Cristal Clock Execution ------- \n\n");
 
-  own_execution_ms = duration_ms1(clk);
-  printf("TIME OC: %.17g\n", own_time);
-  printf("TIME CC: %.17g\n", own_execution_ms);
+//own_execution_ms = duration_ms1(clk);
+//printf("TIME OC: %.17g\n", own_time);
+//printf("TIME CC: %.17g\n", own_execution_ms);
 
   if (eval_glibc) {
     START_CLOCK;
