@@ -16,6 +16,7 @@ Maybe a quicksort algorithm would be kind of usefull but then the results must b
 
 ## One Execution
 TIME OC: 867.28815699999996
+
 TIME CC: 856.35544410073157
 
 ```c
@@ -25,6 +26,7 @@ res[0] = (double)max_element;
 
 ## Two Executions
 TIME OC: 1429.213712
+
 TIME CC: 1455.0524009631931
 
 ```c 
@@ -36,12 +38,15 @@ res[1] = (double)max_element;
 
 # Plane Loop
 
-## Function call
+
+### Function call (had been changed)
 TIME OC: 1336.8112080000001
+
 TIME CC: 1323.1885089965103
 
-## Function call without loop
+## Function call without loop  (had been changed)
 TIME OC: 0.000137
+
 TIME CC: 1.2864116937051667e-05
 
 
@@ -49,6 +54,7 @@ TIME CC: 1.2864116937051667e-05
 
 ## One execution
 TIME OC: 799.05626700000005
+
 TIME CC: 761.56983049265386
 
 ```c
@@ -64,6 +70,7 @@ SIMD_TO_DOUBLE_VEC(&res[i], in_outer_range);
 
 ## Two executions
 TIME OC: 794.39666099999999
+
 TIME CC: 788.55947432130688
 
 ```c
@@ -136,6 +143,7 @@ SIMD_TO_DOUBLE_VEC(&res[i], result);
 
 ## One Execution
 - TIME OC: 818.80264299999999
+
 - TIME CC: 795.44322714426596
 
 ```c 
@@ -150,6 +158,7 @@ SIMD_TO_DOUBLE_VEC(&res[i], quadrant_evaluated_result);
 
 ## Two Executions
 - TIME OC: 770.94519400000001
+
 - TIME CC: 775.73264921769305
 
 ```c
