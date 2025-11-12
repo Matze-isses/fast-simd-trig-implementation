@@ -26,7 +26,7 @@ def save_json(top_param, top_centers, bot_param, bot_centers, path="results.json
 
 class Interactive:
 
-    def __init__(self, num_top_param=10, num_bot_param=5) -> None:
+    def __init__(self, num_top_param=10, num_bot_param=10) -> None:
         self.top_param = np.zeros(num_top_param)
         self.top_centers = np.zeros(num_top_param-1)
 

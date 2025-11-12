@@ -6,9 +6,9 @@ import matplotlib.pyplot as plt
 used_params = {
     "lower_bound": np.pi/4,
     "upper_bound": 1.5,
-    "max_degree": 20,
+    "max_degree": 100,
     "wanted_error": 1e-10, 
-    "show_every_plot": True,
+    "show_every_plot": False,
     "show_final_plot": True,
     "test_size": 100000
 }
@@ -262,7 +262,7 @@ def show_taylor(**kwargs):
 def show_lagrange(**kwargs):
     generate_poly_plot("Lagrange", lagrange, **kwargs)
 
-def show_hermit(**kwargs):
+def show_hermite(**kwargs):
     generate_poly_plot("Hermit", hermite, **kwargs)
 
 def show_newton(**kwargs):
@@ -270,11 +270,10 @@ def show_newton(**kwargs):
 
 
 if __name__ == "__main__":
-    # poly_type = input("Show (a) lagrange (b) hermit -/ Polinomials")
-    # show_taylor(**used_params)
+    show_taylor(**used_params)
     show_lagrange(**used_params)
-    # show_hermit(**used_params)
-    # show_newton(**used_params)
+    show_newton(**used_params)
+    show_hermite(**used_params)
 
 
 

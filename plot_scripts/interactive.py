@@ -128,24 +128,29 @@ class InteractivePlot:
         controls_ax = self.fig.add_subplot(gs[3, 0])
         controls_ax.axis("off")
 
-        load_ax = controls_ax.inset_axes([0.02, 0.15, 0.15, 0.70])
-        save_ax = controls_ax.inset_axes([0.19, 0.15, 0.15, 0.70])
-        reset_ax = controls_ax.inset_axes([0.36, 0.15, 0.15, 0.70])
-        fix_ax   = controls_ax.inset_axes([0.53, 0.15, 0.18, 0.70])
-        zoom_ax  = controls_ax.inset_axes([0.73, 0.15, 0.24, 0.70])  # new
-        home_ax  = controls_ax.inset_axes([0.73, 0.02, 0.24, 0.10])  # tiny bar below zoom
+        load_ax   = controls_ax.inset_axes([0.02, 0.15, 0.15, 0.70])
+        save_ax   = controls_ax.inset_axes([0.19, 0.15, 0.15, 0.70])
+        reset_ax  = controls_ax.inset_axes([0.36, 0.15, 0.15, 0.70])
+
+        # Reflowed layout to fit the new button
+        fix_ax    = controls_ax.inset_axes([0.53, 0.15, 0.14, 0.70])
+        narrow_ax = controls_ax.inset_axes([0.69, 0.15, 0.14, 0.70])   # <-- new: Half Range
+        zoom_ax   = controls_ax.inset_axes([0.85, 0.15, 0.13, 0.70])
+        home_ax   = controls_ax.inset_axes([0.85, 0.02, 0.13, 0.10])
 
         load_btn = Button(load_ax, "Load")
         save_btn = Button(save_ax, "Save")
         reset_btn = Button(reset_ax, "Reset")
-        self.fix_btn  = Button(fix_ax,   "Fix Y-Limits")
-        self.zoom_btn = Button(zoom_ax,  "Select Zoom (OFF)")
-        home_btn      = Button(home_ax,  "Home View")
+        self.fix_btn    = Button(fix_ax,    "Fix Y-Limits")
+        self.narrow_btn = Button(narrow_ax, "Half Range")             # <-- new
+        self.zoom_btn   = Button(zoom_ax,   "Select Zoom (OFF)")
+        home_btn        = Button(home_ax,   "Home View")
 
         load_btn.on_clicked(self._on_load_clicked)
         save_btn.on_clicked(self._on_save_clicked)
         reset_btn.on_clicked(self._on_reset)
         self.fix_btn.on_clicked(self._on_fix_toggle)
+        self.narrow_btn.on_clicked(self._on_narrow_ranges)            # <-- new
         self.zoom_btn.on_clicked(self._on_zoom_toggle)
         home_btn.on_clicked(self._on_home_view)
 
@@ -290,6 +295,42 @@ class InteractivePlot:
             E = self.line_err.get_ydata()
             self._autoscale_error_axis(E)
         self.fig.canvas.draw_idle()
+
+    # --- NEW: Narrow slider ranges by half, centered on current value ---
+    def _on_narrow_ranges(self, _event):
+        """Halve each slider's [min,max] width, centered at its current value."""
+        sliders = self.sliders_top + self.sliders_bot
+        if not sliders:
+            return
+
+        self._suspend_update = True
+        try:
+            for s in sliders:
+                vmin = float(s.valmin)
+                vmax = float(s.valmax)
+                width = vmax - vmin
+                if not np.isfinite(width) or width <= 0:
+                    continue
+                center = float(s.val)
+                new_half_width = width / 4.0  # because total width becomes half (W/2), half-width is W/4
+                new_min = center - new_half_width
+                new_max = center + new_half_width
+
+                # Update slider internals and axis limits
+                s.valmin = float(new_min)
+                s.valmax = float(new_max)
+                # visually update the slider track range
+                try:
+                    s.ax.set_xlim(s.valmin, s.valmax)
+                except Exception:
+                    pass
+                # keep current value (already centered), but ensure it's within new bounds
+                s.set_val(np.clip(center, s.valmin, s.valmax))
+        finally:
+            self._suspend_update = False
+
+        # Trigger a single recompute & redraw
+        self._on_any_change(None)
 
     # --- Save/Load helpers (unchanged) ---
     def _collect_state(self):
