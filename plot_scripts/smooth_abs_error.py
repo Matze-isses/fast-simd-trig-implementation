@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import json
+import os  # <<< added
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import basinhopping
@@ -11,10 +12,12 @@ class AdaptiveApproxLoop:
     # ---- Config ----
     X_MIN = np.pi / 4
     X_MAX = np.pi / 2 - 0.0001                 # ~ just under π/2 to avoid tan blowup
-    PLOT_SAMPLES = 4000          # dense grid for plotting
+    PLOT_SAMPLES = 7000          # dense grid for plotting
     COARSE_SAMPLES = 100_000     # grid to pick worst-error x
     EPS = 1e-4
+
     TOP_COEFF = 9
+
     BOUND_MIN = -10.0
     BOUND_MAX = 10.0
     TARGET_N = 10000             # stop when len(x_vals) hits this
@@ -47,6 +50,12 @@ class AdaptiveApproxLoop:
 
         # Build figure
         self._build_figure(figsize)
+
+        # <<< added
+        self._plot_update_count = -1
+        self._saved_plot_count = 0
+        self._plot_dir = "./plots"
+        # <<< end added
 
         # Run adaptive optimization loop
         self._adaptive_optimize()
@@ -223,6 +232,18 @@ class AdaptiveApproxLoop:
         self.fig.canvas.draw_idle()
         plt.pause(1)
 
+        # --- Save every 10th plot ---  <<< added
+        self._plot_update_count += 1
+        if self._plot_update_count % 10 == 0:
+            os.makedirs(self._plot_dir, exist_ok=True)
+            self._saved_plot_count += 1
+            fname = f"adaptive_approx_loop{self._saved_plot_count:02d}.png"
+            fpath = os.path.join(self._plot_dir, fname)
+            self.fig.savefig(fpath, dpi=200, bbox_inches="tight")
+            if self.verbose:
+                print(f"Saved plot #{self._saved_plot_count} to {fpath}")
+        # <<< end added
+
     # ---- Adaptive loop ----
     def _adaptive_optimize(self):
         prev_params = None
@@ -261,7 +282,7 @@ class AdaptiveApproxLoop:
                 self.best_max_abs_err = max_err
                 self._save_best_snapshot(curr_params, max_err)
 
-            # >>> Choose the nearest unused grid index (check before OR after)
+            # >>> Choose the nearest unused grid index
             idx = self._nearest_unseen_index(coarse_x, idx, self.x_vals)
             if idx is None:
                 print("All grid points used; stopping.")
@@ -276,39 +297,27 @@ class AdaptiveApproxLoop:
         self.current_params = curr_params
 
     def _nearest_unseen_index(self, grid, start_idx, existing_points, round_decimals=12):
-        """
-        Return the index of the nearest grid point to start_idx that is NOT
-        already in existing_points. If the start point is free, return it.
-        Searches outward to the right and left (nearest first).
-        If none available, return None.
-        """
         if grid.size == 0:
             return None
-
         existing = set(np.round(existing_points, round_decimals))
 
         def used(i):
             return np.round(grid[i], round_decimals) in existing
 
         n = grid.size
-        # If the argmax point isn't used yet, take it directly.
         if not used(start_idx):
             return start_idx
 
-        # Search outward: right (+1), then left (-1), increasing radius.
         radius = 1
         while (start_idx - radius) >= 0 or (start_idx + radius) < n:
-            # try right neighbor first
             r = start_idx + radius
             if r < n and not used(r):
                 return r
-            # then try left neighbor
             l = start_idx - radius
             if l >= 0 and not used(l):
                 return l
             radius += 1
-
-        return None  # every grid point is already in x_vals
+        return None
 
     def _silent_save(self, params):
         num_coeffs, den_coeffs, num_centers, den_centers = self._split_params(params)
@@ -350,6 +359,5 @@ class AdaptiveApproxLoop:
 
 # ---- Run as script ----
 if __name__ == "__main__":
-    # Start with only 3 x-values (adjust as you like)
-    x_vals_init = np.linspace(np.pi/4, np.pi/2 - 0.0001, 10)
+    x_vals_init = np.linspace(np.pi/4, np.pi/2 - 0.0001, 5)
     app = AdaptiveApproxLoop(x_vals_init=x_vals_init, coefs_init=None)

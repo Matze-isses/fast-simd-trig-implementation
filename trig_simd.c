@@ -237,7 +237,7 @@ void sin_simd(double *input, double *res, size_t n, double prec) {
 
   int num_left_over = (n % 4);
 
-#pragma omp parallel for
+  #pragma omp parallel for
   for (int i = n - num_left_over; i < (int)n; i++) {
     double reduced_range;
     int quadrant;
