@@ -270,10 +270,10 @@ def show_newton(**kwargs):
 
 
 if __name__ == "__main__":
-    show_taylor(**used_params)
+    # show_taylor(**used_params)
     show_lagrange(**used_params)
-    show_newton(**used_params)
-    show_hermite(**used_params)
+    # show_newton(**used_params)
+    # show_hermite(**used_params)
 
 
 
