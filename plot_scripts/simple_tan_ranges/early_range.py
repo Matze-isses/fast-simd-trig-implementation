@@ -138,44 +138,45 @@ def combined_func(x_vals):
 
 x_vals = np.linspace(0, CLOSE_TO_SINGULARITY, 100000)
 
-fig, (ax1, ax2, ax3) = plt.subplots(3, 1, sharex=True, figsize=(6, 6), gridspec_kw={'height_ratios': [1, 1, 1]})
+# Create Full HD figure with better aspect ratio
+fig, (ax1, ax2, ax3) = plt.subplots(
+    3, 1, sharex=True, figsize=(9.6, 5.4), gridspec_kw={'height_ratios': [1, 1, 1]}
+)
 
-
+# --- AX1 ---
 ax1.plot(x_vals, taylor_poly(x_vals), label='Taylor approx', c='g', alpha=0.7, linewidth=1)
 ax1.plot(x_vals, lagrange_poly(x_vals), label='Lagrange approx', c='b', alpha=0.7, linewidth=1)
-
 ax1.plot(x_vals, 1/taylor_poly(np.pi/2 - x_vals), label='1/Taylor approx', c='yellowgreen', alpha=0.7, linewidth=1)
 ax1.plot(x_vals, 1/lagrange_poly(np.pi/2 - x_vals), label='1/Lagrange approx', c='lightblue', alpha=0.7, linewidth=1)
-
-ax1.plot(x_vals, np.tan(x_vals), label='True Tan', linewidth=3, c='r')
-
-ax2.plot([0, end_taylor_range], [-0.2, -0.2], lw=3, label=f'Taylor Range {taylor_degree}', c='g')
-ax2.plot([np.pi/2-end_taylor_range, np.pi/2], [-0.2, -0.2], lw=3, label=f'1/Taylor Range {taylor_degree}', c='yellowgreen')
-
-ax2.plot([end_taylor_range, np.pi/4], [-0.2, -0.2], lw=3, c='b', label=f'Lagrange Range {deg_lagrange}')
-ax2.plot([np.pi/4, np.pi/2-end_taylor_range], [-0.2, -0.2], lw=3, c='lightblue', label=f'1/Lagrange Range {deg_lagrange}')
+ax1.plot(x_vals, np.tan(x_vals), label='True Tan', linewidth=2.5, c='r')
 
 ax1.set_ylim((-0.3, 10))
-ax1.legend()
+ax1.set_title("Approximation vs True Tan", fontsize=11)
+ax1.legend(loc='upper left', fontsize=8, ncol=2, frameon=False)
 
-ax2.plot(x_vals, combined_func(x_vals), label="Combined approaches")
-ax2.plot(x_vals, np.tan(x_vals), label="True Tan")
+# --- AX2 ---
+ax2.plot(x_vals, combined_func(x_vals), label="Combined approaches", c='purple', linewidth=1.2)
+ax2.plot(x_vals, np.tan(x_vals), label="True Tan", c='r', linewidth=2)
 
+# Highlight ranges
 ax2.plot([0, end_taylor_range], [-0.2, -0.2], lw=3, label=f'Taylor Range {taylor_degree}', c='g')
 ax2.plot([np.pi/2-end_taylor_range, np.pi/2], [-0.2, -0.2], lw=3, label=f'1/Taylor Range {taylor_degree}', c='yellowgreen')
-
 ax2.plot([end_taylor_range, np.pi/4], [-0.2, -0.2], lw=3, c='b', label=f'Lagrange Range {deg_lagrange}')
 ax2.plot([np.pi/4, np.pi/2-end_taylor_range], [-0.2, -0.2], lw=3, c='lightblue', label=f'1/Lagrange Range {deg_lagrange}')
 
-
 ax2.set_ylim((-0.3, 10))
-ax2.legend()
+ax2.set_title("Combined Approximation Behavior", fontsize=11)
+ax2.legend(loc='upper left', fontsize=8, ncol=2, frameon=False)
 
-ax3.plot(x_vals, combined_func(x_vals) - np.tan(x_vals), label="Func - Tan")
-ax3.set_yscale('symlog', linthresh=1e-15)  # or adjust linthresh as needed
-ax3.legend()
+# --- AX3 ---
+ax3.plot(x_vals, combined_func(x_vals) - np.tan(x_vals), label="Func - Tan", c='k', linewidth=1)
+ax3.set_yscale('symlog', linthresh=1e-15)
+ax3.set_title("Error (Func - Tan)", fontsize=11)
+ax3.legend(loc='upper left', fontsize=8, frameon=False)
 
-plt.title("Main Result")
-plt.savefig("./plots/main_result.png")
+# --- Layout & Save ---
+fig.suptitle("Main Result", fontsize=14, fontweight='bold')
+fig.tight_layout(rect=[0, 0, 1, 0.97])  # adjust spacing to avoid overlap
+
+plt.savefig("./plots/main_result.png", dpi=200, bbox_inches='tight')
 plt.show()
-
