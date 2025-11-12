@@ -3,7 +3,7 @@ import time
 import sympy as sp
 import matplotlib.pyplot as plt
 
-CLOSE_TO_SINGULARITY = np.pi/2 - 0.0000000001
+CLOSE_TO_SINGULARITY = np.pi/2 - 0.000001
 
 
 def taylor(degree):
@@ -100,23 +100,21 @@ def compare_from_right_to_true(func, start_x=0, max_error=1e-10):
     
 
 
-taylor_degree = 11
-taylor_poly = taylor(11)
-lagrange_dev_points = [0.19634954083686207,0.21695837360101924,0.2547110508438543,0.2975585889106345,0.35012499655863705,0.44374608248110736,0.49747151060090783,0.5501646861130133,0.6025439602473401,0.6430674208055671,0.7160011986194357,0.7499327302443118,0.774622280919591,0.8]
+taylor_degree = 15
+taylor_poly = taylor(taylor_degree)
+
+lagrange_dev_points = [0.39269883169872416,0.3969635890885462,0.4054027821186821,0.42868615832886153,0.45763231552994654,0.4874267117698911,0.5407990116640636,0.5722270534603305,0.6115366496593349,0.6435851626043971,0.6768824719122251,0.7267832749992127,0.7490809660299766,0.7665916043368057,0.7795665200052884,0.7853981633974483]
+
+deg_lagrange = len(lagrange_dev_points)-1
 
 lagrange_points = [(x, np.tan(x)) for x in lagrange_dev_points]
 lagrange_poly = lagrange(lagrange_points)
-fraction = lambda x: 1 / (np.pi/2 - x)
 
 end_taylor_range = compare_from_left_to_true(taylor_poly)
 print(f"The End of Taylor range is:   {end_taylor_range}")
 
 end_lagrange_range = compare_from_left_to_true(lagrange_poly, start_x=end_taylor_range)
 print(f"The End of Lagrange range is: {end_lagrange_range}")
-
-start_fraction_range = compare_from_right_to_true(fraction)
-print(f"The Start of 1/x is:          {start_fraction_range}")
-
 
 
 def combined_func(x_vals):
@@ -127,26 +125,35 @@ def combined_func(x_vals):
             y.append(taylor_poly(x))
         elif x < end_lagrange_range:
             y.append(lagrange_poly(x))
-        elif x > start_fraction_range:
-            y.append(fraction(x))
+        elif np.pi/2 - end_taylor_range > x > end_lagrange_range:
+            y.append(1 / lagrange_poly(np.pi/2 - x))
+        elif x > np.pi/2 - end_taylor_range:
+            y.append(1/taylor_poly(np.pi/2 - x))
         else:
             y.append(0)
 
     return np.array(y)
 
+
+
 x_vals = np.linspace(0, CLOSE_TO_SINGULARITY, 100000)
 
 fig, (ax1, ax2, ax3) = plt.subplots(3, 1, sharex=True, figsize=(6, 6), gridspec_kw={'height_ratios': [1, 1, 1]})
 
-ax1.plot(x_vals, np.tan(x_vals), label='True Tan', c='r')
 
 ax1.plot(x_vals, taylor_poly(x_vals), label='Taylor approx', c='g', alpha=0.7, linewidth=1)
 ax1.plot(x_vals, lagrange_poly(x_vals), label='Lagrange approx', c='b', alpha=0.7, linewidth=1)
-ax1.plot(x_vals, fraction(x_vals), label='1/x approx', c='y', alpha=0.7, linewidth=1)
 
-ax1.plot([0, end_taylor_range], [-0.2, -0.2], lw=3, label='Taylor Range (11 deg)', c='g')
-ax1.plot([end_taylor_range, end_lagrange_range], [-0.2, -0.2], lw=3, c='b', label='Lagrange Range (13 deg)')
-ax1.plot([start_fraction_range, CLOSE_TO_SINGULARITY], [-0.2, -0.2], lw=3, c='y', label='1/x Range')
+ax1.plot(x_vals, 1/taylor_poly(np.pi/2 - x_vals), label='1/Taylor approx', c='yellowgreen', alpha=0.7, linewidth=1)
+ax1.plot(x_vals, 1/lagrange_poly(np.pi/2 - x_vals), label='1/Lagrange approx', c='lightblue', alpha=0.7, linewidth=1)
+
+ax1.plot(x_vals, np.tan(x_vals), label='True Tan', linewidth=3, c='r')
+
+ax2.plot([0, end_taylor_range], [-0.2, -0.2], lw=3, label=f'Taylor Range {taylor_degree}', c='g')
+ax2.plot([np.pi/2-end_taylor_range, np.pi/2], [-0.2, -0.2], lw=3, label=f'1/Taylor Range {taylor_degree}', c='yellowgreen')
+
+ax2.plot([end_taylor_range, np.pi/4], [-0.2, -0.2], lw=3, c='b', label=f'Lagrange Range {deg_lagrange}')
+ax2.plot([np.pi/4, np.pi/2-end_taylor_range], [-0.2, -0.2], lw=3, c='lightblue', label=f'1/Lagrange Range {deg_lagrange}')
 
 ax1.set_ylim((-0.3, 10))
 ax1.legend()
@@ -154,17 +161,21 @@ ax1.legend()
 ax2.plot(x_vals, combined_func(x_vals), label="Combined approaches")
 ax2.plot(x_vals, np.tan(x_vals), label="True Tan")
 
-ax2.plot([0, end_taylor_range], [-0.2, -0.2], lw=3, label='Taylor Range (11 deg)', c='g')
-ax2.plot([end_taylor_range, end_lagrange_range], [-0.2, -0.2], lw=3, c='b', label='Lagrange Range (13 deg)')
-ax2.plot([start_fraction_range, CLOSE_TO_SINGULARITY], [-0.2, -0.2], lw=3, c='y', label='1/x Range')
+ax2.plot([0, end_taylor_range], [-0.2, -0.2], lw=3, label=f'Taylor Range {taylor_degree}', c='g')
+ax2.plot([np.pi/2-end_taylor_range, np.pi/2], [-0.2, -0.2], lw=3, label=f'1/Taylor Range {taylor_degree}', c='yellowgreen')
+
+ax2.plot([end_taylor_range, np.pi/4], [-0.2, -0.2], lw=3, c='b', label=f'Lagrange Range {deg_lagrange}')
+ax2.plot([np.pi/4, np.pi/2-end_taylor_range], [-0.2, -0.2], lw=3, c='lightblue', label=f'1/Lagrange Range {deg_lagrange}')
+
 
 ax2.set_ylim((-0.3, 10))
 ax2.legend()
 
 ax3.plot(x_vals, combined_func(x_vals) - np.tan(x_vals), label="Func - Tan")
-ax3.set_yscale('log')
+ax3.set_yscale('symlog', linthresh=1e-15)  # or adjust linthresh as needed
 ax3.legend()
 
-plt.savefig("./plots/problem_areas.png")
+plt.title("Main Result")
+plt.savefig("./plots/main_result.png")
 plt.show()
 

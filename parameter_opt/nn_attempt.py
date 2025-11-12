@@ -11,8 +11,8 @@ BOT_NUM_PARAMS = 20
 TOP_NUM_CENTERS = TOP_NUM_PARAMS - 1
 BOT_NUM_CENTERS = BOT_NUM_PARAMS - 1
 
-X_MIN = np.pi/4
-X_MAX = 1.5
+X_MIN = 1.57
+X_MAX = 1.5707933306386703
 NUM_POINTS = 100_000
 
 LEARNING_RATE = 1e-3
@@ -81,6 +81,7 @@ def objective(top_param, bot_param, top_centers, bot_centers):
     y2 = eval_shifted_horner_bot(bot_param, bot_centers, x)
     eps = tf.cast(1e-12, DTYPE)
     result_y = y1 / (y2 + eps)
+    # Keep L1 objective for training stability
     main_loss = tf.reduce_sum(tf.abs(tf.tan(x) - result_y))
     reg = 1e-8 * (
         tf.reduce_sum(tf.square(top_param)) + tf.reduce_sum(tf.square(bot_param)) +
@@ -111,7 +112,8 @@ def train_step():
 # Plot setup (interactive)
 # ======================================================
 plt.ion()
-fig, axes = plt.subplots(3, 1, figsize=(14, 9), constrained_layout=True)
+fig, axes = plt.subplots(3, 1, figsize=(19.2, 10.8), constrained_layout=True)  # Full HD @ dpi=100
+fig.set_dpi(100)
 ax_f, ax_err, ax_loss = axes
 
 x_np = x.numpy()
@@ -120,13 +122,14 @@ tan_np = np.tan(x_np)
 # function + error plots
 approx_line, = ax_f.plot(x_np, np.zeros_like(tan_np), linewidth=1, label="Approx")
 tan_line,    = ax_f.plot(x_np, tan_np, linewidth=1, alpha=0.7, label="tan(x)")
-ax_f.set_title("Approximation vs tan(x)")
+ax_f.set_title(f"Approx vs tan(x) — top deg {TOP_NUM_CENTERS}, bottom deg {BOT_NUM_CENTERS}")
 ax_f.set_xlim([X_MIN, X_MAX])
 ax_f.legend(loc="upper left")
 ax_f.set_yscale('symlog', linthresh=1e-3, base=10)
 
-err_line, = ax_err.plot(x_np, np.zeros_like(tan_np), linewidth=1, label="|tan - approx|")
-ax_err.set_title("Absolute Error")
+# --- LEFTOVER (signed) error ---
+err_line, = ax_err.plot(x_np, np.zeros_like(tan_np), linewidth=1, label="leftover = tan(x) - approx(x)")
+ax_err.set_title("Leftover Error (signed)")
 ax_err.set_xlim([X_MIN, X_MAX])
 ax_err.set_yscale('symlog', linthresh=1e-3, base=10)
 ax_err.legend(loc="upper left")
@@ -147,11 +150,28 @@ def _current_approx():
     eps = tf.cast(1e-12, DTYPE)
     return y1 / (y2 + eps)
 
+def _save_current_figure(step:int):
+    # Ensure directory exists
+    out_dir = os.path.join(".", "plots", "tf_optimized")
+    os.makedirs(out_dir, exist_ok=True)
+    out_path = os.path.join(out_dir, f"iter{step}.png")
+    # Ensure Full HD output size
+    prev_size = fig.get_size_inches()
+    prev_dpi = fig.dpi
+    try:
+        fig.set_size_inches(19.2, 10.8)  # inches for 1920x1080 @ 100 dpi
+        fig.set_dpi(100)
+        fig.savefig(out_path, dpi=100, bbox_inches="tight")
+    finally:
+        # Restore previous settings for interactive session consistency
+        fig.set_size_inches(prev_size)
+        fig.set_dpi(prev_dpi)
+
 def update_plot(step, main_loss_val, loss_hist_steps, loss_hist_vals):
     approx = _current_approx().numpy()
-    err = np.abs(tan_np - approx)
+    leftover = tan_np - approx  # signed error
     approx_line.set_ydata(approx)
-    err_line.set_ydata(err)
+    err_line.set_ydata(leftover)
 
     # update loss evolution
     loss_points.set_data(loss_hist_steps, loss_hist_vals)
@@ -160,9 +180,16 @@ def update_plot(step, main_loss_val, loss_hist_steps, loss_hist_vals):
 
     ax_f.relim(); ax_f.autoscale_view()
     ax_err.relim(); ax_err.autoscale_view()
-    fig.suptitle(f"Step {step} | sum L1 error = {main_loss_val:.6e}", fontsize=12)
+    fig.suptitle(
+        f"Step {step} | sum L1 error = {main_loss_val:.6e} | "
+        f"top deg {TOP_NUM_CENTERS}, bottom deg {BOT_NUM_CENTERS}",
+        fontsize=12
+    )
     fig.canvas.draw_idle()
     plt.pause(0.5)
+
+    # --- Save figure each time we draw it ---
+    _save_current_figure(step)
 
 # Initial plot
 update_plot(step=0, main_loss_val=np.inf, loss_hist_steps=[], loss_hist_vals=[])
@@ -211,11 +238,11 @@ for step in range(1, MAX_STEPS + 1):
     if step % 100 == 0:
         tf.print("step", step, f"total_loss: {total_loss_t:15.5f}", f"main_sum_loss {main_loss_t:15.5f}")
 
-        if total_loss < 1_000_000:
+        if total_loss < 100_000_000:
             loss_hist_steps.append(step)
             loss_hist_vals.append(total_loss)
 
-    # Plot update only every 25k steps
+    # Plot update only every PLOT_EVERY steps
     if step % PLOT_EVERY == 0:
         update_plot(step, main_loss, loss_hist_steps, loss_hist_vals)
 

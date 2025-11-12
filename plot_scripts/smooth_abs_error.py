@@ -10,11 +10,13 @@ from scipy.optimize import basinhopping
 
 class AdaptiveApproxLoop:
     # ---- Config ----
-    X_MIN = np.pi / 4
-    X_MAX = np.pi / 2 - 0.0001                 # ~ just under π/2 to avoid tan blowup
+    X_MIN = 0.8
+    X_MAX = 1.5707933306386703
     PLOT_SAMPLES = 7000          # dense grid for plotting
     COARSE_SAMPLES = 100_000     # grid to pick worst-error x
     EPS = 1e-4
+
+    SAFE_PLOT_EVERY = 1
 
     TOP_COEFF = 9
 
@@ -223,6 +225,7 @@ class AdaptiveApproxLoop:
         # update mean abs error plot
         x_it = np.arange(1, len(self.mean_abs_error_history) + 1)
         self.line_mae.set_data(x_it, self.mean_abs_error_history)
+
         if self.mean_abs_error_history:
             self.ax_bot.set_xlim(1, len(self.mean_abs_error_history) + 1)
             self.ax_bot.set_ylim(0, max(self.mean_abs_error_history) * 1.1)
@@ -234,7 +237,7 @@ class AdaptiveApproxLoop:
 
         # --- Save every 10th plot ---  <<< added
         self._plot_update_count += 1
-        if self._plot_update_count % 10 == 0:
+        if self._plot_update_count % self.SAFE_PLOT_EVERY == 0:
             os.makedirs(self._plot_dir, exist_ok=True)
             self._saved_plot_count += 1
             fname = f"adaptive_approx_loop{self._saved_plot_count:02d}.png"
@@ -359,5 +362,5 @@ class AdaptiveApproxLoop:
 
 # ---- Run as script ----
 if __name__ == "__main__":
-    x_vals_init = np.linspace(np.pi/4, np.pi/2 - 0.0001, 5)
+    x_vals_init = np.linspace(0.8, 1.5707933306386703, 5)
     app = AdaptiveApproxLoop(x_vals_init=x_vals_init, coefs_init=None)

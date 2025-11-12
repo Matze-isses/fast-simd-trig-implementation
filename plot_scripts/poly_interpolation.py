@@ -4,10 +4,10 @@ import matplotlib.pyplot as plt
 
 
 used_params = {
-    "lower_bound": 0.19634954083686207,
-    "upper_bound": 1.3,
+    "lower_bound": 0.39269883169872416,
+    "upper_bound": np.pi/4,
     "max_degree": 50,
-    "wanted_error": 1e-10,
+    "wanted_error": 1e-13,
     "show_every_plot": False,
     "show_final_plot": True,
     "test_size": 100000
@@ -273,8 +273,8 @@ def show_newton(**kwargs):
 
 if __name__ == "__main__":
     # show_taylor(**used_params)
-    # show_lagrange(**used_params)
-    show_newton(**used_params)
+    show_lagrange(**used_params)
+    # show_newton(**used_params)
     # show_hermite(**used_params)
 
 
