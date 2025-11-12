@@ -4,10 +4,10 @@ import matplotlib.pyplot as plt
 
 
 used_params = {
-    "lower_bound": np.pi/4,
-    "upper_bound": 1.5,
-    "max_degree": 100,
-    "wanted_error": 1e-10, 
+    "lower_bound": 0.19634954083686207,
+    "upper_bound": 1.3,
+    "max_degree": 50,
+    "wanted_error": 1e-10,
     "show_every_plot": False,
     "show_final_plot": True,
     "test_size": 100000
@@ -155,10 +155,6 @@ def hermite(points):
     return f
 
 
-
-
-
-
 def generate_poly_plot(
         poly_name, 
         func_gen, 
@@ -200,6 +196,7 @@ def generate_poly_plot(
         problem_index = np.argmax(abs_error)
         problem_point = x_grid[problem_index]
         running = 0
+
         while problem_point in dev_points:
             problem_index += 1 if problem_index < x_grid.shape[0]/2 else -1
             problem_point = x_grid[problem_index]
@@ -252,6 +249,11 @@ def generate_poly_plot(
 
         plt.show()
 
+    print("[", end="")
+    for p in sorted(dev_points):
+        print(f"{p},", end="")
+    print("]")
+
     print(f"Mean Abs Error: {np.mean(abs_error)}")
     print(f"Max  Abs Error: {np.max(abs_error)}")
 
@@ -271,8 +273,8 @@ def show_newton(**kwargs):
 
 if __name__ == "__main__":
     # show_taylor(**used_params)
-    show_lagrange(**used_params)
-    # show_newton(**used_params)
+    # show_lagrange(**used_params)
+    show_newton(**used_params)
     # show_hermite(**used_params)
 
 
