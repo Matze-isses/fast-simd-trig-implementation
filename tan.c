@@ -3,7 +3,6 @@
 #include <limits.h>
 #include <math.h>
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include "trig_simd.h"
@@ -15,9 +14,9 @@
 
 
 
-
-const double TAYLOR_COEFF_TAN[] = {
-  1,
+// Working until 0.4
+double TAYLOR_COEFF_TAN[] = {
+  1.0000000000000000,
   0.33333333333333331,
   0.13333333333333333,
   0.053968253968253971,
@@ -35,10 +34,30 @@ const double TAYLOR_COEFF_TAN[] = {
 
 
 void tan_simd(double *input, double *res, size_t n, int prec) {
+  printf("M_PI_2: %.17g\n", M_PI_2);
+
+  double test_vals[] = {
+    1.57079632679485,
+    1.5707963267948,
+    1.5707963267945,
+    1.5707963267942,
+    1.5707963267938,
+    1.5707963267928,
+    1.5707963267918,
+    1.5707963267908 
+  };
+  for (int i = 0; i < 7; i++) {
+    printf("Diff: %.17g\n", (M_PI_2 - test_vals[i]) * 10e+10);
+  }
   
   for (int i = 0; i < (int) n; i++) {
     double taylor = M_PI_2 - input[i];
     double x_square = taylor * taylor;
+
+    double correctur = 1 / (163312.39353194 * taylor * 10e+10);
+    TAYLOR_COEFF_TAN[0] += correctur;
+    printf("Correctur: %.17g for taylor: %.17g", correctur, taylor * 10e+10);
+
     double result = TAYLOR_COEFF_TAN[13];
 
     for (int j = 12; j >= 0; j-=1) {
@@ -47,8 +66,7 @@ void tan_simd(double *input, double *res, size_t n, int prec) {
     }
 
     result = result * taylor;
-
-    res[i] = 1/result;
+    res[i] = 1 / result;
   }
 
 }

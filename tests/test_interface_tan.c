@@ -45,6 +45,7 @@ int main(int argc, char *argv[]) {
 
   fill_uniform(lower, upper, n, test_values);
   test_values[0] = upper;
+  //test_values[1] = upper;
   
   // user information for the current state of the script
   printf("Test values are generated! Starting calculation of correct results.\n");

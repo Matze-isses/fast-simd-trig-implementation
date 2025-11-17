@@ -3,7 +3,8 @@ import time
 import sympy as sp
 import matplotlib.pyplot as plt
 
-CLOSE_TO_SINGULARITY = np.pi/2 - 0.00000001
+CLOSE_TO_SINGULARITY = np.pi/2 - 0.0000000001
+START_POINT = 1.5
 
 
 def taylor(degree):
@@ -137,7 +138,9 @@ def combined_func(x_vals):
 
 
 
-x_vals = np.linspace(0, CLOSE_TO_SINGULARITY, 1000000)
+x_vals = np.linspace(START_POINT, CLOSE_TO_SINGULARITY, 1000000)
+
+print("Max Difference: ", np.max(combined_func(x_vals) - np.tan(x_vals)))
 
 # Create Full HD figure with better aspect ratio
 fig, (ax1, ax2, ax3) = plt.subplots(

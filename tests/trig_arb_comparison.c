@@ -64,7 +64,12 @@ void compare_results_tan(double *x, double *y, double *cum_error, double *max_er
   
   arb_init(error);
   arb_init(arb_max_error);
+
   arb_set_d(error, 0.0);
+
+  arb_t neg_one;
+  arb_init(neg_one);
+  arb_set_d(neg_one, -1.0);
   
   for (int i = 0; i < (int)n; i++) {
     // Initialize all Variables
@@ -86,6 +91,7 @@ void compare_results_tan(double *x, double *y, double *cum_error, double *max_er
     
     // get the error of the calculation
     arb_sub(difference, true_result, arb_y, PRECISION);
+
     arb_abs(difference, difference);
 
     arb_add(error, error, difference, PRECISION);
