@@ -54,7 +54,7 @@ void tan_simd(double *input, double *res, size_t n, int prec) {
     double taylor = M_PI_2 - input[i];
     double x_square = taylor * taylor;
 
-    double correctur = 1 / (163312.39353194 * taylor * 10e+10);
+    double correctur = 0.0000000000000000612323399573677 * 1/taylor;
     TAYLOR_COEFF_TAN[0] += correctur;
     printf("Correctur: %.17g for taylor: %.17g", correctur, taylor * 10e+10);
 
