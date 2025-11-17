@@ -158,7 +158,7 @@ void sec_mid_range(double input, double *res) {
 }
 
 
-void tan_simd(double *input, double *res, size_t n, int prec) {
+void tan_non_simd(double *input, double *res, size_t n, int prec) {
   printf("M_PI_2: %.17g\n", 4 * M_PI_8);
   init_first_mid_lagrange_table();
   
@@ -179,10 +179,3 @@ void tan_simd(double *input, double *res, size_t n, int prec) {
 }
 
 
-// gcc ./cmeasure/cbind_to_hw_thread.c ./cmeasure/cmeasure.c ./cmeasure/CrystalClockInC.c ./trig_simd.c ./tests/test_interface_tan.c ./tests/value_generation.c ./tests/trig_arb_comparison.c ./util/bit_printing.c ./tan.c -o test -lm -mavx -mavx2 -mfma -O2 -lflint -Wextra && ./test 10000000 0 1.570796326794896 10000000
-//
-// Compilation and run on laptop
-//
-//
-// gcc ./cmeasure/cbind_to_hw_thread.c ./cmeasure/cmeasure.c ./cmeasure/CrystalClockInC.c ./trig_simd.c ./tests/test_interface_tan.c ./tests/value_generation.c ./tests/trig_arb_comparison.c ./util/bit_printing.c ./tan.c -o test -lm -mavx -mavx2 -mfma -O2 $(pkg-config --cflags --libs flint) -Wextra && ./test 10000000 0 1.570796326794896 10000000
-//
