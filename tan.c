@@ -12,7 +12,8 @@
 #include "./util/bit_printing.h"
 
 
-
+double CORRECTION = 0.00000000000000006123233995736765;
+double M_PI_8 = M_PI /8;
 
 // Working until 0.4
 double TAYLOR_COEFF_TAN[] = {
@@ -32,32 +33,25 @@ double TAYLOR_COEFF_TAN[] = {
   6.4516892156554306e-06
 };
 
+void start_of_range(double input, double *res) {
+    double taylor = input;
+    double x_square = taylor * taylor;
+    double result = TAYLOR_COEFF_TAN[13];
 
-void tan_simd(double *input, double *res, size_t n, int prec) {
-  printf("M_PI_2: %.17g\n", M_PI_2);
+    for (int j = 12; j >= 0; j-=1) {
+      double coeff = TAYLOR_COEFF_TAN[j];
+      result = result * x_square + coeff;
+    }
 
-  double test_vals[] = {
-    1.57079632679485,
-    1.5707963267948,
-    1.5707963267945,
-    1.5707963267942,
-    1.5707963267938,
-    1.5707963267928,
-    1.5707963267918,
-    1.5707963267908 
-  };
-  for (int i = 0; i < 7; i++) {
-    printf("Diff: %.17g\n", (M_PI_2 - test_vals[i]) * 10e+10);
-  }
-  
-  for (int i = 0; i < (int) n; i++) {
-    double taylor = M_PI_2 - input[i];
+    *res = result * taylor;
+
+}
+
+void end_of_range(double input, double *res) {
+    double taylor = M_PI_2 - input;
     double x_square = taylor * taylor;
 
-    double correctur = 0.0000000000000000612323399573677 * 1/taylor;
-    TAYLOR_COEFF_TAN[0] += correctur;
-    printf("Correctur: %.17g for taylor: %.17g", correctur, taylor * 10e+10);
-
+    TAYLOR_COEFF_TAN[0] += CORRECTION * 1/taylor;
     double result = TAYLOR_COEFF_TAN[13];
 
     for (int j = 12; j >= 0; j-=1) {
@@ -66,7 +60,25 @@ void tan_simd(double *input, double *res, size_t n, int prec) {
     }
 
     result = result * taylor;
-    res[i] = 1 / result;
+    *res = 1 / result;
+    TAYLOR_COEFF_TAN[0] = 1.0;
+}
+
+void first_mid_range(double input, double *res) {
+  
+}
+
+
+void tan_simd(double *input, double *res, size_t n, int prec) {
+  printf("M_PI_2: %.17g\n", M_PI_2/4);
+  
+  for (int i = 0; i < (int) n; i++) {
+    if (input[i] < M_PI_8) {
+      start_of_range(input[i], &res[i]);
+    }
+    else if (input[i] > 3 * M_PI_8){
+      end_of_range(input[i], &res[i]);
+    }
   }
 
 }

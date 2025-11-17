@@ -45,7 +45,6 @@ int main(int argc, char *argv[]) {
 
   fill_uniform(lower, upper, n, test_values);
   test_values[0] = upper;
-  //test_values[1] = upper;
   
   // user information for the current state of the script
   printf("Test values are generated! Starting calculation of correct results.\n");
@@ -81,13 +80,13 @@ int main(int argc, char *argv[]) {
       own_results_partial[i] = own_results[i];
       test_values_partial[i] = test_values[i];
     }
-    double abs_error, abs_error_glibc, max_error, max_error_glibc;
+    double abs_error, abs_error_glibc, max_error, max_error_glibc, value_max_error, value_max_error_glibc;
 
-    compare_results_tan(test_values_partial, own_results_partial, &abs_error, &max_error, test_size);
-    compare_results_tan(test_values_partial, glibc_results_partial, &abs_error_glibc, &max_error_glibc, test_size);
+    compare_results_tan(test_values_partial, own_results_partial, &abs_error, &max_error, &value_max_error, test_size);
+    compare_results_tan(test_values_partial, glibc_results_partial, &abs_error_glibc, &max_error_glibc, &value_max_error_glibc, test_size);
 
-    printf("Max Error Own:   %.17g\n", max_error);
-    printf("Max Error glibc: %.17g\n\n", max_error_glibc);
+    printf("Max Error Own:   %.17g;   At Value %.17g\n", max_error, value_max_error);
+    printf("Max Error glibc: %.17g;   At Value %.17g\n\n", max_error_glibc, value_max_error_glibc);
 
     printf("Accumulated Absolut Error Own   Results: %.17g\n", abs_error);
     printf("Accumulated Absolut Error glibc Results: %.17g\n", abs_error_glibc);
