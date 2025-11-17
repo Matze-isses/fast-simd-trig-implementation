@@ -3,7 +3,7 @@ import time
 import sympy as sp
 import matplotlib.pyplot as plt
 
-CLOSE_TO_SINGULARITY = np.pi/2 - 0.000001
+CLOSE_TO_SINGULARITY = np.pi/2 - 0.00000001
 
 
 def taylor(degree):
@@ -47,14 +47,14 @@ def lagrange(points):
     return f
 
 
-def compare_from_left_to_true(func, start_x=0, max_error=1e-10):
+def compare_from_left_to_true(func, start_x=0, max_error=1e-15):
     upper = CLOSE_TO_SINGULARITY
     lower = start_x
     error = np.inf
 
     x_test = 0
     
-    while abs(error - max_error) > 1e-10:
+    while abs(error - max_error) > max_error:
         x_test = (upper + lower) / 2
 
         x_true = np.tan(x_test)
@@ -72,7 +72,7 @@ def compare_from_left_to_true(func, start_x=0, max_error=1e-10):
     return x_test
     
 
-def compare_from_right_to_true(func, start_x=0, max_error=1e-10):
+def compare_from_right_to_true(func, start_x=0, max_error=1e-15):
     upper = CLOSE_TO_SINGULARITY
     lower = start_x
     error = 10000
@@ -112,6 +112,7 @@ lagrange_poly = lagrange(lagrange_points)
 
 end_taylor_range = compare_from_left_to_true(taylor_poly)
 print(f"The End of Taylor range is:   {end_taylor_range}")
+end_taylor_range = np.pi/8
 
 end_lagrange_range = compare_from_left_to_true(lagrange_poly, start_x=end_taylor_range)
 print(f"The End of Lagrange range is: {end_lagrange_range}")
@@ -136,7 +137,7 @@ def combined_func(x_vals):
 
 
 
-x_vals = np.linspace(0, CLOSE_TO_SINGULARITY, 100000)
+x_vals = np.linspace(0, CLOSE_TO_SINGULARITY, 1000000)
 
 # Create Full HD figure with better aspect ratio
 fig, (ax1, ax2, ax3) = plt.subplots(

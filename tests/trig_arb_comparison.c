@@ -5,11 +5,14 @@
 const slong PRECISION = 512;
 
 
-double compare_results_sin(double *x, double *y, size_t n) {
+void compare_results_sin(double *x, double *y, double *cum_error, double *max_error, size_t n) {
   // Error should be continously added to and is therefore set before
   // i do not want to go into vector operations with flint...
   arb_t error;
+  arb_t arb_max_error;
+  
   arb_init(error);
+  arb_init(arb_max_error);
   arb_set_d(error, 0.0);
   
   for (int i = 0; i < (int)n; i++) {
@@ -33,7 +36,9 @@ double compare_results_sin(double *x, double *y, size_t n) {
     // get the error of the calculation
     arb_sub(difference, true_result, arb_y, PRECISION);
     arb_abs(difference, difference);
+
     arb_add(error, error, difference, PRECISION);
+    arb_max(arb_max_error, arb_max_error, difference, PRECISION);
 
     // cleanup
     arb_clear(arb_x);
@@ -42,19 +47,23 @@ double compare_results_sin(double *x, double *y, size_t n) {
     arb_clear(difference);
   }
 
-  double res = arf_get_d(arb_midref(error), ARF_RND_NEAR);
+  *cum_error = arf_get_d(arb_midref(error), ARF_RND_NEAR);
+  *max_error = arf_get_d(arb_midref(arb_max_error), ARF_RND_NEAR);
+
+  arb_clear(arb_max_error);
   arb_clear(error);
   flint_cleanup();
-
-  return res;
 }
 
 
-double compare_results_tan(double *x, double *y, size_t n) {
+void compare_results_tan(double *x, double *y, double *cum_error, double *max_error, size_t n) {
   // Error should be continously added to and is therefore set before
   // i do not want to go into vector operations with flint...
   arb_t error;
+  arb_t arb_max_error;
+  
   arb_init(error);
+  arb_init(arb_max_error);
   arb_set_d(error, 0.0);
   
   for (int i = 0; i < (int)n; i++) {
@@ -78,7 +87,9 @@ double compare_results_tan(double *x, double *y, size_t n) {
     // get the error of the calculation
     arb_sub(difference, true_result, arb_y, PRECISION);
     arb_abs(difference, difference);
+
     arb_add(error, error, difference, PRECISION);
+    arb_max(arb_max_error, arb_max_error, difference, PRECISION);
 
     // cleanup
     arb_clear(arb_x);
@@ -87,9 +98,11 @@ double compare_results_tan(double *x, double *y, size_t n) {
     arb_clear(difference);
   }
 
-  double res = arf_get_d(arb_midref(error), ARF_RND_NEAR);
-  arb_clear(error);
-  flint_cleanup();
+  *cum_error = arf_get_d(arb_midref(error), ARF_RND_NEAR);
+  *max_error = arf_get_d(arb_midref(arb_max_error), ARF_RND_NEAR);
 
-  return res;
+  arb_clear(error);
+  arb_clear(arb_max_error);
+
+  flint_cleanup();
 }

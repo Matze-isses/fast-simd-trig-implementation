@@ -10,6 +10,7 @@ def taylor_sin_coeffs(deg):
         coeffs[p] = (-1)**k / math.factorial(p)
     return coeffs
 
+
 def rational_eval(x, a, b):
     """
     Evaluate P(x)/Q(x).
@@ -26,6 +27,7 @@ def rational_eval(x, a, b):
     for j, bj in enumerate(b, start=1):
         qx += bj * x**j
     return px / qx
+
 
 def fit_rational_sin(m=6, n=5, interval=(-np.pi/2, np.pi/2), n_grid=2000, robust=True):
     """Fit R_{m,n}(x) = P_m(x)/Q_n(x) to sin(x) on the given interval."""

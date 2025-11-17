@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 
 used_params = {
-    "lower_bound": 0.39269883169872416,
+    "lower_bound": 0.2,
     "upper_bound": np.pi/4,
     "max_degree": 50,
     "wanted_error": 1e-13,
