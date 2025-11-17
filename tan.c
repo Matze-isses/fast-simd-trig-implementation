@@ -13,7 +13,7 @@
 
 
 double CORRECTION = 0.00000000000000006123233995736765;
-double M_PI_8 = M_PI /8;
+double M_PI_8 = M_PI / 8;
 
 // Working until 0.4
 double TAYLOR_COEFF_TAN[] = {
@@ -32,6 +32,64 @@ double TAYLOR_COEFF_TAN[] = {
   1.5918905069328964e-05,
   6.4516892156554306e-06
 };
+
+
+#define N_FIRST_MID 17
+
+static const double X_FIRST_MID[17] = {
+    0.39269908169872414,
+    0.3974311529539063,
+    0.4054030240311012,
+    0.4286863854186324,
+    0.4576011079513348,
+    0.487426901464288,
+    0.5407991673806207,
+    0.5723175108611952,
+    0.6115367603429416,
+    0.6435891799153872,
+    0.6768825409954158,
+    0.7002130267439945,
+    0.7267833123145859,
+    0.7490809891502078,
+    0.7665916163094255,
+    0.7796607724399203,
+    0.7853981633974483
+};
+
+static const double Y_FIRST_MID[17] = {
+    0.41421356237309503,
+    0.4197684582474178,
+    0.42917669979674156,
+    0.4570320684430114,
+    0.4924645633683938,
+    0.5300875167665825,
+    0.6005164649453173,
+    0.6442430603066724,
+    0.7012087722833138,
+    0.7501376202189168,
+    0.8035182551172894,
+    0.8426526043282521,
+    0.8891412771435833,
+    0.9298813332611141,
+    0.9630769477832821,
+    0.9885905533499666,
+    1.0000000000000000
+};
+
+static double LAGRANGE_DEN_FIRST_MID[N_FIRST_MID][N_FIRST_MID];
+
+void init_first_mid_lagrange_table(void)
+{
+    for (size_t i = 0; i < N_FIRST_MID; ++i) {
+        for (size_t j = 0; j < N_FIRST_MID; ++j) {
+            if (i == j) {
+                LAGRANGE_DEN_FIRST_MID[i][j] = 0.0;
+            } else {
+                LAGRANGE_DEN_FIRST_MID[i][j] = 1.0 / (X_FIRST_MID[i] - X_FIRST_MID[j]);
+            }
+        }
+    }
+}
 
 void start_of_range(double input, double *res) {
     double taylor = input;
@@ -65,30 +123,66 @@ void end_of_range(double input, double *res) {
 }
 
 void first_mid_range(double input, double *res) {
-  
+    double result = 0.0;
+
+    for (size_t i = 0; i < N_FIRST_MID; ++i) {
+        double Li = 1.0;
+
+        for (size_t j = 0; j < N_FIRST_MID; ++j) {
+            if (j == i) continue;
+            Li *= (input - X_FIRST_MID[j]) * LAGRANGE_DEN_FIRST_MID[i][j];
+        }
+
+        result += Y_FIRST_MID[i] * Li;
+    }
+
+    *res = result;
+}
+
+void sec_mid_range(double input, double *res) {
+    double result = 0.0;
+    double from_end = M_PI_2 - input;
+
+    for (size_t i = 0; i < N_FIRST_MID; ++i) {
+        double Li = 1.0;
+
+        for (size_t j = 0; j < N_FIRST_MID; ++j) {
+            if (j == i) continue;
+            Li *= (from_end - X_FIRST_MID[j]) * LAGRANGE_DEN_FIRST_MID[i][j];
+        }
+
+        result += Y_FIRST_MID[i] * Li;
+    }
+
+    *res = 1/result;
 }
 
 
 void tan_simd(double *input, double *res, size_t n, int prec) {
-  printf("M_PI_2: %.17g\n", M_PI_2/4);
+  printf("M_PI_2: %.17g\n", 4 * M_PI_8);
+  init_first_mid_lagrange_table();
   
   for (int i = 0; i < (int) n; i++) {
     if (input[i] < M_PI_8) {
       start_of_range(input[i], &res[i]);
-    }
-    else if (input[i] > 3 * M_PI_8){
+
+    } else if (input[i] < 2 * M_PI_8) {
+      first_mid_range(input[i], &res[i]);
+
+    } else if (input[i] < 3 * M_PI_8) {
+      sec_mid_range(input[i], &res[i]);
+
+    } else if (input[i] > 3 * M_PI_8){
       end_of_range(input[i], &res[i]);
     }
   }
 
 }
 
-// gcc ./cmeasure/cbind_to_hw_thread.c ./cmeasure/cmeasure.c ./cmeasure/CrystalClockInC.c ./trig_simd.c ./tests/test_interface_sin.c ./tests/value_generation.c ./tests/trig_arb_comparison.c -o test -lm -mavx -mavx2 -mfma -O2 -lflint -Wextra && ./test 1000000000 -8 8 1000000
+// gcc ./cmeasure/cbind_to_hw_thread.c ./cmeasure/cmeasure.c ./cmeasure/CrystalClockInC.c ./trig_simd.c ./tests/test_interface_tan.c ./tests/value_generation.c ./tests/trig_arb_comparison.c ./util/bit_printing.c ./tan.c -o test -lm -mavx -mavx2 -mfma -O2 -lflint -Wextra && ./test 10000000 0 1.570796326794896 10000000
 //
 // Compilation and run on laptop
 //
 //
-//gcc ./cmeasure/cbind_to_hw_thread.c ./cmeasure/cmeasure.c ./cmeasure/CrystalClockInC.c ./trig_simd.c ./tests/test_interface_sin.c ./tests/value_generation.c ./tests/trig_arb_comparison.c -o test -lm -mavx -mavx2 -mfma -O2 -Wextra $(pkg-config --cflags --libs flint)  && ./test 1000000 -8 8 100000
-
-
+// gcc ./cmeasure/cbind_to_hw_thread.c ./cmeasure/cmeasure.c ./cmeasure/CrystalClockInC.c ./trig_simd.c ./tests/test_interface_tan.c ./tests/value_generation.c ./tests/trig_arb_comparison.c ./util/bit_printing.c ./tan.c -o test -lm -mavx -mavx2 -mfma -O2 $(pkg-config --cflags --libs flint) -Wextra && ./test 10000000 0 1.570796326794896 10000000
 //

@@ -4,10 +4,10 @@ import matplotlib.pyplot as plt
 
 
 used_params = {
-    "lower_bound": 0.2,
+    "lower_bound": np.pi/8,
     "upper_bound": np.pi/4,
     "max_degree": 50,
-    "wanted_error": 1e-13,
+    "wanted_error": 1e-14,
     "show_every_plot": False,
     "show_final_plot": True,
     "test_size": 100000
