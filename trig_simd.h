@@ -26,9 +26,20 @@
 
 // for (a, b, c) does return (a * b) + c
 #define FMADD_PD _mm256_fmadd_pd 
+#define CEIL_PD _mm256_ceil_pd
+
 #define ABS_PD(a) \
     _mm256_max_pd((a), _mm256_mul_pd(_mm256_set1_pd(-1.0), (a)))
-#define CEIL_PD _mm256_ceil_pd
+#define REMOVE_INF(a) \
+    _mm256_blendv_pd( \
+        (a), \
+        _mm256_setzero_pd(), \
+        _mm256_cmp_pd( \
+            _mm256_andnot_pd(_mm256_set1_pd(-0.0), (a)), \
+            _mm256_set1_pd(INFINITY), \
+            _CMP_EQ_OQ \
+        ) \
+    )
 
 // Float I/O
 #define SFLOAT __m256

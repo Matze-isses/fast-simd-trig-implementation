@@ -13,6 +13,13 @@ void print_bits_u8(uint8_t x);
            vals[0], vals[1], vals[2], vals[3]);              \
 } while (0)
 
+#define PRINT_FULL_M256D(reg) do {                           \
+    double vals[4];                                          \
+    _mm256_storeu_pd(vals, (reg));                           \
+    printf(#reg " = [%.19g, %.19g, %.19g, %.19g]\n",         \
+           vals[0], vals[1], vals[2], vals[3]);              \
+} while (0)
+
 #define PRINT_M256(reg) do {                                   \
     float vals[8];                                             \
     _mm256_storeu_ps(vals, (reg));                             \

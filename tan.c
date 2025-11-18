@@ -106,10 +106,10 @@ void start_of_range(double input, double *res) {
 }
 
 void end_of_range(double input, double *res) {
-    double taylor = M_PI_2 - input;
-    double x_square = taylor * taylor;
+    double from_behind = M_PI_2 - input;
+    double x_square = from_behind * from_behind;
 
-    TAYLOR_COEFF_TAN[0] += CORRECTION * 1/taylor;
+    TAYLOR_COEFF_TAN[0] += CORRECTION * 1/from_behind;
     double result = TAYLOR_COEFF_TAN[13];
 
     for (int j = 12; j >= 0; j-=1) {
@@ -117,7 +117,7 @@ void end_of_range(double input, double *res) {
       result = result * x_square + coeff;
     }
 
-    result = result * taylor;
+    result = result * from_behind;
     *res = 1 / result;
     TAYLOR_COEFF_TAN[0] = 1.0;
 }
@@ -159,10 +159,191 @@ void sec_mid_range(double input, double *res) {
 
 
 void tan_simd(double *input, double *res, size_t n, int prec) {
-  printf("M_PI_2: %.17g\n", 4 * M_PI_8);
+  int simd_doubles = 4;
   init_first_mid_lagrange_table();
+
+  const SDOUBLE one_over_pi_8 = LOAD_DOUBLE(1/M_PI_8);
+  const SDOUBLE m_pi_2 = LOAD_DOUBLE(M_PI_2);
+  const SDOUBLE correction = LOAD_DOUBLE(CORRECTION);
+
+  int last_taylor_coeff = 13;
+  int taylor_loop_iteration = 12;
+  double test_vec[4] = {0.0, 1.0, 2.0, 3.0};
+
+  const SDOUBLE half = LOAD_DOUBLE(0.5);
+  const SDOUBLE one = LOAD_DOUBLE(1.0);
+  const SDOUBLE two = LOAD_DOUBLE(2.0);
   
-  for (int i = 0; i < (int) n; i++) {
+  for (int i = 0; i < (int) n; i += 4) {
+    SDOUBLE x   = LOAD_DOUBLE_VEC(&input[i]);
+
+    SDOUBLE from_behind = SUB_DOUBLE_S(m_pi_2, x);
+
+    const SDOUBLE not_floored = MUL_DOUBLE_S(x, one_over_pi_8);
+    const SDOUBLE quadrant = FLOOR_DOUBLE_S(not_floored);
+    // const SDOUBLE quadrant = LOAD_DOUBLE_VEC(test_vec);
+
+    SDOUBLE in_q0 = SUB_DOUBLE_S(quadrant, two);
+    in_q0 = ABS_PD(in_q0);
+    in_q0 = MUL_DOUBLE_S(in_q0, half);
+    in_q0 = FLOOR_DOUBLE_S(in_q0);
+
+    SDOUBLE in_q1 = SUB_DOUBLE_S(quadrant, one);
+    in_q1 = ABS_PD(in_q1);
+    in_q1 = SUB_DOUBLE_S(in_q1, two);
+    in_q1 = ABS_PD(in_q1);
+    in_q1 = MUL_DOUBLE_S(in_q1, half);
+    in_q1 = FLOOR_DOUBLE_S(in_q1);
+
+    SDOUBLE in_q2 = SUB_DOUBLE_S(quadrant, two);
+    in_q2 = ABS_PD(in_q2);
+    in_q2 = SUB_DOUBLE_S(in_q2, two);
+    in_q2 = ABS_PD(in_q2);
+    in_q2 = MUL_DOUBLE_S(in_q2, half);
+    in_q2 = FLOOR_DOUBLE_S(in_q2);
+
+    SDOUBLE in_q3 = SUB_DOUBLE_S(quadrant, one);
+    in_q3 = ABS_PD(in_q3);
+    in_q3 = MUL_DOUBLE_S(in_q3, half);
+    in_q3 = FLOOR_DOUBLE_S(in_q3);
+
+    /*
+    PRINT_M256D(in_q0);
+    PRINT_M256D(in_q1);
+    PRINT_M256D(in_q2);
+    PRINT_M256D(in_q3);
+    */
+
+
+    SDOUBLE result = LOAD_DOUBLE(0.0);
+    
+    /* ---- Calculation for first range ---- */
+    const SDOUBLE x_square = MUL_DOUBLE_S(x, x);
+    SDOUBLE result_q0 = LOAD_DOUBLE(TAYLOR_COEFF_TAN[last_taylor_coeff]);
+
+    for (int j = taylor_loop_iteration; j >= 0; j-=1) {
+      SDOUBLE coeff = LOAD_DOUBLE(TAYLOR_COEFF_TAN[j]);
+      result_q0 = FMADD_PD(result_q0, x_square, coeff);
+    }
+
+    result_q0 = MUL_DOUBLE_S(result_q0, x);
+
+
+    /* ---- Calculation for second range ---- */
+    SDOUBLE result_q1 = LOAD_DOUBLE(0.0);
+
+    for (size_t i = 0; i < N_FIRST_MID; ++i) {
+        SDOUBLE Li = one;
+
+        // to prevent if statements the loops are splitted
+        for (size_t j = 0; j < i; ++j) {
+            SDOUBLE x_first = LOAD_DOUBLE(X_FIRST_MID[j]);
+            SDOUBLE lagrange_lookup = LOAD_DOUBLE(LAGRANGE_DEN_FIRST_MID[i][j]);
+
+            SDOUBLE sub_x = SUB_DOUBLE_S(x, x_first);
+
+            Li = MUL_DOUBLE_S(Li, sub_x);
+            Li = MUL_DOUBLE_S(Li, lagrange_lookup);
+        }
+
+        for (size_t j = i+1; j < N_FIRST_MID; ++j) {
+            SDOUBLE x_first = LOAD_DOUBLE(X_FIRST_MID[j]);
+            SDOUBLE lagrange_lookup = LOAD_DOUBLE(LAGRANGE_DEN_FIRST_MID[i][j]);
+
+            SDOUBLE sub_x = SUB_DOUBLE_S(x, x_first);
+
+            Li = MUL_DOUBLE_S(Li, sub_x);
+            Li = MUL_DOUBLE_S(Li, lagrange_lookup);
+        }
+
+        SDOUBLE y_first = LOAD_DOUBLE(Y_FIRST_MID[i]);
+
+        SDOUBLE eval_inner = MUL_DOUBLE_S(y_first, Li);
+        result_q1 = ADD_DOUBLE_S(result_q1, eval_inner);
+    }
+
+    /* ---- Calculation for thierd range ---- */
+    SDOUBLE result_q2 = LOAD_DOUBLE(0.0);
+
+    for (size_t i = 0; i < N_FIRST_MID; ++i) {
+        SDOUBLE Li = one;
+
+        // to prevent if statements the loops are splitted
+        for (size_t j = 0; j < i; ++j) {
+            SDOUBLE x_first = LOAD_DOUBLE(X_FIRST_MID[j]);
+            SDOUBLE lagrange_lookup = LOAD_DOUBLE(LAGRANGE_DEN_FIRST_MID[i][j]);
+
+            SDOUBLE sub_x = SUB_DOUBLE_S(from_behind, x_first);
+
+            Li = MUL_DOUBLE_S(Li, sub_x);
+            Li = MUL_DOUBLE_S(Li, lagrange_lookup);
+        }
+
+        for (size_t j = i+1; j < N_FIRST_MID; ++j) {
+            SDOUBLE x_first = LOAD_DOUBLE(X_FIRST_MID[j]);
+            SDOUBLE lagrange_lookup = LOAD_DOUBLE(LAGRANGE_DEN_FIRST_MID[i][j]);
+
+            SDOUBLE sub_x = SUB_DOUBLE_S(from_behind, x_first);
+
+            Li = MUL_DOUBLE_S(Li, sub_x);
+            Li = MUL_DOUBLE_S(Li, lagrange_lookup);
+        }
+
+        SDOUBLE y_first = LOAD_DOUBLE(Y_FIRST_MID[i]);
+
+        SDOUBLE eval_inner = MUL_DOUBLE_S(y_first, Li);
+        result_q2 = ADD_DOUBLE_S(result_q2, eval_inner);
+    }
+
+    result_q2 = DIV_DOUBLE_S(one, result_q2);
+    
+    /* ---- Calculation for fourth range ---- */
+    SDOUBLE from_behind_square = MUL_DOUBLE_S(from_behind, from_behind);
+
+    // Calculation of the correction term
+    SDOUBLE one_over_from_behind = DIV_DOUBLE_S(one, from_behind);
+    SDOUBLE correction_term = MUL_DOUBLE_S(correction, one_over_from_behind);
+    SDOUBLE first_coeff = ADD_DOUBLE_S(one, correction_term);
+
+    SDOUBLE result_q3 = LOAD_DOUBLE(TAYLOR_COEFF_TAN[last_taylor_coeff]);
+
+    // Important that first term is treated with correction
+    for (int j = taylor_loop_iteration; j >= 1; j-=1) {
+      SDOUBLE coeff = LOAD_DOUBLE(TAYLOR_COEFF_TAN[j]);
+      result_q3 = FMADD_PD(result_q3, from_behind_square, coeff);
+    }
+
+    // add the corrected first coefficiant
+    result_q3 = FMADD_PD(result_q3, from_behind_square, first_coeff);
+    result_q3 = MUL_DOUBLE_S(result_q3, from_behind);
+    result_q3 = DIV_DOUBLE_S(one, result_q3);
+
+
+    /* ---- Final Addup ---- */
+
+    result_q1 = REMOVE_INF(result_q1);
+    result_q2 = REMOVE_INF(result_q2);
+
+    /*
+    PRINT_M256D(result_q0);
+    PRINT_M256D(result_q1);
+    PRINT_M256D(result_q2);
+    PRINT_M256D(result_q3);
+    */
+
+    result = FMADD_PD(result_q0, in_q0, result);
+    result = FMADD_PD(result_q1, in_q1, result);
+    result = FMADD_PD(result_q2, in_q2, result);
+    result = FMADD_PD(result_q3, in_q3, result);
+
+
+    SIMD_TO_DOUBLE_VEC(&res[i], result);
+
+  }
+
+  int num_left_over = (n % 4);
+
+  for (size_t i = n - num_left_over; i < (int)n; i++) {
     if (input[i] < M_PI_8) {
       start_of_range(input[i], &res[i]);
 
@@ -176,6 +357,13 @@ void tan_simd(double *input, double *res, size_t n, int prec) {
       end_of_range(input[i], &res[i]);
     }
   }
+
+  for (int i = 0; i < n; i++) {
+      if (isnan(res[i])) {
+        printf("NaN at index %d, input = %.17g\n", i, input[i]);
+      }
+  }
+
 }
 
 

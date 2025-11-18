@@ -161,8 +161,17 @@ void sec_mid_range(double input, double *res) {
 void tan_non_simd(double *input, double *res, size_t n, int prec) {
   printf("M_PI_2: %.17g\n", 4 * M_PI_8);
   init_first_mid_lagrange_table();
+
+  const SDOUBLE one_over_pi_8 = LOAD_DOUBLE(1/M_PI_8);
   
   for (int i = 0; i < (int) n; i++) {
+    SDOUBLE x   = LOAD_DOUBLE_VEC(&input[i]);
+
+    const SDOUBLE not_floored = MUL_DOUBLE_S(x, one_over_pi_8);
+    const SDOUBLE quadrant = FLOOR_DOUBLE_S(not_floored);
+
+
+    /*
     if (input[i] < M_PI_8) {
       start_of_range(input[i], &res[i]);
 
@@ -175,6 +184,7 @@ void tan_non_simd(double *input, double *res, size_t n, int prec) {
     } else if (input[i] > 3 * M_PI_8){
       end_of_range(input[i], &res[i]);
     }
+    */
   }
 }
 
