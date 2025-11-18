@@ -484,3 +484,154 @@ void tan_simd(double *input, double *res, size_t n, int prec) {
   }
 }
 ```
+
+
+# Time Needed if prevention
+
+## Single Execution
+OWN TIME OC: 96.554259000000002
+
+OWN TIME CC: 96.656473780220139
+
+
+```c 
+
+void tan_simd(double *input, double *res, size_t n, int prec) {
+  int simd_doubles = 4;
+
+  const SDOUBLE one_over_pi_8 = LOAD_DOUBLE(1/M_PI_8);
+  const SDOUBLE m_pi_2 = LOAD_DOUBLE(M_PI_2);
+
+  const SDOUBLE half = LOAD_DOUBLE(0.5);
+  const SDOUBLE one = LOAD_DOUBLE(1.0);
+  const SDOUBLE two = LOAD_DOUBLE(2.0);
+  
+  for (int i = 0; i < (int) n; i += 4) {
+    SDOUBLE x   = LOAD_DOUBLE_VEC(&input[i]);
+
+    const SDOUBLE not_floored = MUL_DOUBLE_S(x, one_over_pi_8);
+    const SDOUBLE quadrant = FLOOR_DOUBLE_S(not_floored);
+    // const SDOUBLE quadrant = LOAD_DOUBLE_VEC(test_vec);
+
+    SDOUBLE in_q0 = SUB_DOUBLE_S(quadrant, two);
+    in_q0 = ABS_PD(in_q0);
+    in_q0 = MUL_DOUBLE_S(in_q0, half);
+    in_q0 = FLOOR_DOUBLE_S(in_q0);
+
+    SDOUBLE in_q1 = SUB_DOUBLE_S(quadrant, one);
+    in_q1 = ABS_PD(in_q1);
+    in_q1 = SUB_DOUBLE_S(in_q1, two);
+    in_q1 = ABS_PD(in_q1);
+    in_q1 = MUL_DOUBLE_S(in_q1, in_q0);   // <- Change
+    in_q1 = FLOOR_DOUBLE_S(in_q1);
+
+    SDOUBLE in_q2 = SUB_DOUBLE_S(quadrant, two);
+    in_q2 = ABS_PD(in_q2);
+    in_q2 = SUB_DOUBLE_S(in_q2, two);
+    in_q2 = ABS_PD(in_q2);
+    in_q2 = MUL_DOUBLE_S(in_q2, in_q1);   // <- Change
+    in_q2 = FLOOR_DOUBLE_S(in_q2);
+
+    SDOUBLE in_q3 = SUB_DOUBLE_S(quadrant, one);
+    in_q3 = ABS_PD(in_q3);
+    in_q3 = MUL_DOUBLE_S(in_q3, in_q2);   // <- Change
+    in_q3 = FLOOR_DOUBLE_S(in_q3);
+
+    SIMD_TO_DOUBLE_VEC(&res[i], in_q3);
+
+  }
+}
+```
+
+
+## Double Execution
+
+OWN TIME OC: 184.64038500000001
+
+OWN TIME CC: 191.28786811560676
+
+
+```c 
+void tan_simd(double *input, double *res, size_t n, int prec) {
+  int simd_doubles = 4;
+
+  const SDOUBLE one_over_pi_8 = LOAD_DOUBLE(1/M_PI_8);
+  const SDOUBLE m_pi_2 = LOAD_DOUBLE(M_PI_2);
+
+  const SDOUBLE half = LOAD_DOUBLE(0.5);
+  const SDOUBLE one = LOAD_DOUBLE(1.0);
+  const SDOUBLE two = LOAD_DOUBLE(2.0);
+  
+  for (int i = 0; i < (int) n; i += 4) {
+    SDOUBLE x   = LOAD_DOUBLE_VEC(&input[i]);
+
+    const SDOUBLE not_floored = MUL_DOUBLE_S(x, one_over_pi_8);
+    const SDOUBLE quadrant = FLOOR_DOUBLE_S(not_floored);
+    // const SDOUBLE quadrant = LOAD_DOUBLE_VEC(test_vec);
+
+    SDOUBLE in_q0 = SUB_DOUBLE_S(quadrant, two);
+    in_q0 = ABS_PD(in_q0);
+    in_q0 = MUL_DOUBLE_S(in_q0, half);
+    in_q0 = FLOOR_DOUBLE_S(in_q0);
+
+    SDOUBLE in_q1 = SUB_DOUBLE_S(quadrant, one);
+    in_q1 = ABS_PD(in_q1);
+    in_q1 = SUB_DOUBLE_S(in_q1, two);
+    in_q1 = ABS_PD(in_q1);
+    in_q1 = MUL_DOUBLE_S(in_q1, in_q0);   // <- Change
+    in_q1 = FLOOR_DOUBLE_S(in_q1);
+
+    SDOUBLE in_q2 = SUB_DOUBLE_S(quadrant, two);
+    in_q2 = ABS_PD(in_q2);
+    in_q2 = SUB_DOUBLE_S(in_q2, two);
+    in_q2 = ABS_PD(in_q2);
+    in_q2 = MUL_DOUBLE_S(in_q2, in_q1);   // <- Change
+    in_q2 = FLOOR_DOUBLE_S(in_q2);
+
+    SDOUBLE in_q3 = SUB_DOUBLE_S(quadrant, one);
+    in_q3 = ABS_PD(in_q3);
+    in_q3 = MUL_DOUBLE_S(in_q3, in_q2);   // <- Change
+    in_q3 = FLOOR_DOUBLE_S(in_q3);
+
+    SIMD_TO_DOUBLE_VEC(&res[i], in_q3);
+
+  }
+
+  for (int i = 0; i < (int) n; i += 4) {
+    SDOUBLE x   = LOAD_DOUBLE_VEC(&res[i]);
+
+    const SDOUBLE not_floored = MUL_DOUBLE_S(x, one_over_pi_8);
+    const SDOUBLE quadrant = FLOOR_DOUBLE_S(not_floored);
+    // const SDOUBLE quadrant = LOAD_DOUBLE_VEC(test_vec);
+
+    SDOUBLE in_q0 = SUB_DOUBLE_S(quadrant, two);
+    in_q0 = ABS_PD(in_q0);
+    in_q0 = MUL_DOUBLE_S(in_q0, half);
+    in_q0 = FLOOR_DOUBLE_S(in_q0);
+
+    SDOUBLE in_q1 = SUB_DOUBLE_S(quadrant, one);
+    in_q1 = ABS_PD(in_q1);
+    in_q1 = SUB_DOUBLE_S(in_q1, two);
+    in_q1 = ABS_PD(in_q1);
+    in_q1 = MUL_DOUBLE_S(in_q1, in_q0);   // <- Change
+    in_q1 = FLOOR_DOUBLE_S(in_q1);
+
+    SDOUBLE in_q2 = SUB_DOUBLE_S(quadrant, two);
+    in_q2 = ABS_PD(in_q2);
+    in_q2 = SUB_DOUBLE_S(in_q2, two);
+    in_q2 = ABS_PD(in_q2);
+    in_q2 = MUL_DOUBLE_S(in_q2, in_q1);   // <- Change
+    in_q2 = FLOOR_DOUBLE_S(in_q2);
+
+    SDOUBLE in_q3 = SUB_DOUBLE_S(quadrant, one);
+    in_q3 = ABS_PD(in_q3);
+    in_q3 = MUL_DOUBLE_S(in_q3, in_q2);   // <- Change
+    in_q3 = FLOOR_DOUBLE_S(in_q3);
+
+    SIMD_TO_DOUBLE_VEC(&res[i], in_q3);
+
+  }
+}
+```
+
+
