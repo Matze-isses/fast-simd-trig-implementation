@@ -8,6 +8,9 @@
 #include "test_interface.h"
 #include "../trig_simd.h"
 
+#include "../cmeasure/cmeasure.h"
+#include "../cmeasure/CrystalClockInC.h"
+
 int main(int argc, char *argv[]) {
 
   if (argc < 3) {
@@ -49,18 +52,54 @@ int main(int argc, char *argv[]) {
   // user information for the current state of the script
   printf("Test values are generated! Starting calculation of correct results.\n");
 
+  uint64_t own_execution_cycles_warmup = 0, own_execution_cycles = 0;
+  double own_execution_ms_warmup = 0, own_execution_ms = 0;
+  struct CrystalClock clk;
+
+  if (test_size == 0) {
+    printf("\n -------- Own Script WARMUP Execution ---------- \n\n");
+    clk._begin = current();
+
+    tan_simd(test_values, own_results, n, 20);
+
+    clk._end   = current();
+    printf("\n ------- End Own Script WARMUP Execution ------- \n\n");
+
+    own_execution_ms = duration_ms1(clk);
+    printf("WARMUP time CC: %.17g\n", own_execution_ms);
+
+
+    printf("\n -------- Own Script OC Execution ---------- \n\n");
+    START_TCLOCK;
+
+    tan_simd(test_values, own_results, n, 20);
+
+    double own_time_old_clock = GET_TCLOCK;
+    printf("\n ------- End Own Script OC Execution ------- \n\n");
+
+    printf("TIME OC: %.17g\n", own_time_old_clock);
+  }
 
   printf("\n -------- Own Script Execution ---------- \n\n");
-  START_CLOCK;
-  tan_simd(test_values, own_results, n, 20);
-  END_CLOCK("\n\n ------- End Own Script Execution ------- \n\nTime needed by own implementiation ");
+  clk._begin = current();
 
+  tan_simd(test_values, own_results, n, 20);
+
+  clk._end   = current();
+  printf("\n ------- End Own Script Execution ------- \n\n");
+
+  own_execution_ms = duration_ms1(clk);
+  printf("OWN TIME CC:   %.17g\n", own_execution_ms);
 
   // Evaluate glibc if local constant is set
   if (eval_glibc) {
-    START_CLOCK;
+    clk._begin = current();
+
     for (int i = 0; i < n; i++) { glibc_results[i] = tan(test_values[i]); }
-    END_CLOCK("Time needed by glibc               ");
+
+    clk._end   = current();
+    own_execution_ms = duration_ms1(clk);
+    printf("GLIBC TIME CC: %.17g\n", own_execution_ms);
   }
 
   // precision test
