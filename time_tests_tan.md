@@ -14,6 +14,7 @@ n = 100000000
 
 
 Error: Same as for glibc
+GLIBC Time: 779.35 ms
 
 
 # Time Needed if prevention/quadrant calculation

@@ -20,7 +20,7 @@ int main(int argc, char *argv[]) {
   double lower = atof(argv[2]);
   double upper = atof(argv[3]);
 
-  bool eval_glibc = false;
+  bool eval_glibc = true;
 
   int test_size = (argc > 4) ? atoi(argv[4]) : n;
 
@@ -55,6 +55,7 @@ int main(int argc, char *argv[]) {
   uint64_t own_execution_cycles_warmup = 0, own_execution_cycles = 0;
   double own_execution_ms_warmup = 0, own_execution_ms = 0;
   struct CrystalClock clk;
+  clk._freq = frequency();
 
   printf("\n -------- Own Script WARMUP Execution ---------- \n\n");
   clk._begin = current();
@@ -121,14 +122,19 @@ int main(int argc, char *argv[]) {
       test_values_partial[i] = test_values[i];
     }
 
-    double abs_error = compare_results_sin(test_values_partial, own_results_partial, test_size);
-    double abs_error_glibc = compare_results_sin(test_values_partial, glibc_results_partial, test_size);
+    double abs_error, abs_error_glibc, max_error, max_error_glibc, value_max_error, value_max_error_glibc;
+
+    compare_results_sin(test_values_partial, own_results_partial, &abs_error, &max_error, &value_max_error, test_size);
+    compare_results_sin(test_values_partial, glibc_results_partial, &abs_error_glibc, &max_error_glibc, &value_max_error_glibc, test_size);
+
+    printf("Max Error Own:   %.17g;   At Value %.17g\n", max_error, value_max_error);
+    printf("Max Error glibc: %.17g;   At Value %.17g\n\n", max_error_glibc, value_max_error_glibc);
 
     printf("Accumulated Absolut Error Own   Results: %.17g\n", abs_error);
-    printf("Accumulated Absolut Error glibc Results: %.17g\n", abs_error_glibc);
+    printf("Accumulated Absolut Error glibc Results: %.17g\n\n", abs_error_glibc);
 
-    printf("\nAbsolut Error Own   Results: %.17g\n", abs_error/test_size);
-    printf("Absolut Error glibc Results: %.17g\n", abs_error_glibc/test_size);
+    printf("Mean Absolut Error Own   Results: %.17g\n", abs_error/test_size);
+    printf("Mean Absolut Error glibc Results: %.17g\n\n", abs_error_glibc/test_size);
 
     free(correct_results_partial);
     free(glibc_results_partial);

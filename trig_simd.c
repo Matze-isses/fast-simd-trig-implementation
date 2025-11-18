@@ -17,6 +17,8 @@
 const double END_FRIENDLY_RANGE = M_PI * 2.0 * INT_MAX;
 
 // ---------- SIN -----------
+
+const double RANG_REDUCTION_CORRECTION = 3.8981718325193755e-17;
 const double RANGE_MAX_SIN = M_PI * 2.0;
 const double MED_RANGE_SIN = M_PI;
 const double SMALL_RANGE_SIN = M_PI_2;
@@ -122,13 +124,12 @@ static inline int taylor_degree_from_prec(double max_input, double req_prec) {
 }
 
 void sin_simd(double *input, double *res, size_t n, double prec) {
-  double max_element = input[0];
-  // for (size_t i = 1; i < n; ++i) { if (input[i] > max_element) max_element = input[i]; }
-  // int taylor_degree = taylor_degree_from_prec(max_element, prec);
   int taylor_degree = 19;
 
   const int taylor_last_coeff = taylor_degree - 1;
   const int taylor_loop_iteration = taylor_degree - 2;
+
+  const SDOUBLE range_reduction_correction = LOAD_DOUBLE(RANG_REDUCTION_CORRECTION);
 
   const SDOUBLE spi = LOAD_DOUBLE(M_PI);
 
@@ -153,7 +154,10 @@ void sin_simd(double *input, double *res, size_t n, double prec) {
     const SDOUBLE ranges_away = MUL_DOUBLE_S(x, one_over_2_pi);
     const SDOUBLE num_ranges_away = FLOOR_DOUBLE_S(ranges_away);
     const SDOUBLE range_multiple = MUL_DOUBLE_S(num_ranges_away, two_pi);
+
     SDOUBLE in_outer_range = SUB_DOUBLE_S(x, range_multiple);
+    SDOUBLE correction_term = MUL_DOUBLE_S(x, range_reduction_correction);
+    in_outer_range = SUB_DOUBLE_S(in_outer_range, correction_term);
 
     // Gives Sign of the Result
     const SDOUBLE medium_ranges_away = MUL_DOUBLE_S(in_outer_range, one_over_med_range);
@@ -202,7 +206,6 @@ void sin_simd(double *input, double *res, size_t n, double prec) {
 
     SIMD_TO_DOUBLE_VEC(&res[i], quadrant_evaluated_result);
   }
-
 
   int num_left_over = (n % 4);
 

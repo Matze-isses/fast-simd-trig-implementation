@@ -5,7 +5,7 @@
 const slong PRECISION = 512;
 
 
-void compare_results_sin(double *x, double *y, double *cum_error, double *max_error, size_t n) {
+void compare_results_sin(double *x, double *y, double *cum_error, double *max_error, double *value_max_error, size_t n) {
   // Error should be continously added to and is therefore set before
   // i do not want to go into vector operations with flint...
   arb_t error;
@@ -14,19 +14,26 @@ void compare_results_sin(double *x, double *y, double *cum_error, double *max_er
   arb_init(error);
   arb_init(arb_max_error);
   arb_set_d(error, 0.0);
+
+  arb_t arb_value_max_error;
+  arb_init(arb_value_max_error);
+  arb_set_d(arb_value_max_error, -41);
+
+
+  arb_t arb_x;
+  arb_t arb_y;
+  arb_t true_result;
+  arb_t difference;
+  arb_t diff_to_max;
+
+  arb_init(arb_x);
+  arb_init(arb_y);
+  arb_init(true_result);
+  arb_init(difference);
+  arb_init(diff_to_max);
   
   for (int i = 0; i < (int)n; i++) {
     // Initialize all Variables
-    arb_t arb_x;
-    arb_t arb_y;
-    arb_t true_result;
-    arb_t difference;
-
-    arb_init(arb_x);
-    arb_init(arb_y);
-    arb_init(true_result);
-    arb_init(difference);
-    
     arb_set_d(arb_x, x[i]);
     arb_set_d(arb_y, y[i]);
 
@@ -40,12 +47,24 @@ void compare_results_sin(double *x, double *y, double *cum_error, double *max_er
     arb_add(error, error, difference, PRECISION);
     arb_max(arb_max_error, arb_max_error, difference, PRECISION);
 
-    // cleanup
-    arb_clear(arb_x);
-    arb_clear(arb_y);
-    arb_clear(true_result);
-    arb_clear(difference);
+    // get the error of the calculation
+    arb_sub(difference, true_result, arb_y, PRECISION);
+    arb_abs(difference, difference);
+    arb_add(error, error, difference, PRECISION);
+
+    arb_sub(diff_to_max, difference, arb_max_error, PRECISION);
+    if (arb_is_positive(diff_to_max)) {
+      arb_max(arb_max_error, arb_max_error, difference, PRECISION);
+      *value_max_error = x[i];
+    }
+
   }
+  // cleanup
+  arb_clear(arb_x);
+  arb_clear(arb_y);
+  arb_clear(true_result);
+  arb_clear(difference);
+  arb_clear(diff_to_max);
 
   *cum_error = arf_get_d(arb_midref(error), ARF_RND_NEAR);
   *max_error = arf_get_d(arb_midref(arb_max_error), ARF_RND_NEAR);
@@ -94,9 +113,7 @@ void compare_results_tan(double *x, double *y, double *cum_error, double *max_er
     
     // get the error of the calculation
     arb_sub(difference, true_result, arb_y, PRECISION);
-
     arb_abs(difference, difference);
-
     arb_add(error, error, difference, PRECISION);
 
     arb_sub(diff_to_max, difference, arb_max_error, PRECISION);
