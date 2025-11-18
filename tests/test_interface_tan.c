@@ -54,7 +54,10 @@ int main(int argc, char *argv[]) {
 
   uint64_t own_execution_cycles_warmup = 0, own_execution_cycles = 0;
   double own_execution_ms_warmup = 0, own_execution_ms = 0;
+  double own_time_old_clock = -1.0;
   struct CrystalClock clk;
+  clk._freq = frequency();
+
 
   if (test_size == 0) {
     printf("\n -------- Own Script WARMUP Execution ---------- \n\n");
@@ -74,10 +77,9 @@ int main(int argc, char *argv[]) {
 
     tan_simd(test_values, own_results, n, 20);
 
-    double own_time_old_clock = GET_TCLOCK;
+    own_time_old_clock = GET_TCLOCK;
     printf("\n ------- End Own Script OC Execution ------- \n\n");
 
-    printf("TIME OC: %.17g\n", own_time_old_clock);
   }
 
   printf("\n -------- Own Script Execution ---------- \n\n");
@@ -89,7 +91,8 @@ int main(int argc, char *argv[]) {
   printf("\n ------- End Own Script Execution ------- \n\n");
 
   own_execution_ms = duration_ms1(clk);
-  printf("OWN TIME CC:   %.17g\n", own_execution_ms);
+  printf("OWN TIME OC: %.17g\n", own_time_old_clock);
+  printf("OWN TIME CC: %.17g\n\n", own_execution_ms);
 
   // Evaluate glibc if local constant is set
   if (eval_glibc) {
