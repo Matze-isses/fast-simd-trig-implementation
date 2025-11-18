@@ -91,7 +91,7 @@ int main(int argc, char *argv[]) {
   printf("\n ------- End Own Script Execution ------- \n\n");
 
   own_execution_ms = duration_ms1(clk);
-  printf("OWN TIME OC: %.17g\n", own_time_old_clock);
+  printf("OWN TIME OC: %.17g\n\n", own_time_old_clock);
   printf("OWN TIME CC: %.17g\n\n", own_execution_ms);
 
   // Evaluate glibc if local constant is set
