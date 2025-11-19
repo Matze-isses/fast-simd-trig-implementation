@@ -18,7 +18,7 @@ double M_PI_8 = M_PI / 8;
 // Working until 0.4
 double TAYLOR_COEFF_TAN[] = {
   1.0000000000000000,
-  0.33333333333333331,
+  0.33333333333333333,
   0.13333333333333333,
   0.053968253968253971,
   0.021869488536155203,
@@ -326,7 +326,7 @@ void tan_simd(double *input, double *res, size_t n, int prec) {
   int num_left_over = (n % 4);
 
   for (size_t i = n - num_left_over; i < (int)n; i++) {
-    if (input[i] < M_PI_8) {
+    if (input[i] < 2 * M_PI_8) {
       start_of_range(input[i], &res[i]);
 
     } else if (input[i] < 2 * M_PI_8) {
