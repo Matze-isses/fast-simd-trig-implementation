@@ -76,6 +76,31 @@ static const double Y_FIRST_MID[17] = {
     1.0000000000000000
 };
 
+static const double TAYLOR_MID[22] = {
+  0.6681786379192985,
+  1.4464626921716892,
+  0.9664954714563609,
+  1.1279458583967779,
+  1.0758344844623935,
+  1.126975188635212,
+  1.133109918475393,
+  1.1609049983744102,
+  1.1793481527753196,
+  1.2027207848985053,
+  1.2244100548723267,
+  1.2474842334350207,
+  1.2705332052218277,
+  1.2942210516543347,
+  1.3182519176085832,
+  1.342774645539316,
+  1.3677324161601503,
+  1.3931638578181267,
+  1.4190636366607643,
+  1.445447006642046,
+  1.4723199273582719,
+  1.4996929037685038
+};
+
 static double LAGRANGE_DEN_FIRST_MID[N_FIRST_MID][N_FIRST_MID];
 
 void init_first_mid_lagrange_table(void)
@@ -163,12 +188,15 @@ void tan_simd(double *input, double *res, size_t n, int prec) {
   init_first_mid_lagrange_table();
 
   const SDOUBLE one_over_pi_8 = LOAD_DOUBLE(1/M_PI_8);
+  const SDOUBLE three_sixteens_pi = LOAD_DOUBLE(3.0/16.0 * M_PI);
+
   const SDOUBLE m_pi_2 = LOAD_DOUBLE(M_PI_2);
   const SDOUBLE correction = LOAD_DOUBLE(CORRECTION);
 
+  int mid_taylor_coeff = 21;
+
   int last_taylor_coeff = 13;
   int taylor_loop_iteration = 12;
-  double test_vec[4] = {0.0, 1.0, 2.0, 3.0};
 
   const SDOUBLE half = LOAD_DOUBLE(0.5);
   const SDOUBLE one = LOAD_DOUBLE(1.0);
@@ -230,72 +258,26 @@ void tan_simd(double *input, double *res, size_t n, int prec) {
 
 
     /* ---- Calculation for second range ---- */
+    const SDOUBLE dx = SUB_DOUBLE_S(x, three_sixteens_pi);
     SDOUBLE result_q1 = LOAD_DOUBLE(0.0);
 
-    for (size_t i = 0; i < N_FIRST_MID; ++i) {
-        SDOUBLE Li = one;
-
-        // to prevent if statements the loops are splitted
-        for (size_t j = 0; j < i; ++j) {
-            SDOUBLE x_first = LOAD_DOUBLE(X_FIRST_MID[j]);
-            SDOUBLE lagrange_lookup = LOAD_DOUBLE(LAGRANGE_DEN_FIRST_MID[i][j]);
-
-            SDOUBLE sub_x = SUB_DOUBLE_S(x, x_first);
-
-            Li = MUL_DOUBLE_S(Li, sub_x);
-            Li = MUL_DOUBLE_S(Li, lagrange_lookup);
-        }
-
-        for (size_t j = i+1; j < N_FIRST_MID; ++j) {
-            SDOUBLE x_first = LOAD_DOUBLE(X_FIRST_MID[j]);
-            SDOUBLE lagrange_lookup = LOAD_DOUBLE(LAGRANGE_DEN_FIRST_MID[i][j]);
-
-            SDOUBLE sub_x = SUB_DOUBLE_S(x, x_first);
-
-            Li = MUL_DOUBLE_S(Li, sub_x);
-            Li = MUL_DOUBLE_S(Li, lagrange_lookup);
-        }
-
-        SDOUBLE y_first = LOAD_DOUBLE(Y_FIRST_MID[i]);
-
-        SDOUBLE eval_inner = MUL_DOUBLE_S(y_first, Li);
-        result_q1 = ADD_DOUBLE_S(result_q1, eval_inner);
+    for (int j = mid_taylor_coeff; j >= 0; j-=1) {
+      SDOUBLE coeff = LOAD_DOUBLE(TAYLOR_MID[j]);
+      result_q1 = FMADD_PD(result_q1, dx, coeff);
     }
+
 
     /* ---- Calculation for thierd range ---- */
+    const SDOUBLE dx1 = SUB_DOUBLE_S(from_behind, three_sixteens_pi);
     SDOUBLE result_q2 = LOAD_DOUBLE(0.0);
 
-    for (size_t i = 0; i < N_FIRST_MID; ++i) {
-        SDOUBLE Li = one;
-
-        // to prevent if statements the loops are splitted
-        for (size_t j = 0; j < i; ++j) {
-            SDOUBLE x_first = LOAD_DOUBLE(X_FIRST_MID[j]);
-            SDOUBLE lagrange_lookup = LOAD_DOUBLE(LAGRANGE_DEN_FIRST_MID[i][j]);
-
-            SDOUBLE sub_x = SUB_DOUBLE_S(from_behind, x_first);
-
-            Li = MUL_DOUBLE_S(Li, sub_x);
-            Li = MUL_DOUBLE_S(Li, lagrange_lookup);
-        }
-
-        for (size_t j = i+1; j < N_FIRST_MID; ++j) {
-            SDOUBLE x_first = LOAD_DOUBLE(X_FIRST_MID[j]);
-            SDOUBLE lagrange_lookup = LOAD_DOUBLE(LAGRANGE_DEN_FIRST_MID[i][j]);
-
-            SDOUBLE sub_x = SUB_DOUBLE_S(from_behind, x_first);
-
-            Li = MUL_DOUBLE_S(Li, sub_x);
-            Li = MUL_DOUBLE_S(Li, lagrange_lookup);
-        }
-
-        SDOUBLE y_first = LOAD_DOUBLE(Y_FIRST_MID[i]);
-
-        SDOUBLE eval_inner = MUL_DOUBLE_S(y_first, Li);
-        result_q2 = ADD_DOUBLE_S(result_q2, eval_inner);
+    for (int j = mid_taylor_coeff; j >= 0; j-=1) {
+      SDOUBLE coeff = LOAD_DOUBLE(TAYLOR_MID[j]);
+      result_q2 = FMADD_PD(result_q2, dx1, coeff);
     }
-
+    
     result_q2 = DIV_DOUBLE_S(one, result_q2);
+
     
     /* ---- Calculation for fourth range ---- */
     SDOUBLE from_behind_square = MUL_DOUBLE_S(from_behind, from_behind);

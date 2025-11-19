@@ -202,10 +202,11 @@ void sin_simd(double *input, double *res, size_t n, double prec) {
 
     const SDOUBLE multiplied_quadrants = MUL_DOUBLE_S(sign, quadrant_multiplier);
     const SDOUBLE quadrant_evaluation = ADD_DOUBLE_S(multiplied_quadrants, ones);
-    const SDOUBLE quadrant_evaluated_result = MUL_DOUBLE_S(result, quadrant_evaluation);
-
+    SDOUBLE quadrant_evaluated_result = MUL_DOUBLE_S(result, quadrant_evaluation);
+    
     SIMD_TO_DOUBLE_VEC(&res[i], quadrant_evaluated_result);
   }
+
 
   int num_left_over = (n % 4);
 

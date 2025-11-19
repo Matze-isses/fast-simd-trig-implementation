@@ -15,11 +15,6 @@ void compare_results_sin(double *x, double *y, double *cum_error, double *max_er
   arb_init(arb_max_error);
   arb_set_d(error, 0.0);
 
-  arb_t arb_value_max_error;
-  arb_init(arb_value_max_error);
-  arb_set_d(arb_value_max_error, -41);
-
-
   arb_t arb_x;
   arb_t arb_y;
   arb_t true_result;
@@ -45,7 +40,6 @@ void compare_results_sin(double *x, double *y, double *cum_error, double *max_er
     arb_abs(difference, difference);
 
     arb_add(error, error, difference, PRECISION);
-    arb_max(arb_max_error, arb_max_error, difference, PRECISION);
 
     // get the error of the calculation
     arb_sub(difference, true_result, arb_y, PRECISION);
@@ -53,6 +47,7 @@ void compare_results_sin(double *x, double *y, double *cum_error, double *max_er
     arb_add(error, error, difference, PRECISION);
 
     arb_sub(diff_to_max, difference, arb_max_error, PRECISION);
+
     if (arb_is_positive(diff_to_max)) {
       arb_max(arb_max_error, arb_max_error, difference, PRECISION);
       *value_max_error = x[i];
@@ -117,6 +112,7 @@ void compare_results_tan(double *x, double *y, double *cum_error, double *max_er
     arb_add(error, error, difference, PRECISION);
 
     arb_sub(diff_to_max, difference, arb_max_error, PRECISION);
+
     if (arb_is_positive(diff_to_max)) {
       arb_max(arb_max_error, arb_max_error, difference, PRECISION);
       *value_max_error = x[i];
