@@ -14,6 +14,7 @@
 double CORRECTION = 0.00000000000000006123233995736765;
 double M_PI_8 = M_PI / 8;
 
+
 // Working until 0.4
 double TAYLOR_COEFF_TAN[] = {
   1.0000000000000000,
@@ -433,7 +434,7 @@ void tan_simd(double *input, double *res, size_t n, int prec) {
   const SDOUBLE index_sum = LOAD_DOUBLE(M_PI_4+1.0/256.0);
   const SDOUBLE correction = LOAD_DOUBLE(CORRECTION);
 
-  int last_taylor_coeff = 10;
+  int last_taylor_coeff = 13;
   int taylor_loop_iteration = last_taylor_coeff - 1;
   double test_lookup[2] = {0.0, 0.1};
 
@@ -444,17 +445,6 @@ void tan_simd(double *input, double *res, size_t n, int prec) {
   for (int i = 0; i < (int) n; i += 4) {
     SDOUBLE x   = LOAD_DOUBLE_VEC(&input[i]);
 
-    SDOUBLE from_behind = SUB_DOUBLE_S(m_pi_2, x);
-
-    const SDOUBLE not_floored = MUL_DOUBLE_S(x, one_over_pi_8);
-    const SDOUBLE quadrant = FLOOR_DOUBLE_S(not_floored);
-
-    SDOUBLE in_q0 = SUB_DOUBLE_S(quadrant, two);
-    in_q0 = ABS_PD(in_q0);
-    in_q0 = MUL_DOUBLE_S(in_q0, half);
-    in_q0 = FLOOR_DOUBLE_S(in_q0);
-
- 
     SDOUBLE bot = SUB_DOUBLE_S(index_sum, x);
     SDOUBLE idouble = DIV_DOUBLE_S(one, bot);
     __m128i idx = _mm256_cvttpd_epi32(idouble);   
@@ -463,12 +453,6 @@ void tan_simd(double *input, double *res, size_t n, int prec) {
     PRINT_FULL_M256D(lin_addon);
     x = ADD_DOUBLE_S(x, lin_addon);
 
-    SDOUBLE in_q1 = SUB_DOUBLE_S(quadrant, one);
-    in_q1 = ABS_PD(in_q1);
-    in_q1 = MUL_DOUBLE_S(in_q1, half);
-    in_q1 = FLOOR_DOUBLE_S(in_q1);
-
-    
     /* ---- Calculation for first range ---- */
     const SDOUBLE x_square = MUL_DOUBLE_S(x, x);
     SDOUBLE result_q0 = LOAD_DOUBLE(TAYLOR_COEFF_TAN[last_taylor_coeff]);
@@ -478,47 +462,7 @@ void tan_simd(double *input, double *res, size_t n, int prec) {
       result_q0 = FMADD_PD(result_q0, x_square, coeff);
     }
 
-    result_q0 = MUL_DOUBLE_S(result_q0, x);
-
-
-    /* ---- Calculation for fourth range ---- */
-    SDOUBLE from_behind_square = MUL_DOUBLE_S(from_behind, from_behind);
-
-    // Calculation of the correction term
-    SDOUBLE one_over_from_behind = DIV_DOUBLE_S(one, from_behind);
-    SDOUBLE correction_term = MUL_DOUBLE_S(correction, one_over_from_behind);
-    SDOUBLE first_coeff = ADD_DOUBLE_S(one, correction_term);
-
-    SDOUBLE result_q3 = LOAD_DOUBLE(TAYLOR_COEFF_TAN[last_taylor_coeff]);
-
-    // Important that first term is treated with correction
-    for (int j = taylor_loop_iteration; j >= 1; j-=1) {
-      SDOUBLE coeff = LOAD_DOUBLE(TAYLOR_COEFF_TAN[j]);
-      result_q3 = FMADD_PD(result_q3, from_behind_square, coeff);
-    }
-
-    // add the corrected first coefficiant
-    result_q3 = FMADD_PD(result_q3, from_behind_square, first_coeff);
-    result_q3 = MUL_DOUBLE_S(result_q3, from_behind);
-    result_q3 = DIV_DOUBLE_S(one, result_q3);
-
-
-    /* ---- Final Addup ---- */
-
-
-    /*
-    PRINT_M256D(result_q0);
-    PRINT_M256D(result_q1);
-    PRINT_M256D(result_q2);
-    PRINT_M256D(result_q3);
-    */
-
-    SDOUBLE result = LOAD_DOUBLE(0.0);
-    result = FMADD_PD(result_q0, in_q0, result);
-    // result = FMADD_PD(result_q0, in_q1, result);
-    result = FMADD_PD(result_q3, in_q1, result);
-
-
+    const SDOUBLE result = MUL_DOUBLE_S(result_q0, x);
     SIMD_TO_DOUBLE_VEC(&res[i], result);
 
   }
