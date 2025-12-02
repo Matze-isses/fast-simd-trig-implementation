@@ -4,7 +4,7 @@
 double __tan(double x);  // from s_tan.c
 
 int main(void) {
-    double x = 0.7;
+    double x = 0.2;
 
     double y_glibc = __tan(x);
     double y_sys   = tan(x);

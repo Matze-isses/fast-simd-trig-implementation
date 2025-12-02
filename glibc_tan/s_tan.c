@@ -159,11 +159,11 @@ double SECTION __tan (double x) {
       // Due to the range max(i) = 185 and min(i) = 0. (int always rounding down)
       i = ((int) (mfftnhf.d + 256 * w)); 
 
-      /*To print out the values
-       * for (int j = 0; j < 201; j++) {
-       *     printf("(%d, %#.17g),\n", j, xfg[j][0].d);
-       * }
-       */
+      //To print out the values
+      for (int j = 0; j < 201; j++) {
+          printf("(%d, %#.17g),\n", j, xfg[j][0].d);
+      }
+      
 
       // xfg[i][0] does look like a linear increasing table, however it is not!                              
       // The values of z are in between -0.002 and 0.002 and jump wildly around it
@@ -187,11 +187,13 @@ double SECTION __tan (double x) {
       // This is shown in the approx_gi plot
       gi = xfg[i][2].d;
 
+      print_double_bits(gi);
+
       t2 = pz * (gi + fi) / (gi - pz);
 
-      for (int j = 0; j < 201; j++) {
-          printf("(%d, %#.17g),\n", j, xfg[j][2].d);
-      }
+      // for (int j = 0; j < 201; j++) {
+      //     printf("(%d, %#.17g),\n", j, xfg[j][2].d);
+      // }
 
       // the values of fi almost behave like 1/x but as discrete number and faster decreasing.
       y = fi + t2;

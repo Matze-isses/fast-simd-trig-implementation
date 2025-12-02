@@ -166,17 +166,18 @@ void tan_simd(double *input, double *res, size_t n, int prec) {
   const SDOUBLE m_pi_2 = LOAD_DOUBLE(M_PI_2);
   const SDOUBLE correction = LOAD_DOUBLE(CORRECTION);
 
-  int last_taylor_coeff = 13;
-  int taylor_loop_iteration = 12;
+  int last_taylor_coeff = 11;
+  int taylor_loop_iteration = last_taylor_coeff - 1;
   double test_vec[4] = {0.0, 1.0, 2.0, 3.0};
 
+  const SDOUBLE neg_half = LOAD_DOUBLE(-0.5);
   const SDOUBLE half = LOAD_DOUBLE(0.5);
   const SDOUBLE one = LOAD_DOUBLE(1.0);
   const SDOUBLE two = LOAD_DOUBLE(2.0);
   
   for (int i = 0; i < (int) n; i += 4) {
+    SDOUBLE result = LOAD_DOUBLE(0.0);
     SDOUBLE x   = LOAD_DOUBLE_VEC(&input[i]);
-
     SDOUBLE from_behind = SUB_DOUBLE_S(m_pi_2, x);
 
     const SDOUBLE not_floored = MUL_DOUBLE_S(x, one_over_pi_8);
@@ -207,15 +208,10 @@ void tan_simd(double *input, double *res, size_t n, int prec) {
     in_q3 = MUL_DOUBLE_S(in_q3, half);
     in_q3 = FLOOR_DOUBLE_S(in_q3);
 
-    /*
-    PRINT_M256D(in_q0);
-    PRINT_M256D(in_q1);
-    PRINT_M256D(in_q2);
-    PRINT_M256D(in_q3);
-    */
+    SDOUBLE q1_reduction = MUL_DOUBLE_S(x, neg_half);
+    x = FMADD_PD(q1_reduction, in_q1, x);
+    x = FMADD_PD(q1_reduction, in_q1, x);
 
-
-    SDOUBLE result = LOAD_DOUBLE(0.0);
     
     /* ---- Calculation for first range ---- */
     const SDOUBLE x_square = MUL_DOUBLE_S(x, x);
@@ -228,74 +224,13 @@ void tan_simd(double *input, double *res, size_t n, int prec) {
 
     result_q0 = MUL_DOUBLE_S(result_q0, x);
 
+    SDOUBLE nominator = MUL_DOUBLE_S(two, result_q0);
 
-    /* ---- Calculation for second range ---- */
-    SDOUBLE result_q1 = LOAD_DOUBLE(0.0);
+    SDOUBLE result_q0_square = MUL_DOUBLE_S(result_q0, result_q0);
+    SDOUBLE denominator = SUB_DOUBLE_S(one, result_q0_square);
 
-    for (size_t i = 0; i < N_FIRST_MID; ++i) {
-        SDOUBLE Li = one;
+    SDOUBLE result_q1 = DIV_DOUBLE_S(nominator, denominator);
 
-        // to prevent if statements the loops are splitted
-        for (size_t j = 0; j < i; ++j) {
-            SDOUBLE x_first = LOAD_DOUBLE(X_FIRST_MID[j]);
-            SDOUBLE lagrange_lookup = LOAD_DOUBLE(LAGRANGE_DEN_FIRST_MID[i][j]);
-
-            SDOUBLE sub_x = SUB_DOUBLE_S(x, x_first);
-
-            Li = MUL_DOUBLE_S(Li, sub_x);
-            Li = MUL_DOUBLE_S(Li, lagrange_lookup);
-        }
-
-        for (size_t j = i+1; j < N_FIRST_MID; ++j) {
-            SDOUBLE x_first = LOAD_DOUBLE(X_FIRST_MID[j]);
-            SDOUBLE lagrange_lookup = LOAD_DOUBLE(LAGRANGE_DEN_FIRST_MID[i][j]);
-
-            SDOUBLE sub_x = SUB_DOUBLE_S(x, x_first);
-
-            Li = MUL_DOUBLE_S(Li, sub_x);
-            Li = MUL_DOUBLE_S(Li, lagrange_lookup);
-        }
-
-        SDOUBLE y_first = LOAD_DOUBLE(Y_FIRST_MID[i]);
-
-        SDOUBLE eval_inner = MUL_DOUBLE_S(y_first, Li);
-        result_q1 = ADD_DOUBLE_S(result_q1, eval_inner);
-    }
-
-    /* ---- Calculation for thierd range ---- */
-    SDOUBLE result_q2 = LOAD_DOUBLE(0.0);
-
-    for (size_t i = 0; i < N_FIRST_MID; ++i) {
-        SDOUBLE Li = one;
-
-        // to prevent if statements the loops are splitted
-        for (size_t j = 0; j < i; ++j) {
-            SDOUBLE x_first = LOAD_DOUBLE(X_FIRST_MID[j]);
-            SDOUBLE lagrange_lookup = LOAD_DOUBLE(LAGRANGE_DEN_FIRST_MID[i][j]);
-
-            SDOUBLE sub_x = SUB_DOUBLE_S(from_behind, x_first);
-
-            Li = MUL_DOUBLE_S(Li, sub_x);
-            Li = MUL_DOUBLE_S(Li, lagrange_lookup);
-        }
-
-        for (size_t j = i+1; j < N_FIRST_MID; ++j) {
-            SDOUBLE x_first = LOAD_DOUBLE(X_FIRST_MID[j]);
-            SDOUBLE lagrange_lookup = LOAD_DOUBLE(LAGRANGE_DEN_FIRST_MID[i][j]);
-
-            SDOUBLE sub_x = SUB_DOUBLE_S(from_behind, x_first);
-
-            Li = MUL_DOUBLE_S(Li, sub_x);
-            Li = MUL_DOUBLE_S(Li, lagrange_lookup);
-        }
-
-        SDOUBLE y_first = LOAD_DOUBLE(Y_FIRST_MID[i]);
-
-        SDOUBLE eval_inner = MUL_DOUBLE_S(y_first, Li);
-        result_q2 = ADD_DOUBLE_S(result_q2, eval_inner);
-    }
-
-    result_q2 = DIV_DOUBLE_S(one, result_q2);
     
     /* ---- Calculation for fourth range ---- */
     SDOUBLE from_behind_square = MUL_DOUBLE_S(from_behind, from_behind);
@@ -321,9 +256,6 @@ void tan_simd(double *input, double *res, size_t n, int prec) {
 
     /* ---- Final Addup ---- */
 
-    result_q1 = REMOVE_INF(result_q1);
-    result_q2 = REMOVE_INF(result_q2);
-
     /*
     PRINT_M256D(result_q0);
     PRINT_M256D(result_q1);
@@ -333,7 +265,6 @@ void tan_simd(double *input, double *res, size_t n, int prec) {
 
     result = FMADD_PD(result_q0, in_q0, result);
     result = FMADD_PD(result_q1, in_q1, result);
-    result = FMADD_PD(result_q2, in_q2, result);
     result = FMADD_PD(result_q3, in_q3, result);
 
 
@@ -356,12 +287,6 @@ void tan_simd(double *input, double *res, size_t n, int prec) {
     } else if (input[i] > 3 * M_PI_8){
       end_of_range(input[i], &res[i]);
     }
-  }
-
-  for (int i = 0; i < n; i++) {
-      if (isnan(res[i])) {
-        printf("NaN at index %d, input = %.17g\n", i, input[i]);
-      }
   }
 
 }
