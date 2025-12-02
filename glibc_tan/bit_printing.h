@@ -1,17 +1,13 @@
 #ifndef BIT_PRINTING_H
 #define BIT_PRINTING_H
-#include <stdint.h> 
+#include <immintrin.h>
+#include <stdint.h>
+#include <stdio.h>
 
 void print_double_bits(double value);
 void print_bits_ulong(unsigned long x);
 void print_bits_u8(uint8_t x);
 
-#define PRINT_M128I(reg) do {                                   \
-    int32_t vals[4];                                            \
-    _mm_storeu_si128((__m128i*)vals, (reg));                    \
-    printf(#reg " = [%d, %d, %d, %d]\n",                        \
-           vals[0], vals[1], vals[2], vals[3]);                 \
-} while (0)
 
 #define PRINT_M256D(reg) do {                                \
     double vals[4];                                          \
