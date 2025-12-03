@@ -19,6 +19,9 @@ void speed_test(double *test_values, double *own_results, size_t test_size) {
   struct CrystalClock clk;
   clk._freq = frequency();
 
+  struct CrystalClock clk1;
+  clk1._freq = frequency();
+
 
   /* ---- WARMUP ---- */ 
   START_TCLOCK;
@@ -63,11 +66,12 @@ void speed_test(double *test_values, double *own_results, size_t test_size) {
 
   printf("GLIBC Time OC: %.17g\n", glibc_time_old_clock);
 
-  clk._begin = current();
+  clk1._begin = current();
   for (size_t i = 0; i < test_size; i++) { glibc_results[i] = sin(test_values[i]); }
-  clk._end   = current();
+  clk1._end   = current();
 
-  glibc_execution_ms = duration_ms1(clk);
+  glibc_execution_ms = duration_ms1(clk1);
+
   printf("GLIBC Time CC: %.17g\n", glibc_execution_ms);
 
   free(glibc_results);

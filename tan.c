@@ -185,7 +185,6 @@ void tan_simd(double *input, double *res, size_t n) {
   const SDOUBLE two = LOAD_DOUBLE(2.0);
   
   for (int i = 0; i < (int) n; i += 4) {
-    SDOUBLE result = LOAD_DOUBLE(0.0);
     SDOUBLE x   = LOAD_DOUBLE_VEC(&input[i]);
     SDOUBLE from_behind = SUB_DOUBLE_S(m_pi_2, x);
 
@@ -193,50 +192,45 @@ void tan_simd(double *input, double *res, size_t n) {
     const SDOUBLE quadrant = FLOOR_DOUBLE_S(not_floored);
 
     /* obtaining bool vectors for the each quadrant */
-    // 1 if quadrant == 0 else 0
-    SDOUBLE in_q0 = SUB_DOUBLE_S(quadrant, two);
-    in_q0 = ABS_PD(in_q0);
-    in_q0 = MUL_DOUBLE_S(in_q0, half);
-    in_q0 = FLOOR_DOUBLE_S(in_q0);
+    const SDOUBLE q_sub_2 = SUB_DOUBLE_S(quadrant, two);
+    const SDOUBLE q_sub_1 = SUB_DOUBLE_S(quadrant, one);
 
-    // 1 if quadrant == 1 else 0
-    SDOUBLE in_q1 = SUB_DOUBLE_S(quadrant, one);
-    in_q1 = ABS_PD(in_q1);
-    in_q1 = SUB_DOUBLE_S(in_q1, two);
-    in_q1 = ABS_PD(in_q1);
-    in_q1 = MUL_DOUBLE_S(in_q1, half);
-    in_q1 = FLOOR_DOUBLE_S(in_q1);
+    const SDOUBLE abs_q_sub_2 = ABS_PD(q_sub_2);
+    const SDOUBLE abs_q_sub_1 = ABS_PD(q_sub_1);
 
-    // 1 if quadrant == 2 else 0
-    SDOUBLE in_q2 = SUB_DOUBLE_S(quadrant, two);
-    in_q2 = ABS_PD(in_q2);
-    in_q2 = SUB_DOUBLE_S(in_q2, two);
-    in_q2 = ABS_PD(in_q2);
-    in_q2 = MUL_DOUBLE_S(in_q2, half);
-    in_q2 = FLOOR_DOUBLE_S(in_q2);
+    const SDOUBLE in_q0_0 = MUL_DOUBLE_S(abs_q_sub_2, half);
+    const SDOUBLE in_q3_0 = MUL_DOUBLE_S(abs_q_sub_1, half);
 
+    const SDOUBLE in_q1_0 = SUB_DOUBLE_S(abs_q_sub_1, two);
+    const SDOUBLE in_q2_0 = SUB_DOUBLE_S(abs_q_sub_2, two);
 
-    // 1 if quadrant == 3 else 0
-    SDOUBLE in_q3 = SUB_DOUBLE_S(quadrant, one);
-    in_q3 = ABS_PD(in_q3);
-    in_q3 = MUL_DOUBLE_S(in_q3, half);
-    in_q3 = FLOOR_DOUBLE_S(in_q3);
+    const SDOUBLE in_q0 = FLOOR_DOUBLE_S(in_q0_0);
+    const SDOUBLE in_q3 = FLOOR_DOUBLE_S(in_q3_0);
+
+    const SDOUBLE in_q1_1 = ABS_PD(in_q1_0);
+    const SDOUBLE in_q2_1 = ABS_PD(in_q2_0);
+
+    const SDOUBLE in_q1_2 = MUL_DOUBLE_S(in_q1_1, half);
+    const SDOUBLE in_q2_2 = MUL_DOUBLE_S(in_q2_1, half);
+
+    const SDOUBLE in_q1   = FLOOR_DOUBLE_S(in_q1_2);
+    const SDOUBLE in_q2   = FLOOR_DOUBLE_S(in_q2_2);
 
 
     // Mirror it to move it to range 1
-    SDOUBLE q2_reduction = from_behind;
-    q2_reduction = MUL_DOUBLE_S(q2_reduction, in_q2);
-    q2_reduction = SUB_DOUBLE_S(q2_reduction, x);
+    const SDOUBLE q2_reduction_1 = MUL_DOUBLE_S(from_behind, in_q2);
+    const SDOUBLE q2_reduction = SUB_DOUBLE_S(q2_reduction_1, x);
+
     x = FMADD_PD(q2_reduction, in_q2, x);
     // x = q2_reduction if q2_reduction != 0 else x
 
     // reduce to move it to range 0
-    SDOUBLE q1_reduction = MUL_DOUBLE_S(x, neg_half);
+    const SDOUBLE q1_reduction = MUL_DOUBLE_S(x, neg_half);
     x = FMADD_PD(q1_reduction, in_q1, x);
     x = FMADD_PD(q1_reduction, in_q2, x);
 
     // move q3 in q0
-    SDOUBLE q3_reduction = SUB_DOUBLE_S(from_behind, x);
+    const SDOUBLE q3_reduction = SUB_DOUBLE_S(from_behind, x);
     x = FMADD_PD(q3_reduction, in_q3, x);
     
     /* ---- Calculation for first range ---- */
@@ -244,7 +238,7 @@ void tan_simd(double *input, double *res, size_t n) {
     SDOUBLE result_q0 = LOAD_DOUBLE(TAYLOR_COEFF_TAN[last_taylor_coeff]);
 
     for (int j = taylor_loop_iteration; j >= 1; j-=1) {
-      SDOUBLE coeff = LOAD_DOUBLE(TAYLOR_COEFF_TAN[j]);
+      const SDOUBLE coeff = LOAD_DOUBLE(TAYLOR_COEFF_TAN[j]);
       result_q0 = FMADD_PD(result_q0, x_square, coeff);
     }
 
@@ -271,7 +265,7 @@ void tan_simd(double *input, double *res, size_t n) {
     /* ---- Calculation for fourth range ---- */
     SDOUBLE result_q3 = DIV_DOUBLE_S(one, result_q0);
 
-    result = FMADD_PD(result_q0, in_q0, result);
+    SDOUBLE result = MUL_DOUBLE_S(result_q0, in_q0);
     result = FMADD_PD(result_q1, in_q1, result);
     result = FMADD_PD(result_q2, in_q2, result);
     result = FMADD_PD(result_q3, in_q3, result);

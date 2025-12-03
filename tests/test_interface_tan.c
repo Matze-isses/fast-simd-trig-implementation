@@ -70,6 +70,7 @@ void speed_test(double *test_values, double *own_results, size_t test_size) {
   glibc_execution_ms = duration_ms1(clk);
   printf("GLIBC Time CC: %.17g\n", glibc_execution_ms);
 
+
   free(glibc_results);
 }
 
@@ -182,9 +183,6 @@ int main(int argc, char *argv[]) {
   }
 
   srand((unsigned)time(NULL));
-
-
-
   
   if (n != 0) {
     double *speed_test_values = malloc(n * sizeof(double));

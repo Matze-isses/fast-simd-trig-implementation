@@ -20,6 +20,7 @@
 #define MUL_DOUBLE_S _mm256_mul_pd
 #define DIV_DOUBLE_S _mm256_div_pd
 
+
 #define ADD_DOUBLE_S _mm256_add_pd
 #define SUB_DOUBLE_S _mm256_sub_pd
 
@@ -27,6 +28,7 @@
 
 // for (a, b, c) does return (a * b) + c
 #define FMADD_PD _mm256_fmadd_pd 
+
 #define CEIL_PD _mm256_ceil_pd
 
 #define ABS_PD(a) \
