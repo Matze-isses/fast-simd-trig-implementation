@@ -158,9 +158,8 @@ void sec_mid_range(double input, double *res) {
 }
 
 
-void tan_simd(double *input, double *res, size_t n, int prec) {
+void tan_simd(double *input, double *res, size_t n) {
   int simd_doubles = 4;
-  init_first_mid_lagrange_table();
 
   const SDOUBLE one_over_pi_8 = LOAD_DOUBLE(1/M_PI_8);
   const SDOUBLE m_pi_2 = LOAD_DOUBLE(M_PI_2);
@@ -224,7 +223,6 @@ void tan_simd(double *input, double *res, size_t n, int prec) {
     SDOUBLE q1_reduction = MUL_DOUBLE_S(x, neg_half);
     x = FMADD_PD(q1_reduction, in_q1, x);
     x = FMADD_PD(q1_reduction, in_q2, x);
-
     
     /* ---- Calculation for first range ---- */
     const SDOUBLE x_square = MUL_DOUBLE_S(x, x);
@@ -289,7 +287,7 @@ void tan_simd(double *input, double *res, size_t n, int prec) {
 
   int num_left_over = (n % 4);
 
-  for (size_t i = n - num_left_over; i < (int)n; i++) {
+  for (size_t i = n - num_left_over; i < n; i++) {
    if (input[i] < M_PI_8) {
       start_of_range(input[i], &res[i]);
 

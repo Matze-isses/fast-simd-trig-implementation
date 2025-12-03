@@ -77,5 +77,5 @@
 #endif
 
 void sin_simd(double *input, double *res, size_t n, double prec);
-void tan_simd(double *input, double *res, size_t n, int prec);
+void tan_simd(double *input, double *res, size_t n);
 #endif
