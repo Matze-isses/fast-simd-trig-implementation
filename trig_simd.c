@@ -123,7 +123,7 @@ static inline int taylor_degree_from_prec(double max_input, double req_prec) {
     return used_coeffs;
 }
 
-void sin_simd(double *input, double *res, size_t n, double prec) {
+void sin_simd(double *input, double *res, size_t n) {
   int taylor_degree = 19;
 
   const int taylor_last_coeff = taylor_degree - 1;

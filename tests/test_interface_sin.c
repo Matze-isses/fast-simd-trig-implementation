@@ -7,38 +7,192 @@
 #include <stdlib.h>
 #include "test_interface.h"
 #include "../trig_simd.h"
+
 #include "../cmeasure/cmeasure.h"
 #include "../cmeasure/CrystalClockInC.h"
 
+
+void speed_test(double *test_values, double *own_results, size_t test_size) {
+  uint64_t own_execution_cycles_warmup = 0, own_execution_cycles = 0;
+  double own_execution_ms_warmup = 0, own_execution_ms = 0, glibc_execution_ms = 0;
+  double own_time_old_clock = -1.0, glibc_time_old_clock = -1.0;
+  struct CrystalClock clk;
+  clk._freq = frequency();
+
+
+  /* ---- WARMUP ---- */ 
+  START_TCLOCK;
+  sin_simd(test_values, own_results, test_size);
+  own_execution_ms_warmup = GET_TCLOCK;
+
+  printf("WARMUP Time OC: %.17g\n", own_execution_ms_warmup);
+
+
+  clk._begin = current();
+  sin_simd(test_values, own_results, test_size);
+  clk._end   = current();
+
+  own_execution_ms_warmup = duration_ms1(clk);
+  printf("WARMUP Time CC: %.17g\n\n", own_execution_ms_warmup);
+
+
+  /* ---- Own Results ---- */
+  START_TCLOCK;
+  sin_simd(test_values, own_results, test_size);
+  own_time_old_clock = GET_TCLOCK;
+
+  printf("Own   Time OC: %.17g\n", own_time_old_clock);
+
+
+  clk._begin = current();
+  sin_simd(test_values, own_results, test_size);
+  clk._end   = current();
+
+  own_execution_ms = duration_ms1(clk);
+  printf("Own   Time CC: %.17g\n\n", own_execution_ms);
+
+
+
+  /* ---- GLIBC Results ---- */
+  // Written last to obtain here the best case for glibc, where mine could still be in warmup
+  double *glibc_results = malloc(test_size * sizeof(double));
+
+  START_TCLOCK;
+  for (size_t i = 0; i < test_size; i++) { glibc_results[i] = sin(test_values[i]); }
+  glibc_time_old_clock = GET_TCLOCK;
+
+  printf("GLIBC Time OC: %.17g\n", glibc_time_old_clock);
+
+  clk._begin = current();
+  for (size_t i = 0; i < test_size; i++) { glibc_results[i] = sin(test_values[i]); }
+  clk._end   = current();
+
+  glibc_execution_ms = duration_ms1(clk);
+  printf("GLIBC Time CC: %.17g\n", glibc_execution_ms);
+
+  free(glibc_results);
+}
+
+
+void quadrant_error_test(size_t n) {
+
+  /* bounds: [0, pi/8], [pi/8, pi/4], [pi/4, 3*pi/8], [3*pi/8, pi/2] */
+  double bounds[5] = {
+    0.0,
+    M_PI / 8.0,
+    M_PI / 4.0,
+    3.0 * M_PI / 8.0,
+    M_PI / 2.0
+  };
+
+  const char *interval_names[4] = {
+    "[0, pi/8]",
+    "[pi/8, pi/4]",
+    "[pi/4, 3pi/8]",
+    "[3pi/8, pi/2]"
+  };
+
+  printf("==============================================================================================================\n");
+  printf("Quadrant Error Analysis for n = %d\n", (int)n);
+  printf("==============================================================================================================\n\n");
+
+  printf("+----------------+----------------+-------------------------+-------------------------+\n");
+  printf("| Interval       | Implementation | Max Error               | Avg Abs Error           |\n");
+  printf("+----------------+----------------+-------------------------+-------------------------+\n");
+
+  for (int q = 0; q < 4; ++q) {
+    double lower = bounds[q];
+    double upper = bounds[q + 1];
+
+    double *test_values    = malloc((size_t)n * sizeof(double));
+    double *own_results    = malloc((size_t)n * sizeof(double));
+    double *glibc_results  = malloc((size_t)n * sizeof(double));
+
+    if (!test_values || !own_results || !glibc_results) {
+      perror("malloc");
+      free(test_values);
+      free(own_results);
+      free(glibc_results);
+      return;
+    }
+
+    /* generate random inputs in the given sub-interval */
+    fill_uniform(lower, upper, n, test_values);
+
+    /* compute results */
+    sin_simd(test_values, own_results, n);
+    for (size_t i = 0; i < n; ++i) {
+      glibc_results[i] = sin(test_values[i]);
+    }
+
+    /* error metrics */
+    double abs_error_own, max_error_own, value_max_error_own;
+    double abs_error_glibc, max_error_glibc, value_max_error_glibc;
+
+    compare_results_sin(test_values, own_results,
+                        &abs_error_own, &max_error_own, &value_max_error_own, n);
+    compare_results_sin(test_values, glibc_results,
+                        &abs_error_glibc, &max_error_glibc, &value_max_error_glibc, n);
+
+    double avg_error_own   = abs_error_own   / (double)n;
+    double avg_error_glibc = abs_error_glibc / (double)n;
+
+    /* print table rows */
+    printf("| %-14s | %-14s | % .17g | % .17g |\n",
+           interval_names[q], "own",   max_error_own,   avg_error_own);
+    printf("| %-14s | %-14s | % .17g | % .17g |\n",
+           "",               "glibc", max_error_glibc, avg_error_glibc);
+
+    printf("+----------------+----------------+-------------------------+-------------------------+\n");
+
+    free(test_values);
+    free(own_results);
+    free(glibc_results);
+  }
+
+  printf("\n");
+}
+
+
 int main(int argc, char *argv[]) {
+
   if (argc < 3) {
     fprintf(stderr, "Usage: %s n lower upper\n", argv[0]);
     return 1;
   }
 
   int n = atoi(argv[1]);
+  if (n % 4 != 0) { n = n + (4 - (n % 4)); }
+
   double lower = atof(argv[2]);
   double upper = atof(argv[3]);
 
-  bool eval_glibc = true;
+  /* NEW: special mode – only quadrant error test when lower == upper */
+  if (lower == upper) {
+    quadrant_error_test(n);
+    return 0;
+  }
 
-  int test_size = (argc > 4) ? atoi(argv[4]) : n;
+  const bool eval_glibc = true;
+  bool eval_ranges = false;
+
+
+  size_t test_size = (argc > 4) ? atoi(argv[4]) : (size_t)n;
+
 
   printf("\n Test Setup \n----------------------------------------------------------------------------------------------------\n");
   printf("Input Interval:                       [%f, %f]\n", lower, upper);
   printf("Number of inputs (speed test):        n=%d\n", n);
-  printf("Number of inputs (error calculation): n=%d\n", test_size);
+  printf("Number of inputs (error calculation): n=%d\n", (int)test_size);
   printf("----------------------------------------------------------------------------------------------------\n\n");
 
   srand((unsigned)time(NULL));
 
-  double *test_values = malloc(n * sizeof(double));
+  double *test_values = malloc((size_t)n * sizeof(double));
 
-  double *correct_results = malloc(n * sizeof(double));
-  double *own_results = malloc(n * sizeof(double));
-  double *glibc_results = malloc(n * sizeof(double));
-
-  double precision = 1e-13;
+  double *correct_results = malloc((size_t)n * sizeof(double));
+  double *own_results = malloc((size_t)n * sizeof(double));
+  double *glibc_results = malloc((size_t)n * sizeof(double));
 
 
   if (!test_values) {
@@ -47,65 +201,17 @@ int main(int argc, char *argv[]) {
   }
 
   fill_uniform(lower, upper, n, test_values);
-
-  // user information for the current state of the script
-  printf("Test values are generated! Starting calculation of correct results.\n");
-
-  // Cristal Clock Setup
-  uint64_t own_execution_cycles_warmup = 0, own_execution_cycles = 0;
-  double own_execution_ms_warmup = 0, own_execution_ms = 0;
-  struct CrystalClock clk;
-  clk._freq = frequency();
-
-  printf("\n -------- Own Script WARMUP Execution ---------- \n\n");
-  clk._begin = current();
-
-  sin_simd(test_values, own_results, n, precision);
-
-  clk._end   = current();
-  printf("\n ------- End Own Script WARMUP Execution ------- \n\n");
-
-  own_execution_cycles_warmup = own_execution_cycles_warmup + cycles1(clk);
-  own_execution_ms_warmup = own_execution_ms_warmup + duration_ms1(clk);
-  printf("WARMUP Execution Time Cristal Clock MS: %.17g\n", own_execution_ms_warmup);
-
-
-  printf("\n -------- Own Script Own Clock Execution ---------- \n\n");
-  START_TCLOCK;
-  sin_simd(test_values, own_results, n, precision);
-  double own_time = GET_TCLOCK;
-  printf("\n ------- End Own Script Own Clock Execution ------- \n\n");
-
-
-  printf("\n -------- Own Script Cristal Clock Execution ---------- \n\n");
-  clk._begin = current();
-  sin_simd(test_values, own_results, n, precision);
-  clk._end   = current();
-  printf("\n ------- End Own Script Cristal Clock Execution ------- \n\n");
-
-  own_execution_ms = duration_ms1(clk);
-  printf("TIME OC: %.17g\n", own_time);
-  printf("TIME CC: %.17g\n", own_execution_ms);
-
-  if (eval_glibc) {
-    START_CLOCK;
-    for (int i = 0; i < n; i++) { glibc_results[i] = sin(test_values[i]); }
-    END_CLOCK("Time needed by glibc (second)               ");
+  test_values[0] = upper;
+  
+  if (test_size == 0) {
+    speed_test(test_values, own_results, n);
   }
-
-
-  /*
-  double total_time = 0.0;
-  for (int i = 0; i < 10; i++) {
-    START_TCLOCK;
-    sin_simd(test_values, own_results, n, 0.1);
-    total_time += GET_TCLOCK;
-  }
-  printf("\n10 Evaluations for the own implementation took on average %.17g ms\n", total_time/10);
-  */
 
   // precision test
   if (test_size > 0) {
+    sin_simd(test_values, own_results, test_size);
+    for (size_t i = 0; i < test_size; i++) { glibc_results[i] = sin(test_values[i]); }
+
     // user information for the current state of the script
     printf("\nThe results are obtained! Starting error calculation.\n");
 
@@ -115,13 +221,12 @@ int main(int argc, char *argv[]) {
 
     double *test_values_partial = malloc(test_size * sizeof(double));
 
-    for (int i = 0; i < test_size; i++) {
+    for (size_t i = 0; i < test_size; i++) {
       correct_results_partial[i] = correct_results[i];
       glibc_results_partial[i] = glibc_results[i];
       own_results_partial[i] = own_results[i];
       test_values_partial[i] = test_values[i];
     }
-
     double abs_error, abs_error_glibc, max_error, max_error_glibc, value_max_error, value_max_error_glibc;
 
     compare_results_sin(test_values_partial, own_results_partial, &abs_error, &max_error, &value_max_error, test_size);
@@ -131,10 +236,10 @@ int main(int argc, char *argv[]) {
     printf("Max Error glibc: %.17g;   At Value %.17g\n\n", max_error_glibc, value_max_error_glibc);
 
     printf("Accumulated Absolut Error Own   Results: %.17g\n", abs_error);
-    printf("Accumulated Absolut Error glibc Results: %.17g\n\n", abs_error_glibc);
+    printf("Accumulated Absolut Error glibc Results: %.17g\n", abs_error_glibc);
 
-    printf("Mean Absolut Error Own   Results: %.17g\n", abs_error/test_size);
-    printf("Mean Absolut Error glibc Results: %.17g\n\n", abs_error_glibc/test_size);
+    printf("\nAbsolut Error Own   Results: %.17g\n", abs_error/test_size);
+    printf("Absolut Error glibc Results: %.17g\n", abs_error_glibc/test_size);
 
     free(correct_results_partial);
     free(glibc_results_partial);
@@ -146,9 +251,5 @@ int main(int argc, char *argv[]) {
   free(correct_results);
   free(glibc_results);
   free(own_results);
-
-
   return 0;
 }
-
-// gcc ./tests/test_interface_sin.c ./tests/value_generation.c ./tests/trig_arb_comparison.c ./trig_simd.c ./tests/test_object.c -o test -lm -mavx -mavx2 -mfma -O2 -lflint -Wextra && ./test 12 0 100 0

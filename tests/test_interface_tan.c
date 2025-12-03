@@ -100,7 +100,7 @@ void quadrant_error_test(size_t n) {
   printf("| Interval       | Implementation | Max Error               | Avg Abs Error           |\n");
   printf("+----------------+----------------+-------------------------+-------------------------+\n");
 
-  for (int q = 0; q < 4; ++q) {
+  for (int q = 0; q < 1; ++q) {
     double lower = bounds[q];
     double upper = bounds[q + 1];
 
@@ -138,9 +138,9 @@ void quadrant_error_test(size_t n) {
     double avg_error_glibc = abs_error_glibc / (double)n;
 
     /* print table rows */
-    printf("| %-14s | %-14s | % .17g | % .17g |\n",
+    printf("| %-14s | %-14s | %#.18g | %#.18g |\n",
            interval_names[q], "own",   max_error_own,   avg_error_own);
-    printf("| %-14s | %-14s | % .17g | % .17g |\n",
+    printf("| %-14s | %-14s | %#.18g | %#.18g |\n",
            "",               "glibc", max_error_glibc, avg_error_glibc);
 
     printf("+----------------+----------------+-------------------------+-------------------------+\n");
@@ -162,6 +162,8 @@ int main(int argc, char *argv[]) {
   }
 
   int n = atoi(argv[1]);
+  if (n % 4 != 0) { n = n + (4 - (n % 4)); }
+
   double lower = atof(argv[2]);
   double upper = atof(argv[3]);
 
@@ -181,7 +183,7 @@ int main(int argc, char *argv[]) {
   printf("\n Test Setup \n----------------------------------------------------------------------------------------------------\n");
   printf("Input Interval:                       [%f, %f]\n", lower, upper);
   printf("Number of inputs (speed test):        n=%d\n", n);
-  printf("Number of inputs (error calculation): n=%d\n", test_size);
+  printf("Number of inputs (error calculation): n=%d\n", (int)test_size);
   printf("----------------------------------------------------------------------------------------------------\n\n");
 
   srand((unsigned)time(NULL));

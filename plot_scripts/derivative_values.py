@@ -73,9 +73,14 @@ if __name__ == "__main__":
         error_dist.append(x)
         one_over_fak.append(1/fak)
 
-    x = np.pi/4 
+    x = 0
+    fak = 1
     for n in range(1, max_degree):
-        error_der.append(tan_nth_derivative(n, x))
+        fak *= (n)
+        derivative = tan_nth_derivative(n, x)
+        error_der.append(derivative)
+        taylor_coeff = derivative / fak
+        print(taylor_coeff)
 
     print("Degree; Distance Error; Derivative Error; One Over Faktorial; Total Error")
     for n, ind, der, fak in zip(range(1, max_degree), error_dist, error_der, one_over_fak):
