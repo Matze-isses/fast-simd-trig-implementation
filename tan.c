@@ -245,7 +245,6 @@ void tan_simd(double *input, double *res, size_t n, int prec) {
 
     /* ---- Calculation for thierd range ---- */
     SDOUBLE result_q2 = DIV_DOUBLE_S(one, result_q1);
-
     
     /* ---- Calculation for fourth range ---- */
     SDOUBLE from_behind_square = MUL_DOUBLE_S(from_behind, from_behind);
