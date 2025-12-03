@@ -215,6 +215,7 @@ void tan_simd(double *input, double *res, size_t n) {
     in_q2 = MUL_DOUBLE_S(in_q2, half);
     in_q2 = FLOOR_DOUBLE_S(in_q2);
 
+
     // 1 if quadrant == 3 else 0
     SDOUBLE in_q3 = SUB_DOUBLE_S(quadrant, one);
     in_q3 = ABS_PD(in_q3);
