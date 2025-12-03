@@ -30,8 +30,8 @@ double TAYLOR_COEFF_TAN[] = {
   9.691537956929451e-05,
   3.927832388331683e-05,
   1.5918905069328964e-05,
-  6.451689215655431e-06,  /* 6.451689215655431e-06 */
-  2.6147711512907546e-06, /* 2.6147711512907546e-06 */ // <-- Current last
+  6.451689215655431e-06,
+  2.6147711512907546e-06,
   1.0597268320104656e-06,
   4.2949110782738063e-07,
   1.7406618963571645e-07,
@@ -183,6 +183,27 @@ void tan_simd(double *input, double *res, size_t n) {
   const SDOUBLE half = LOAD_DOUBLE(0.5);
   const SDOUBLE one = LOAD_DOUBLE(1.0);
   const SDOUBLE two = LOAD_DOUBLE(2.0);
+
+  // taylor poly 13 degree is 1 % wors in the first 2 then 14 degree quadrants equal in last 2 
+  // taylor 15 does not change any
+  // therefore used 13-th degree
+
+  const SDOUBLE coeff0 = one;
+  const SDOUBLE coeff1 = LOAD_DOUBLE(0.3333333333333333);
+  const SDOUBLE coeff2 = LOAD_DOUBLE(0.13333333333333333);
+  const SDOUBLE coeff3 = LOAD_DOUBLE(0.05396825396825397);
+  const SDOUBLE coeff4 = LOAD_DOUBLE(0.021869488536155203);
+  const SDOUBLE coeff5 = LOAD_DOUBLE(0.008863235529902197);
+  const SDOUBLE coeff6 = LOAD_DOUBLE(0.003592128036572481);
+  const SDOUBLE coeff7 = LOAD_DOUBLE(0.0014558343870513183);
+  const SDOUBLE coeff8 = LOAD_DOUBLE(0.000590027440945586);
+  const SDOUBLE coeff9 = LOAD_DOUBLE(0.00023912911424355248);
+  const SDOUBLE coeff10 = LOAD_DOUBLE(9.691537956929451e-05);
+  const SDOUBLE coeff11 = LOAD_DOUBLE(3.927832388331683e-05);
+  const SDOUBLE coeff12 = LOAD_DOUBLE(1.5918905069328964e-05);
+  const SDOUBLE coeff13 = LOAD_DOUBLE(6.451689215655431e-06);
+  const SDOUBLE coeff14 = LOAD_DOUBLE(2.6147711512907546e-06);
+
   
   for (int i = 0; i < (int) n; i += 4) {
     SDOUBLE x   = LOAD_DOUBLE_VEC(&input[i]);
@@ -216,11 +237,11 @@ void tan_simd(double *input, double *res, size_t n) {
     const SDOUBLE in_q1   = FLOOR_DOUBLE_S(in_q1_2);
     const SDOUBLE in_q2   = FLOOR_DOUBLE_S(in_q2_2);
 
+    const SDOUBLE not_in_q3 = SUB_DOUBLE_S(one, in_q3);
 
     // Mirror it to move it to range 1
     const SDOUBLE q2_reduction_1 = MUL_DOUBLE_S(from_behind, in_q2);
     const SDOUBLE q2_reduction = SUB_DOUBLE_S(q2_reduction_1, x);
-
     x = FMADD_PD(q2_reduction, in_q2, x);
     // x = q2_reduction if q2_reduction != 0 else x
 
@@ -235,14 +256,20 @@ void tan_simd(double *input, double *res, size_t n) {
     
     /* ---- Calculation for first range ---- */
     const SDOUBLE x_square = MUL_DOUBLE_S(x, x);
-    SDOUBLE result_q0 = LOAD_DOUBLE(TAYLOR_COEFF_TAN[last_taylor_coeff]);
 
-    for (int j = taylor_loop_iteration; j >= 1; j-=1) {
-      const SDOUBLE coeff = LOAD_DOUBLE(TAYLOR_COEFF_TAN[j]);
-      result_q0 = FMADD_PD(result_q0, x_square, coeff);
-    }
+    const SDOUBLE result_q0_1 = FMADD_PD(coeff13, x_square, coeff12);
+    const SDOUBLE result_q0_2 = FMADD_PD(result_q0_1, x_square, coeff11);
+    const SDOUBLE result_q0_3 = FMADD_PD(result_q0_2, x_square, coeff10);
+    const SDOUBLE result_q0_4 = FMADD_PD(result_q0_3, x_square, coeff9);
+    const SDOUBLE result_q0_5 = FMADD_PD(result_q0_4, x_square, coeff8);
+    const SDOUBLE result_q0_6 = FMADD_PD(result_q0_5, x_square, coeff7);
+    const SDOUBLE result_q0_7 = FMADD_PD(result_q0_6, x_square, coeff6);
+    const SDOUBLE result_q0_8 = FMADD_PD(result_q0_7, x_square, coeff5);
+    const SDOUBLE result_q0_9 = FMADD_PD(result_q0_8, x_square, coeff4);
+    const SDOUBLE result_q0_10 = FMADD_PD(result_q0_9, x_square, coeff3);
+    const SDOUBLE result_q0_11 = FMADD_PD(result_q0_10, x_square, coeff2);
+    SDOUBLE result_q0 = FMADD_PD(result_q0_11, x_square, coeff1);
 
-    SDOUBLE not_in_q3 = SUB_DOUBLE_S(one, in_q3);
 
     SDOUBLE one_over_from_behind = DIV_DOUBLE_S(one, from_behind);
     SDOUBLE correction_term = MUL_DOUBLE_S(correction, one_over_from_behind);
