@@ -30,8 +30,8 @@ double TAYLOR_COEFF_TAN[] = {
   9.691537956929451e-05,
   3.927832388331683e-05,
   1.5918905069328964e-05,
-  6.451689215655431e-06,
-  2.6147711512907546e-06,
+  5.951689215655431e-06,  /* 6.451689215655431e-06 */
+  5.9147711512907546e-06, /* 2.6147711512907546e-06 */ // <-- Current last
   1.0597268320104656e-06,
   4.2949110782738063e-07,
   1.7406618963571645e-07,
@@ -176,9 +176,8 @@ void tan_simd(double *input, double *res, size_t n) {
   const SDOUBLE m_pi_2 = LOAD_DOUBLE(M_PI_2);
   const SDOUBLE correction = LOAD_DOUBLE(CORRECTION);
 
-  int last_taylor_coeff = 14;
+  int last_taylor_coeff = 13;
   int taylor_loop_iteration = last_taylor_coeff - 1;
-  double test_vec[4] = {0.0, 1.0, 2.0, 3.0};
 
   const SDOUBLE neg_half = LOAD_DOUBLE(-0.5);
   const SDOUBLE half = LOAD_DOUBLE(0.5);
@@ -275,16 +274,6 @@ void tan_simd(double *input, double *res, size_t n) {
     result_q3 = FMADD_PD(result_q3, from_behind_square, first_coeff);
     result_q3 = MUL_DOUBLE_S(result_q3, from_behind);
     result_q3 = DIV_DOUBLE_S(one, result_q3);
-
-
-    /* ---- Final Addup ---- */
-
-    /*
-    PRINT_M256D(result_q0);
-    PRINT_M256D(result_q1);
-    PRINT_M256D(result_q2);
-    PRINT_M256D(result_q3);
-    */
 
     result = FMADD_PD(result_q0, in_q0, result);
     result = FMADD_PD(result_q1, in_q1, result);

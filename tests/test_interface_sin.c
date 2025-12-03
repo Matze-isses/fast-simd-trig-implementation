@@ -96,9 +96,9 @@ void quadrant_error_test(size_t n) {
   printf("Quadrant Error Analysis for n = %d\n", (int)n);
   printf("==============================================================================================================\n\n");
 
-  printf("+----------------+----------------+-------------------------+-------------------------+\n");
-  printf("| Interval       | Implementation | Max Error               | Avg Abs Error           |\n");
-  printf("+----------------+----------------+-------------------------+-------------------------+\n");
+  printf("+----------------+----------------+---------------------------+---------------------------+\n");
+  printf("| Interval       | Implementation | Max Error                 | Avg Abs Error             |\n");
+  printf("+----------------+----------------+---------------------------+---------------------------+\n");
 
   for (int q = 0; q < 4; ++q) {
     double lower = bounds[q];
@@ -138,12 +138,12 @@ void quadrant_error_test(size_t n) {
     double avg_error_glibc = abs_error_glibc / (double)n;
 
     /* print table rows */
-    printf("| %-14s | %-14s | % .17g | % .17g |\n",
+    printf("| %-14s | %-14s | %25.17e | %25.17e |\n",
            interval_names[q], "own",   max_error_own,   avg_error_own);
-    printf("| %-14s | %-14s | % .17g | % .17g |\n",
+    printf("| %-14s | %-14s | %25.17e | %25.17e |\n",
            "",               "glibc", max_error_glibc, avg_error_glibc);
 
-    printf("+----------------+----------------+-------------------------+-------------------------+\n");
+    printf("+----------------+----------------+---------------------------+---------------------------+\n");
 
     free(test_values);
     free(own_results);
@@ -167,24 +167,19 @@ int main(int argc, char *argv[]) {
   double lower = atof(argv[2]);
   double upper = atof(argv[3]);
 
-  /* NEW: special mode – only quadrant error test when lower == upper */
-  if (lower == upper) {
-    quadrant_error_test(n);
-    return 0;
-  }
-
-  const bool eval_glibc = true;
-  bool eval_ranges = false;
-
-
-  size_t test_size = (argc > 4) ? atoi(argv[4]) : (size_t)n;
-
 
   printf("\n Test Setup \n----------------------------------------------------------------------------------------------------\n");
   printf("Input Interval:                       [%f, %f]\n", lower, upper);
   printf("Number of inputs (speed test):        n=%d\n", n);
-  printf("Number of inputs (error calculation): n=%d\n", (int)test_size);
   printf("----------------------------------------------------------------------------------------------------\n\n");
+
+  size_t test_size = (argc > 4) ? atoi(argv[4]) : (size_t)n;
+
+  /* NEW: special mode – only quadrant error test when lower == upper */
+  if (lower == upper) {
+    quadrant_error_test(test_size);
+  }
+
 
   srand((unsigned)time(NULL));
 
@@ -200,15 +195,16 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  fill_uniform(lower, upper, n, test_values);
-  test_values[0] = upper;
+  fill_uniform(lower, upper, test_size, test_values);
   
-  if (test_size == 0) {
+  if (n != 0) {
     speed_test(test_values, own_results, n);
   }
 
   // precision test
-  if (test_size > 0) {
+  if (test_size > 0 && lower != upper) {
+    test_values[0] = upper;
+
     sin_simd(test_values, own_results, test_size);
     for (size_t i = 0; i < test_size; i++) { glibc_results[i] = sin(test_values[i]); }
 

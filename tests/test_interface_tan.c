@@ -96,11 +96,11 @@ void quadrant_error_test(size_t n) {
   printf("Quadrant Error Analysis for n = %d\n", (int)n);
   printf("==============================================================================================================\n\n");
 
-  printf("+----------------+----------------+-------------------------+-------------------------+\n");
-  printf("| Interval       | Implementation | Max Error               | Avg Abs Error           |\n");
-  printf("+----------------+----------------+-------------------------+-------------------------+\n");
+  printf("+----------------+----------------+---------------------------+---------------------------+\n");
+  printf("| Interval       | Implementation | Max Error                 | Avg Abs Error             |\n");
+  printf("+----------------+----------------+---------------------------+---------------------------+\n");
 
-  for (int q = 0; q < 1; ++q) {
+  for (int q = 0; q < 4; ++q) {
     double lower = bounds[q];
     double upper = bounds[q + 1];
 
@@ -138,12 +138,12 @@ void quadrant_error_test(size_t n) {
     double avg_error_glibc = abs_error_glibc / (double)n;
 
     /* print table rows */
-    printf("| %-14s | %-14s | %#.18g | %#.18g |\n",
+    printf("| %-14s | %-14s | %25.17e | %25.17e |\n",
            interval_names[q], "own",   max_error_own,   avg_error_own);
-    printf("| %-14s | %-14s | %#.18g | %#.18g |\n",
+    printf("| %-14s | %-14s | %25.17e | %25.17e |\n",
            "",               "glibc", max_error_glibc, avg_error_glibc);
 
-    printf("+----------------+----------------+-------------------------+-------------------------+\n");
+    printf("+----------------+----------------+---------------------------+---------------------------+\n");
 
     free(test_values);
     free(own_results);
@@ -156,6 +156,8 @@ void quadrant_error_test(size_t n) {
 
 int main(int argc, char *argv[]) {
 
+  printf("\033[1A\033[2K\033[1A\033[2K\033[1A\033[2K");
+
   if (argc < 3) {
     fprintf(stderr, "Usage: %s n lower upper\n", argv[0]);
     return 1;
@@ -166,17 +168,6 @@ int main(int argc, char *argv[]) {
 
   double lower = atof(argv[2]);
   double upper = atof(argv[3]);
-
-  /* NEW: special mode – only quadrant error test when lower == upper */
-  if (lower == upper) {
-    quadrant_error_test(n);
-    return 0;
-  }
-
-  const bool eval_glibc = true;
-  bool eval_ranges = false;
-
-
   size_t test_size = (argc > 4) ? atoi(argv[4]) : n;
 
 
@@ -186,51 +177,47 @@ int main(int argc, char *argv[]) {
   printf("Number of inputs (error calculation): n=%d\n", (int)test_size);
   printf("----------------------------------------------------------------------------------------------------\n\n");
 
+  if (lower == upper) {
+    quadrant_error_test(test_size);
+  }
+
   srand((unsigned)time(NULL));
 
-  double *test_values = malloc(n * sizeof(double));
-
-  double *correct_results = malloc(n * sizeof(double));
-  double *own_results = malloc(n * sizeof(double));
-  double *glibc_results = malloc(n * sizeof(double));
 
 
-  if (!test_values) {
-    perror("malloc");
-    return 1;
-  }
-
-  fill_uniform(lower, upper, n, test_values);
-  test_values[0] = upper;
   
-  if (test_size == 0) {
-    speed_test(test_values, own_results, n);
+  if (n != 0) {
+    double *speed_test_values = malloc(n * sizeof(double));
+    double *own_speed_results = malloc(n * sizeof(double));
+
+    fill_uniform(lower, upper, n, speed_test_values);
+    speed_test(speed_test_values, own_speed_results, n);
+
+    free(speed_test_values);
+    free(own_speed_results);
   }
+
 
   // precision test
-  if (test_size > 0) {
+  if (test_size > 0 && upper != lower) {
+    double *test_values = malloc(test_size * sizeof(double));
+
+    double *correct_results = malloc(test_size * sizeof(double));
+    double *own_results = malloc(test_size * sizeof(double));
+    double *glibc_results = malloc(test_size * sizeof(double));
+
+    fill_uniform(lower, upper, test_size, test_values);
+    test_values[0] = upper;
+
     tan_simd(test_values, own_results, test_size);
     for (size_t i = 0; i < test_size; i++) { glibc_results[i] = tan(test_values[i]); }
 
     // user information for the current state of the script
     printf("\nThe results are obtained! Starting error calculation.\n");
-
-    double *correct_results_partial = malloc(test_size * sizeof(double));
-    double *glibc_results_partial = malloc(test_size * sizeof(double));
-    double *own_results_partial = malloc(test_size * sizeof(double));
-
-    double *test_values_partial = malloc(test_size * sizeof(double));
-
-    for (size_t i = 0; i < test_size; i++) {
-      correct_results_partial[i] = correct_results[i];
-      glibc_results_partial[i] = glibc_results[i];
-      own_results_partial[i] = own_results[i];
-      test_values_partial[i] = test_values[i];
-    }
     double abs_error, abs_error_glibc, max_error, max_error_glibc, value_max_error, value_max_error_glibc;
 
-    compare_results_tan(test_values_partial, own_results_partial, &abs_error, &max_error, &value_max_error, test_size);
-    compare_results_tan(test_values_partial, glibc_results_partial, &abs_error_glibc, &max_error_glibc, &value_max_error_glibc, test_size);
+    compare_results_tan(test_values, own_results, &abs_error, &max_error, &value_max_error, test_size);
+    compare_results_tan(test_values, glibc_results, &abs_error_glibc, &max_error_glibc, &value_max_error_glibc, test_size);
 
     printf("Max Error Own:   %.17g;   At Value %.17g\n", max_error, value_max_error);
     printf("Max Error glibc: %.17g;   At Value %.17g\n\n", max_error_glibc, value_max_error_glibc);
@@ -241,15 +228,20 @@ int main(int argc, char *argv[]) {
     printf("\nAbsolut Error Own   Results: %.17g\n", abs_error/test_size);
     printf("Absolut Error glibc Results: %.17g\n", abs_error_glibc/test_size);
 
-    free(correct_results_partial);
-    free(glibc_results_partial);
-    free(own_results_partial);
-    free(test_values_partial);
+
+    free(test_values);
+    free(correct_results);
+    free(glibc_results);
+    free(own_results);
   }
 
-  free(test_values);
-  free(correct_results);
-  free(glibc_results);
-  free(own_results);
   return 0;
 }
+
+// gcc ./cmeasure/cbind_to_hw_thread.c ./cmeasure/cmeasure.c ./cmeasure/CrystalClockInC.c ./trig_simd.c ./tests/test_interface_tan.c ./tests/value_generation.c ./tests/trig_arb_comparison.c ./util/bit_printing.c ./tan.c -o test -lm -mavx -mavx2 -mfma -O2 -lflint -Wextra && ./test 10000000 0 1.570796326794896 10000000
+//
+// Compilation and run on laptop
+//
+//
+// gcc ./cmeasure/cbind_to_hw_thread.c ./cmeasure/cmeasure.c ./cmeasure/CrystalClockInC.c ./trig_simd.c ./tests/test_interface_tan.c ./tests/value_generation.c ./tests/trig_arb_comparison.c ./util/bit_printing.c ./tan.c -o test -lm -mavx -mavx2 -mfma -O2 $(pkg-config --cflags --libs flint) -Wextra && ./test 10000000 0 1.570796326794896 10000000
+//
