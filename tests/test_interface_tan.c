@@ -163,22 +163,22 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  int n = atoi(argv[1]);
-  if (n % 4 != 0) { n = n + (4 - (n % 4)); }
+  int speed_test_size = atoi(argv[1]);
+  if (speed_test_size % 4 != 0) { speed_test_size = speed_test_size + (4 - (speed_test_size % 4)); }
 
   double lower = atof(argv[2]);
   double upper = atof(argv[3]);
-  size_t test_size = (argc > 4) ? atoi(argv[4]) : n;
+  size_t accuracy_test_size = (argc > 4) ? atoi(argv[4]) : speed_test_size;
 
 
   printf("\n Test Setup \n----------------------------------------------------------------------------------------------------\n");
   printf("Input Interval:                       [%f, %f]\n", lower, upper);
-  printf("Number of inputs (speed test):        n=%d\n", n);
-  printf("Number of inputs (error calculation): n=%d\n", (int)test_size);
+  printf("Number of inputs (speed test):        n=%d\n", speed_test_size);
+  printf("Number of inputs (error calculation): n=%d\n", (int)accuracy_test_size);
   printf("----------------------------------------------------------------------------------------------------\n\n");
 
-  if (lower == upper) {
-    quadrant_error_test(test_size);
+  if (accuracy_test_size > 0) {
+    quadrant_error_test(accuracy_test_size);
   }
 
   srand((unsigned)time(NULL));
@@ -186,12 +186,12 @@ int main(int argc, char *argv[]) {
 
 
   
-  if (n != 0) {
-    double *speed_test_values = malloc(n * sizeof(double));
-    double *own_speed_results = malloc(n * sizeof(double));
+  if (speed_test_size != 0) {
+    double *speed_test_values = malloc(speed_test_size * sizeof(double));
+    double *own_speed_results = malloc(speed_test_size * sizeof(double));
 
-    fill_uniform(lower, upper, n, speed_test_values);
-    speed_test(speed_test_values, own_speed_results, n);
+    fill_uniform(lower, upper, speed_test_size, speed_test_values);
+    speed_test(speed_test_values, own_speed_results, speed_test_size);
 
     free(speed_test_values);
     free(own_speed_results);
@@ -199,25 +199,25 @@ int main(int argc, char *argv[]) {
 
 
   // precision test
-  if (test_size > 0 && upper != lower) {
-    double *test_values = malloc(test_size * sizeof(double));
+  if (accuracy_test_size > 0 && speed_test_size == 0) {
+    double *test_values = malloc(accuracy_test_size * sizeof(double));
 
-    double *correct_results = malloc(test_size * sizeof(double));
-    double *own_results = malloc(test_size * sizeof(double));
-    double *glibc_results = malloc(test_size * sizeof(double));
+    double *correct_results = malloc(accuracy_test_size * sizeof(double));
+    double *own_results = malloc(accuracy_test_size * sizeof(double));
+    double *glibc_results = malloc(accuracy_test_size * sizeof(double));
 
-    fill_uniform(lower, upper, test_size, test_values);
+    fill_uniform(lower, upper, accuracy_test_size, test_values);
     test_values[0] = upper;
 
-    tan_simd(test_values, own_results, test_size);
-    for (size_t i = 0; i < test_size; i++) { glibc_results[i] = tan(test_values[i]); }
+    tan_simd(test_values, own_results, accuracy_test_size);
+    for (size_t i = 0; i < accuracy_test_size; i++) { glibc_results[i] = tan(test_values[i]); }
 
     // user information for the current state of the script
     printf("\nThe results are obtained! Starting error calculation.\n");
     double abs_error, abs_error_glibc, max_error, max_error_glibc, value_max_error, value_max_error_glibc;
 
-    compare_results_tan(test_values, own_results, &abs_error, &max_error, &value_max_error, test_size);
-    compare_results_tan(test_values, glibc_results, &abs_error_glibc, &max_error_glibc, &value_max_error_glibc, test_size);
+    compare_results_tan(test_values, own_results, &abs_error, &max_error, &value_max_error, accuracy_test_size);
+    compare_results_tan(test_values, glibc_results, &abs_error_glibc, &max_error_glibc, &value_max_error_glibc, accuracy_test_size);
 
     printf("Max Error Own:   %.17g;   At Value %.17g\n", max_error, value_max_error);
     printf("Max Error glibc: %.17g;   At Value %.17g\n\n", max_error_glibc, value_max_error_glibc);
@@ -225,8 +225,8 @@ int main(int argc, char *argv[]) {
     printf("Accumulated Absolut Error Own   Results: %.17g\n", abs_error);
     printf("Accumulated Absolut Error glibc Results: %.17g\n", abs_error_glibc);
 
-    printf("\nAbsolut Error Own   Results: %.17g\n", abs_error/test_size);
-    printf("Absolut Error glibc Results: %.17g\n", abs_error_glibc/test_size);
+    printf("\nAbsolut Error Own   Results: %.17g\n", abs_error/accuracy_test_size);
+    printf("Absolut Error glibc Results: %.17g\n", abs_error_glibc/accuracy_test_size);
 
 
     free(test_values);
