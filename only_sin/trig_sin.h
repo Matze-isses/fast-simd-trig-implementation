@@ -9,8 +9,6 @@ extern "C" {
 
 __m512d SIN(__m512d X);
 
-#if defined(__AVX512__) && defined(__AVX512F__)
-
 #define SIMD_LENGTH (512)
 
 // Double I/O
@@ -52,7 +50,5 @@ __m512d SIN(__m512d X);
         ), \
         _mm512_setzero_pd() \
     )
-
-#endif
 
 #endif

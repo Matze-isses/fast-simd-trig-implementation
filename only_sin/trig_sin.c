@@ -25,15 +25,50 @@ const double TAYLOR_COEFF_SIN[] = {
   2.9893108271424046e-50,
 };
 
+const double RANG_REDUCTION_CORRECTION = 3.8981718325193755e-17;
+const double RANGE_MAX_SIN = M_PI * 2.0;
+const double MED_RANGE_SIN = M_PI;
+const double SMALL_RANGE_SIN = M_PI_2;
+
+const double ONE_OVER_RANGE_SIN = 1 / RANGE_MAX_SIN;
+const double ONE_OVER_MED_RANGE_SIN = 1 / MED_RANGE_SIN;
+const double ONE_OVER_SMALL_RANGE_SIN = 1 / SMALL_RANGE_SIN;
+
+const double RANGE_CENTER_SIN = 0;
+
+const int SIZE_TAYLOR_COEFF = 20;
 
 __m512d SIN(__m512d X) {
+    int taylor_degree = 19;
+
+    const int taylor_last_coeff = taylor_degree - 1;
+    const int taylor_loop_iteration = taylor_degree - 2;
+
+    const SDOUBLE range_reduction_correction = LOAD_DOUBLE(RANG_REDUCTION_CORRECTION);
+
+    const SDOUBLE spi = LOAD_DOUBLE(M_PI);
+
+    const SDOUBLE two_pi = LOAD_DOUBLE(RANGE_MAX_SIN);
+    const SDOUBLE one_over_2_pi = LOAD_DOUBLE(ONE_OVER_RANGE_SIN);
+
+    const SDOUBLE med_range = LOAD_DOUBLE(MED_RANGE_SIN);
+    const SDOUBLE one_over_med_range = LOAD_DOUBLE(ONE_OVER_MED_RANGE_SIN);
+
+    const SDOUBLE one_over_small_range = LOAD_DOUBLE(ONE_OVER_SMALL_RANGE_SIN);
+
+    const SDOUBLE small_range = LOAD_DOUBLE(SMALL_RANGE_SIN);
+    const SDOUBLE center_point = LOAD_DOUBLE(RANGE_CENTER_SIN);
+
+    const SDOUBLE quadrant_multiplier = LOAD_DOUBLE(-2.0);
+    const SDOUBLE ones = LOAD_DOUBLE(1.0);
+
     // works but is potentially negative
-    const SDOUBLE ranges_away = MUL_DOUBLE_S(x, one_over_2_pi);
+    const SDOUBLE ranges_away = MUL_DOUBLE_S(X, one_over_2_pi);
     const SDOUBLE num_ranges_away = FLOOR_DOUBLE_S(ranges_away);
     const SDOUBLE range_multiple = MUL_DOUBLE_S(num_ranges_away, two_pi);
 
-    SDOUBLE in_outer_range = SUB_DOUBLE_S(x, range_multiple);
-    SDOUBLE correction_term = MUL_DOUBLE_S(x, range_reduction_correction);
+    SDOUBLE in_outer_range = SUB_DOUBLE_S(X, range_multiple);
+    SDOUBLE correction_term = MUL_DOUBLE_S(X, range_reduction_correction);
     in_outer_range = SUB_DOUBLE_S(in_outer_range, correction_term);
 
     // Gives Sign of the Result
