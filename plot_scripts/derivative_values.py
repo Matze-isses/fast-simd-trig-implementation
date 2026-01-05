@@ -63,22 +63,28 @@ if __name__ == "__main__":
     error_dist = []
     error_der = []
     one_over_fak = []
-    max_degree = 50
+    max_degree = 100
+
+    max_x = np.pi/8
+    a = 0 
 
     fak = 1
 
     for i in range(1, max_degree):
         fak *= (i+1)
-        x = (np.pi/4)**(i+1)
-        error_dist.append(x)
-        one_over_fak.append(1/fak)
 
-    x = 0
+        derivative_error = tan_nth_derivative(i+1, max_x)
+        dist_error = abs(a - max_x)**(i+1)
+
+        error_dist.append(dist_error)
+        one_over_fak.append(1/fak)
+        error_der.append(derivative_error)
+
     fak = 1
     for n in range(1, max_degree):
         fak *= (n)
-        derivative = tan_nth_derivative(n, x)
-        error_der.append(derivative)
+
+        derivative = tan_nth_derivative(n, a)
         taylor_coeff = derivative / fak
         print(taylor_coeff)
 

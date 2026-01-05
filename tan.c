@@ -15,7 +15,6 @@
 double CORRECTION = 0.00000000000000006123233995736765;
 double M_PI_8 = M_PI / 8;
 
-// Working until 0.4
 double TAYLOR_COEFF_TAN[] = {
   1.000000000000000,
   0.3333333333333333,
@@ -30,7 +29,7 @@ double TAYLOR_COEFF_TAN[] = {
   9.691537956929451e-05,
   3.927832388331683e-05,
   1.5918905069328964e-05,
-  6.451689215655431e-06,  /* 6.451689215655431e-06 */
+  6.451689215655431e-06,  /* 6.451689215655431e-06 | 27-th degree*/
   2.6147711512907546e-06, /* 2.6147711512907546e-06 */ // <-- Current last
   1.0597268320104656e-06,
   4.2949110782738063e-07,
@@ -253,11 +252,11 @@ void tan_simd(double *input, double *res, size_t n) {
     SDOUBLE one_over_from_behind = DIV_DOUBLE_S(one, from_behind);
     SDOUBLE correction_term = MUL_DOUBLE_S(correction, one_over_from_behind);
     SDOUBLE adjusted_first = ADD_DOUBLE_S(one, correction_term);
-    
     SDOUBLE first_coeff = FMADD_PD(adjusted_first, in_q3, not_in_q3);
     result_q0 = FMADD_PD(result_q0, x_square, first_coeff);
-
     result_q0 = MUL_DOUBLE_S(result_q0, x);
+    /* ---- End first Calculation ---- */
+
 
     /* ---- Readjusting for the second range ---- */
     SDOUBLE nominator = MUL_DOUBLE_S(two, result_q0);
@@ -284,18 +283,7 @@ void tan_simd(double *input, double *res, size_t n) {
   int num_left_over = (n % 4);
 
   for (size_t i = n - num_left_over; i < n; i++) {
-   if (input[i] < M_PI_8) {
-      start_of_range(input[i], &res[i]);
-
-    } else if (input[i] < 2 * M_PI_8) {
-      first_mid_range(input[i], &res[i]);
-
-    } else if (input[i] < 3 * M_PI_8) {
-      sec_mid_range(input[i], &res[i]);
-
-    } else if (input[i] > 3 * M_PI_8){
-      end_of_range(input[i], &res[i]);
-    }
+    res[i] = tan(input[i]);
   }
 
 }
