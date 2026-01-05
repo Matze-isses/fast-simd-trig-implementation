@@ -17,7 +17,6 @@
 void compare_results(double *x, double *y, double *left_over, size_t n) {
     /* Choose a working precision (in bits) for the Arb computations. */
     const slong prec = 256;
-
     /* Arb variables */
     arb_t pi, two_pi;
     arb_t ax;    /* lifted x[i] */
@@ -109,7 +108,7 @@ int main(int argc, char *argv[]) {
 
   double *test_vals = malloc(n * sizeof(double));
   for (int i = 0; i < n; i++) {
-    test_vals[i] = 1000000000000000000 * i * M_PI;
+    test_vals[i] = 100000000 * i * M_PI;
   }
 
   double *res = malloc(n * sizeof(double));
@@ -117,7 +116,12 @@ int main(int argc, char *argv[]) {
   
   do_range_reduction(test_vals, res, n);
   compare_results(test_vals, res, left_over, n);
+
   for (int i = 0; i < n; i++) {
     printf("ORIGIN: %.17g; RESULT: %.17g; LEFT-OVER: %.17g\n", test_vals[i], res[i], left_over[i]);
   }
 }
+
+
+
+
