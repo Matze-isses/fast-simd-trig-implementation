@@ -12,8 +12,6 @@
 #include "./util/bit_printing.h"
 
 
-double CORRECTION = 0.00000000000000006123233995736765;
-double M_PI_8 = M_PI / 8;
 
 double TAYLOR_COEFF_TAN[] = {
   1.000000000000000,
@@ -30,142 +28,8 @@ double TAYLOR_COEFF_TAN[] = {
   3.927832388331683e-05,
   1.5918905069328964e-05,
   6.451689215655431e-06,  /* 6.451689215655431e-06 | 27-th degree*/
-  2.6147711512907546e-06, /* 2.6147711512907546e-06 */ // <-- Current last
-  1.0597268320104656e-06,
-  4.2949110782738063e-07,
-  1.7406618963571645e-07,
-  7.054636946400967e-08,
-  2.859136662305253e-08,
-  1.1587644432798851e-08,
-  4.696295398230901e-09,
-  1.9033368339312746e-09,
-  7.713933635359061e-10,
-  3.1263395458920874e-10
+  2.6147711512907546e-06 /* 2.6147711512907546e-06 */ // <-- Current last
 };
-
-
-#define N_FIRST_MID 17
-
-static const double X_FIRST_MID[17] = {
-    0.39269908169872414,
-    0.3974311529539063,
-    0.4054030240311012,
-    0.4286863854186324,
-    0.4576011079513348,
-    0.487426901464288,
-    0.5407991673806207,
-    0.5723175108611952,
-    0.6115367603429416,
-    0.6435891799153872,
-    0.6768825409954158,
-    0.7002130267439945,
-    0.7267833123145859,
-    0.7490809891502078,
-    0.7665916163094255,
-    0.7796607724399203,
-    0.7853981633974483
-};
-
-static const double Y_FIRST_MID[17] = {
-    0.41421356237309503,
-    0.4197684582474178,
-    0.42917669979674156,
-    0.4570320684430114,
-    0.4924645633683938,
-    0.5300875167665825,
-    0.6005164649453173,
-    0.6442430603066724,
-    0.7012087722833138,
-    0.7501376202189168,
-    0.8035182551172894,
-    0.8426526043282521,
-    0.8891412771435833,
-    0.9298813332611141,
-    0.9630769477832821,
-    0.9885905533499666,
-    1.0000000000000000
-};
-
-static double LAGRANGE_DEN_FIRST_MID[N_FIRST_MID][N_FIRST_MID];
-
-void init_first_mid_lagrange_table(void)
-{
-    for (size_t i = 0; i < N_FIRST_MID; ++i) {
-        for (size_t j = 0; j < N_FIRST_MID; ++j) {
-            if (i == j) {
-                LAGRANGE_DEN_FIRST_MID[i][j] = 0.0;
-            } else {
-                LAGRANGE_DEN_FIRST_MID[i][j] = 1.0 / (X_FIRST_MID[i] - X_FIRST_MID[j]);
-            }
-        }
-    }
-}
-
-void start_of_range(double input, double *res) {
-    double taylor = input;
-    double x_square = taylor * taylor;
-    double result = TAYLOR_COEFF_TAN[13];
-
-    for (int j = 12; j >= 0; j-=1) {
-      double coeff = TAYLOR_COEFF_TAN[j];
-      result = result * x_square + coeff;
-    }
-
-    *res = result * taylor;
-
-}
-
-void end_of_range(double input, double *res) {
-    double from_behind = M_PI_2 - input;
-    double x_square = from_behind * from_behind;
-
-    TAYLOR_COEFF_TAN[0] += CORRECTION * 1/from_behind;
-    double result = TAYLOR_COEFF_TAN[13];
-
-    for (int j = 12; j >= 0; j-=1) {
-      double coeff = TAYLOR_COEFF_TAN[j];
-      result = result * x_square + coeff;
-    }
-
-    result = result * from_behind;
-    *res = 1 / result;
-    TAYLOR_COEFF_TAN[0] = 1.0;
-}
-
-void first_mid_range(double input, double *res) {
-    double result = 0.0;
-
-    for (size_t i = 0; i < N_FIRST_MID; ++i) {
-        double Li = 1.0;
-
-        for (size_t j = 0; j < N_FIRST_MID; ++j) {
-            if (j == i) continue;
-            Li *= (input - X_FIRST_MID[j]) * LAGRANGE_DEN_FIRST_MID[i][j];
-        }
-
-        result += Y_FIRST_MID[i] * Li;
-    }
-
-    *res = result;
-}
-
-void sec_mid_range(double input, double *res) {
-    double result = 0.0;
-    double from_end = M_PI_2 - input;
-
-    for (size_t i = 0; i < N_FIRST_MID; ++i) {
-        double Li = 1.0;
-
-        for (size_t j = 0; j < N_FIRST_MID; ++j) {
-            if (j == i) continue;
-            Li *= (from_end - X_FIRST_MID[j]) * LAGRANGE_DEN_FIRST_MID[i][j];
-        }
-
-        result += Y_FIRST_MID[i] * Li;
-    }
-
-    *res = 1/result;
-}
 
 
 void tan_simd(double *input, double *res, size_t n) {
@@ -173,7 +37,7 @@ void tan_simd(double *input, double *res, size_t n) {
 
   const SDOUBLE one_over_pi_8 = LOAD_DOUBLE(1/M_PI_8);
   const SDOUBLE m_pi_2 = LOAD_DOUBLE(M_PI_2);
-  const SDOUBLE correction = LOAD_DOUBLE(CORRECTION);
+  const SDOUBLE correction = LOAD_DOUBLE(TAN_CORRECTION);
 
   int last_taylor_coeff = 13;
   int taylor_loop_iteration = last_taylor_coeff - 1;
@@ -186,6 +50,9 @@ void tan_simd(double *input, double *res, size_t n) {
   for (int i = 0; i < (int) n; i += 4) {
     SDOUBLE result = LOAD_DOUBLE(0.0);
     SDOUBLE x   = LOAD_DOUBLE_VEC(&input[i]);
+
+    //TODO: RANGE REDUCTION MISSING
+
     SDOUBLE from_behind = SUB_DOUBLE_S(m_pi_2, x);
 
     const SDOUBLE not_floored = MUL_DOUBLE_S(x, one_over_pi_8);
