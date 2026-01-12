@@ -7,6 +7,7 @@
 #define __AVX2__ 1
 #define M_PI_8 (M_PI / 8)
 #define TAN_CORRECTION (0.00000000000000006123233995736765)
+#define RANG_REDUCTION_CORRECTION (3.8981718325193755e-17)
 
 #if defined(__AVX2__)
 
@@ -18,6 +19,8 @@
 #define LOAD_DOUBLE_VEC _mm256_loadu_pd
 #define SIMD_TO_DOUBLE_VEC _mm256_storeu_pd
 
+#define SET_ZERO _mm256_setzero_pd
+
 // Double Operations
 #define MUL_DOUBLE_S _mm256_mul_pd
 #define DIV_DOUBLE_S _mm256_div_pd
@@ -27,9 +30,13 @@
 
 #define FLOOR_DOUBLE_S _mm256_floor_pd
 
+
 // for (a, b, c) does return (a * b) + c
 #define FMADD_PD _mm256_fmadd_pd 
 #define CEIL_PD _mm256_ceil_pd
+#define CMP_PD _mm256_cmp_pd
+#define BLEND_PD _mm256_blendv_pd
+
 
 #define ABS_PD(a) \
     _mm256_max_pd((a), _mm256_mul_pd(_mm256_set1_pd(-1.0), (a)))

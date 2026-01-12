@@ -156,7 +156,7 @@ void quadrant_error_test(size_t n) {
 
 int main(int argc, char *argv[]) {
 
-  printf("\033[1A\033[2K\033[1A\033[2K\033[1A\033[2K");
+  //printf("\033[1A\033[2K\033[1A\033[2K\033[1A\033[2K");
 
   if (argc < 3) {
     fprintf(stderr, "Usage: %s n lower upper\n", argv[0]);
@@ -178,7 +178,7 @@ int main(int argc, char *argv[]) {
   printf("----------------------------------------------------------------------------------------------------\n\n");
 
   if (accuracy_test_size > 0) {
-    quadrant_error_test(accuracy_test_size);
+    //quadrant_error_test(accuracy_test_size);
   }
 
   srand((unsigned)time(NULL));

@@ -18,7 +18,7 @@ const double END_FRIENDLY_RANGE = M_PI * 2.0 * INT_MAX;
 
 // ---------- SIN -----------
 
-const double RANG_REDUCTION_CORRECTION = 3.8981718325193755e-17;
+// const double RANG_REDUCTION_CORRECTION = 3.8981718325193755e-17;
 const double RANGE_MAX_SIN = M_PI * 2.0;
 const double MED_RANGE_SIN = M_PI;
 const double SMALL_RANGE_SIN = M_PI_2;

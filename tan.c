@@ -64,9 +64,12 @@ static inline int any_lane_has_exponent_bit(__m256d x, int exp_bit_index) {
 void tan_simd(double *input, double *res, size_t n) {
   int simd_doubles = 4;
 
+  const SDOUBLE pi_2 = LOAD_DOUBLE(M_PI_2);
   const SDOUBLE one_over_pi_8 = LOAD_DOUBLE(1/M_PI_8);
-  const SDOUBLE m_pi_2 = LOAD_DOUBLE(M_PI_2);
+  const SDOUBLE one_over_pi_2 = LOAD_DOUBLE(1/M_PI_2);
+
   const SDOUBLE correction = LOAD_DOUBLE(TAN_CORRECTION);
+  const SDOUBLE range_reduction_correction = LOAD_DOUBLE(RANG_REDUCTION_CORRECTION);
 
   int last_taylor_coeff = 13;
   int taylor_loop_iteration = last_taylor_coeff - 1;
@@ -79,12 +82,31 @@ void tan_simd(double *input, double *res, size_t n) {
   for (int i = 0; i < (int) n; i += 4) {
     SDOUBLE result = LOAD_DOUBLE(0.0);
     SDOUBLE x   = LOAD_DOUBLE_VEC(&input[i]);
-//  int hit = any_lane_has_exponent_bit(x, 5);
-//  printf("%d\n", hit);
 
-    //TODO: RANGE REDUCTION MISSING
+    const SDOUBLE ranges_away = MUL_DOUBLE_S(x, one_over_pi_2);
+    const SDOUBLE num_ranges_away = FLOOR_DOUBLE_S(ranges_away);
+    const SDOUBLE range_multiple = MUL_DOUBLE_S(num_ranges_away, pi_2);
 
-    SDOUBLE from_behind = SUB_DOUBLE_S(m_pi_2, x);
+    SDOUBLE in_outer_range = SUB_DOUBLE_S(x, range_multiple);
+    SDOUBLE range_reduction_correction_term = MUL_DOUBLE_S(x, range_reduction_correction);
+    x = SUB_DOUBLE_S(in_outer_range, range_reduction_correction_term);
+
+    // Check if even
+    //  Default Range Reduction
+    const SDOUBLE sign_adjust0 = MUL_DOUBLE_S(num_ranges_away, half);
+    const SDOUBLE sign_adjust1 = FLOOR_DOUBLE_S(sign_adjust0);
+    const SDOUBLE sign_adjust2 = MUL_DOUBLE_S(sign_adjust1, two);
+    const SDOUBLE in_odd_range = SUB_DOUBLE_S(num_ranges_away, sign_adjust2);
+    const SDOUBLE sign_adjust4 = MUL_DOUBLE_S(in_odd_range, two);
+    const SDOUBLE sign_adjust = SUB_DOUBLE_S(one, sign_adjust4);
+
+    SDOUBLE from_behind = SUB_DOUBLE_S(pi_2, x);
+
+    SDOUBLE mask_odd_range = CMP_PD(in_odd_range, SET_ZERO(), _CMP_NEQ_OQ);
+    x = BLEND_PD(x, from_behind, mask_odd_range);
+
+    from_behind = SUB_DOUBLE_S(pi_2, x);
+    
 
     const SDOUBLE not_floored = MUL_DOUBLE_S(x, one_over_pi_8);
     const SDOUBLE quadrant = FLOOR_DOUBLE_S(not_floored);
@@ -168,14 +190,14 @@ void tan_simd(double *input, double *res, size_t n) {
     /* ---- Calculation for fourth range ---- */
     SDOUBLE result_q3 = DIV_DOUBLE_S(one, result_q0);
 
+    // This is faster the using mask
     result = FMADD_PD(result_q0, in_q0, result);
     result = FMADD_PD(result_q1, in_q1, result);
     result = FMADD_PD(result_q2, in_q2, result);
     result = FMADD_PD(result_q3, in_q3, result);
-
-
+    
+    result = MUL_DOUBLE_S(sign_adjust, result);
     SIMD_TO_DOUBLE_VEC(&res[i], result);
-
   }
 
   int num_left_over = (n % 4);
@@ -193,7 +215,7 @@ void safe_tan_simd(double *input, double *res, size_t n) {
   int simd_doubles = 4;
 
   const SDOUBLE one_over_pi_8 = LOAD_DOUBLE(1/M_PI_8);
-  const SDOUBLE m_pi_2 = LOAD_DOUBLE(M_PI_2);
+  const SDOUBLE pi_2 = LOAD_DOUBLE(M_PI_2);
   const SDOUBLE correction = LOAD_DOUBLE(TAN_CORRECTION);
 
   int last_taylor_coeff = 13;
@@ -210,7 +232,7 @@ void safe_tan_simd(double *input, double *res, size_t n) {
 
     //TODO: RANGE REDUCTION MISSING
 
-    SDOUBLE from_behind = SUB_DOUBLE_S(m_pi_2, x);
+    SDOUBLE from_behind = SUB_DOUBLE_S(pi_2, x);
 
     const SDOUBLE not_floored = MUL_DOUBLE_S(x, one_over_pi_8);
     const SDOUBLE quadrant = FLOOR_DOUBLE_S(not_floored);
