@@ -62,7 +62,7 @@ static inline int any_lane_has_exponent_bit(__m256d x, int exp_bit_index) {
 
 
 void tan_simd(double *input, double *res, size_t n) {
-  int simd_doubles = 4;
+  int simd_doubles = SIMD_LENGTH / 64;
 
   const SDOUBLE pi_2 = LOAD_DOUBLE(M_PI_2);
   const SDOUBLE one_over_pi_8 = LOAD_DOUBLE(1/M_PI_8);
@@ -81,7 +81,7 @@ void tan_simd(double *input, double *res, size_t n) {
   const SDOUBLE one = LOAD_DOUBLE(1.0);
   const SDOUBLE two = LOAD_DOUBLE(2.0);
   
-  for (int i = 0; i < (int) n; i += 4) {
+  for (int i = 0; i < (int) n; i += simd_doubles) {
     SDOUBLE result = LOAD_DOUBLE(0.0);
     SDOUBLE x   = LOAD_DOUBLE_VEC(&input[i]);
 
@@ -201,7 +201,7 @@ void tan_simd(double *input, double *res, size_t n) {
     SIMD_TO_DOUBLE_VEC(&res[i], result);
   }
 
-  int num_left_over = (n % 4);
+  int num_left_over = (n % simd_doubles);
 
   for (size_t i = n - num_left_over; i < n; i++) {
     res[i] = tan(input[i]);
