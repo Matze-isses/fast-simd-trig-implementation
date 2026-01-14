@@ -137,3 +137,39 @@ void compare_results_tan(double *x, double *y, double *cum_error, double *max_er
 
   flint_cleanup();
 }
+
+
+void compare_results_tan_err(double *x, double *y, double *err, size_t n) {
+  for (int i = 0; i < (int)n; i++) {
+    // Initialize all Variables
+    arb_t arb_x;
+    arb_t arb_y;
+    arb_t true_result;
+    arb_t difference;
+
+    arb_init(arb_x);
+    arb_init(arb_y);
+    arb_init(true_result);
+    arb_init(difference);
+
+    arb_set_d(arb_x, x[i]);
+    arb_set_d(arb_y, y[i]);
+
+    // calculate tan
+    arb_tan(true_result, arb_x, PRECISION);
+
+    // get the difference: tan(x) - y
+    arb_sub(difference, true_result, arb_y, PRECISION);
+
+    // store as double
+    err[i] = arf_get_d(arb_midref(difference), ARF_RND_NEAR);
+
+    // cleanup
+    arb_clear(arb_x);
+    arb_clear(arb_y);
+    arb_clear(true_result);
+    arb_clear(difference);
+  }
+
+  flint_cleanup();
+}

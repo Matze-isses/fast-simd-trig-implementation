@@ -206,7 +206,6 @@ void tan_simd(double *input, double *res, size_t n) {
   for (size_t i = n - num_left_over; i < n; i++) {
     res[i] = tan(input[i]);
   }
-
 }
 
 
