@@ -178,7 +178,7 @@ int main(int argc, char *argv[]) {
   printf("----------------------------------------------------------------------------------------------------\n\n");
 
   if (accuracy_test_size > 0) {
-    //quadrant_error_test(accuracy_test_size);
+    quadrant_error_test(accuracy_test_size);
   }
 
   srand((unsigned)time(NULL));

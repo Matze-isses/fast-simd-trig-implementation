@@ -74,6 +74,8 @@ void tan_simd(double *input, double *res, size_t n) {
   int last_taylor_coeff = 13;
   int taylor_loop_iteration = last_taylor_coeff - 1;
 
+  const SDOUBLE zero = SET_ZERO();
+
   const SDOUBLE neg_half = LOAD_DOUBLE(-0.5);
   const SDOUBLE half = LOAD_DOUBLE(0.5);
   const SDOUBLE one = LOAD_DOUBLE(1.0);
@@ -102,8 +104,10 @@ void tan_simd(double *input, double *res, size_t n) {
 
     SDOUBLE from_behind = SUB_DOUBLE_S(pi_2, x);
 
-    SDOUBLE mask_odd_range = CMP_PD(in_odd_range, SET_ZERO(), _CMP_NEQ_OQ);
-    x = BLEND_PD(x, from_behind, mask_odd_range);
+    SDOUBLE in_odd_range_reduction = from_behind;
+    in_odd_range_reduction = MUL_DOUBLE_S(in_odd_range_reduction, in_odd_range);
+    in_odd_range_reduction = SUB_DOUBLE_S(in_odd_range_reduction, x);
+    x = FMADD_PD(in_odd_range_reduction, in_odd_range, x);
 
     from_behind = SUB_DOUBLE_S(pi_2, x);
     
@@ -133,7 +137,6 @@ void tan_simd(double *input, double *res, size_t n) {
     in_q2 = ABS_PD(in_q2);
     in_q2 = MUL_DOUBLE_S(in_q2, half);
     in_q2 = FLOOR_DOUBLE_S(in_q2);
-
 
     // 1 if quadrant == 3 else 0
     SDOUBLE in_q3 = SUB_DOUBLE_S(quadrant, one);
@@ -167,12 +170,10 @@ void tan_simd(double *input, double *res, size_t n) {
       result_q0 = FMADD_PD(result_q0, x_square, coeff);
     }
 
-    SDOUBLE not_in_q3 = SUB_DOUBLE_S(one, in_q3);
-
     SDOUBLE one_over_from_behind = DIV_DOUBLE_S(one, from_behind);
     SDOUBLE correction_term = MUL_DOUBLE_S(correction, one_over_from_behind);
-    SDOUBLE adjusted_first = ADD_DOUBLE_S(one, correction_term);
-    SDOUBLE first_coeff = FMADD_PD(adjusted_first, in_q3, not_in_q3);
+    SDOUBLE first_coeff = FMADD_PD(correction_term, in_q3, one);
+
     result_q0 = FMADD_PD(result_q0, x_square, first_coeff);
     result_q0 = MUL_DOUBLE_S(result_q0, x);
     /* ---- End first Calculation ---- */
