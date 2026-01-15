@@ -91,8 +91,10 @@ void tan_simd(double *input, double *res, size_t n) {
 
     SDOUBLE in_outer_range = SUB_DOUBLE_S(x, range_multiple);
 
-    SDOUBLE range_reduction_correction_term = MUL_DOUBLE_S(x, range_reduction_correction);
-    x = SUB_DOUBLE_S(in_outer_range, range_reduction_correction_term);
+    x = in_outer_range;
+
+//  SDOUBLE range_reduction_correction_term = MUL_DOUBLE_S(x, range_reduction_correction);
+//  x = SUB_DOUBLE_S(in_outer_range, range_reduction_correction_term);
 
     // Check if even
     //  Default Range Reduction
