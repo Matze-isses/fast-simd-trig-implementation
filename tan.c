@@ -90,6 +90,7 @@ void tan_simd(double *input, double *res, size_t n) {
     const SDOUBLE range_multiple = MUL_DOUBLE_S(num_ranges_away, pi_2);
 
     SDOUBLE in_outer_range = SUB_DOUBLE_S(x, range_multiple);
+
     SDOUBLE range_reduction_correction_term = MUL_DOUBLE_S(x, range_reduction_correction);
     x = SUB_DOUBLE_S(in_outer_range, range_reduction_correction_term);
 
