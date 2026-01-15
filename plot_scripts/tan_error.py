@@ -149,4 +149,4 @@ if __name__ == "__main__":
     # plot_range(x, err)
     # problem_area_right(x, err)
     # problem_area_left(x, err)
-    compare_correction('error_second.tsv', 'tan_error_behavior.tsv')
+    compare_correction('one_bit_smaller_correction.tsv', 'tan_error_behavior.tsv')
