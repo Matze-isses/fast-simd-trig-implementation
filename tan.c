@@ -33,6 +33,37 @@ double TAYLOR_COEFF_TAN[] = {
   2.6147711512907546e-06 /* 2.6147711512907546e-06 */ // <-- Current last
 };
 
+int PADE_N = 10;
+int PADE_M = 10;
+
+double PADE_COEFF_P[] = {
+  0,
+  1.000000000000000000000000,
+  0,
+  -0.1403508771929824561403509,
+  0,
+  0.004334365325077399340087368,
+  0,
+  -0.00003931397120251609415696103,
+  0,
+  8.400421197118823537812186E-8,
+  0,
+};
+
+double PADE_COEFF_Q[] = {
+  1.000000000000000000000000,
+  0,
+  -0.4736842105263157894736842,
+  0,
+  0.02889576883384932920536636,
+  0,
+  -0.0004815961472308221534227726,
+  0,
+  0.000002268113723222082355209290,
+  0,
+  -1.527349308567058825056761E-9,
+};
+
 static inline uint64_t or_reduce_u64_lanes(__m256i v)
 {
     // OR upper 128 into lower 128
@@ -91,8 +122,6 @@ void tan_simd(double *input, double *res, size_t n) {
 
     SDOUBLE in_outer_range = SUB_DOUBLE_S(x, range_multiple);
 
-//    x = in_outer_range;
-
     SDOUBLE range_reduction_correction_term = MUL_DOUBLE_S(x, range_reduction_correction);
     x = SUB_DOUBLE_S(in_outer_range, range_reduction_correction_term);
 
@@ -113,7 +142,6 @@ void tan_simd(double *input, double *res, size_t n) {
     x = FMADD_PD(in_odd_range_reduction, in_odd_range, x);
 
     from_behind = SUB_DOUBLE_S(pi_2, x);
-    
 
     const SDOUBLE not_floored = MUL_DOUBLE_S(x, one_over_pi_8);
     const SDOUBLE quadrant = FLOOR_DOUBLE_S(not_floored);
@@ -147,7 +175,6 @@ void tan_simd(double *input, double *res, size_t n) {
     in_q3 = MUL_DOUBLE_S(in_q3, half);
     in_q3 = FLOOR_DOUBLE_S(in_q3);
 
-
     // Mirror it to move it to range 1
     SDOUBLE q2_reduction = from_behind;
     q2_reduction = MUL_DOUBLE_S(q2_reduction, in_q2);
@@ -180,7 +207,6 @@ void tan_simd(double *input, double *res, size_t n) {
     result_q0 = FMADD_PD(result_q0, x_square, first_coeff);
     result_q0 = MUL_DOUBLE_S(result_q0, x);
     /* ---- End first Calculation ---- */
-
 
     /* ---- Readjusting for the second range ---- */
     SDOUBLE nominator = MUL_DOUBLE_S(two, result_q0);
