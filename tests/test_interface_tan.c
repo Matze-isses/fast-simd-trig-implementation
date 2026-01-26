@@ -96,9 +96,9 @@ void quadrant_error_test(size_t n) {
   printf("Quadrant Error Analysis for n = %d\n", (int)n);
   printf("==============================================================================================================\n\n");
 
-  printf("+----------------+----------------+---------------------------+---------------------------+\n");
-  printf("| Interval       | Implementation | Max Error                 | Avg Abs Error             |\n");
-  printf("+----------------+----------------+---------------------------+---------------------------+\n");
+  printf("+----------------+----------------+---------------------------+---------------------------+---------------------------+---------------------------+\n");
+  printf("| Interval       | Implementation | Max Error                 | Avg Abs Error             | Max ULP Error             | Avg ULP Error             |\n");
+  printf("+----------------+----------------+---------------------------+---------------------------+---------------------------+---------------------------+\n");
 
   for (int q = 0; q < 4; ++q) {
     double lower = bounds[q];
@@ -126,24 +126,29 @@ void quadrant_error_test(size_t n) {
     }
 
     /* error metrics */
-    double abs_error_own, max_error_own, value_max_error_own;
-    double abs_error_glibc, max_error_glibc, value_max_error_glibc;
-
+    double abs_error_own, max_error_own, value_max_error_own, cum_ulp_error, max_ulp_error, value_max_ulp_error;
     compare_results_tan(test_values, own_results,
-                        &abs_error_own, &max_error_own, &value_max_error_own, n);
-    compare_results_tan(test_values, glibc_results,
-                        &abs_error_glibc, &max_error_glibc, &value_max_error_glibc, n);
-
+                        &abs_error_own, &max_error_own, &value_max_error_own, 
+                        &cum_ulp_error, &max_ulp_error, &value_max_ulp_error, 
+                        n);
     double avg_error_own   = abs_error_own   / (double)n;
+    double avg_ulp_error_own = cum_ulp_error / (double)n;
+
+    double abs_error_glibc, max_error_glibc, value_max_error_glibc, glibc_cum_ulp_error, glibc_max_ulp_error, glibc_value_max_ulp_error;
+    compare_results_tan(test_values, glibc_results,
+                        &abs_error_glibc, &max_error_glibc, &value_max_error_glibc, 
+                        &glibc_cum_ulp_error, &glibc_max_ulp_error, &glibc_value_max_ulp_error, 
+                        n);
     double avg_error_glibc = abs_error_glibc / (double)n;
+    double avg_ulp_error_glibc = glibc_cum_ulp_error / (double)n;
 
     /* print table rows */
-    printf("| %-14s | %-14s | %25.17e | %25.17e |\n",
-           interval_names[q], "own",   max_error_own,   avg_error_own);
-    printf("| %-14s | %-14s | %25.17e | %25.17e |\n",
-           "",               "glibc", max_error_glibc, avg_error_glibc);
+    printf("| %-14s | %-14s | %25.17e | %25.17e | %25.17e | %25.17e |\n",
+           interval_names[q], "own",   max_error_own,   avg_error_own, max_ulp_error, avg_ulp_error_own);
+    printf("| %-14s | %-14s | %25.17e | %25.17e | %25.17e | %25.17e |\n",
+           "", "glibc", max_error_glibc, avg_error_glibc, glibc_max_ulp_error, avg_ulp_error_glibc);
 
-    printf("+----------------+----------------+---------------------------+---------------------------+\n");
+    printf("+----------------+----------------+---------------------------+---------------------------+---------------------------+---------------------------+\n");
 
     free(test_values);
     free(own_results);
@@ -207,25 +212,29 @@ static void run_precision_test(double lower, double upper,
 
   printf("\nThe results are obtained! Starting error calculation.\n");
 
-  double abs_error = 0.0, abs_error_glibc = 0.0;
-  double max_error = 0.0, max_error_glibc = 0.0;
-  double value_max_error = 0.0, value_max_error_glibc = 0.0;
+
+  double abs_error_own, max_error_own, value_max_error_own, cum_ulp_error, max_ulp_error, value_max_ulp_error;
+  double abs_error_glibc, max_error_glibc, value_max_error_glibc, glibc_cum_ulp_error, glibc_max_ulp_error, glibc_value_max_ulp_error;
 
   compare_results_tan(test_values, own_results,
-                      &abs_error, &max_error, &value_max_error,
+                      &abs_error_own, &max_error_own, &value_max_error_own, 
+                      &cum_ulp_error, &max_ulp_error, &value_max_ulp_error, 
                       accuracy_test_size);
-
   compare_results_tan(test_values, glibc_results,
-                      &abs_error_glibc, &max_error_glibc, &value_max_error_glibc,
+                      &abs_error_glibc, &max_error_glibc, &value_max_error_glibc, 
+                      &glibc_cum_ulp_error, &glibc_max_ulp_error, &glibc_value_max_ulp_error, 
                       accuracy_test_size);
 
-  printf("Max Error Own:   %.17g;   At Value %.17g\n", max_error, value_max_error);
+  printf("Max Error Own:   %.17g;   At Value %.17g\n", max_error_own, value_max_error_own);
   printf("Max Error glibc: %.17g;   At Value %.17g\n\n", max_error_glibc, value_max_error_glibc);
 
-  printf("Accumulated Absolut Error Own   Results: %.17g\n", abs_error);
+  printf("Max ULP Error Own:   %.17g;   At Value %.17g\n", max_ulp_error, value_max_ulp_error);
+  printf("Max ULP Error glibc: %.17g;   At Value %.17g\n\n", glibc_max_ulp_error, glibc_value_max_ulp_error);
+
+  printf("Accumulated Absolut Error Own   Results: %.17g\n", abs_error_own);
   printf("Accumulated Absolut Error glibc Results: %.17g\n", abs_error_glibc);
 
-  printf("\nAbsolut Error Own   Results: %.17g\n", abs_error / (double)accuracy_test_size);
+  printf("\nAbsolut Error Own   Results: %.17g\n", abs_error_own / (double)accuracy_test_size);
   printf("Absolut Error glibc Results: %.17g\n", abs_error_glibc / (double)accuracy_test_size);
 
   free(test_values);
@@ -320,12 +329,12 @@ int main(int argc, char *argv[]) {
   printf("Number of inputs (error calculation): n=%d\n", (int)accuracy_test_size);
   printf("----------------------------------------------------------------------------------------------------\n\n");
 
-  run_accuracy_test(accuracy_test_size);
+  //run_accuracy_test(accuracy_test_size);
 
   srand((unsigned)time(NULL));
 
-  run_speed_test(lower, upper, speed_test_size);
-  // run_precision_test(lower, upper, accuracy_test_size, speed_test_size);
+  // run_speed_test(lower, upper, speed_test_size);
+  run_precision_test(lower, upper, accuracy_test_size, speed_test_size);
   
   // plot_error_behavior(lower, upper, accuracy_test_size);
 

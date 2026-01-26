@@ -48,8 +48,8 @@ def print_c_array(name: str, coeffs, digits: int = 20):
 
 
 if __name__ == "__main__":
-    m = 10
-    n = 10
+    m = 30
+    n = 30
 
     p_coeffs, q_coeffs = pade_coeffs_tan(m, n)
 

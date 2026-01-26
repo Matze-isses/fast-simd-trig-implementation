@@ -9,7 +9,7 @@ void fill_uniform(double lower, double upper, size_t n, double *vec);
 
 void compare_results_sin(double *x, double *y, double *cum_error, double *max_error, double *value_max_error, size_t n);
 
-void compare_results_tan(double *x, double *y, double *cum_error, double *max_error, double *value_max_error, size_t n);
+void compare_results_tan(double *x, double *y, double *cum_error, double *max_error, double *value_max_error, double *cum_ulp_error, double *max_ulp_error, double *value_max_ulp_error, size_t n);
 void compare_results_tan_err(double *x, double *y, double *err, size_t n);
 
 double test_sin_time(int taylor_degree, double lower_bound, double upper_bound, int test_size);
