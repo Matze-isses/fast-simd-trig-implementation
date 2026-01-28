@@ -90,7 +90,6 @@ void do_range_reduction(double *input, double *res, double reduction_value, size
     SDOUBLE correction_term = MUL_DOUBLE_S(x, correction);
     in_outer_range = SUB_DOUBLE_S(in_outer_range, correction_term);
 
-
     SIMD_TO_DOUBLE_VEC(&res[i], in_outer_range);
   }
 }

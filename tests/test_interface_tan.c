@@ -186,8 +186,7 @@ static void run_speed_test(double lower, double upper, int speed_test_size) {
 }
 
 static void run_precision_test(double lower, double upper,
-                               size_t accuracy_test_size,
-                               int speed_test_size) {
+                               size_t accuracy_test_size) {
   double *test_values    = (double *)malloc(accuracy_test_size * sizeof(double));
   double *correct_results = (double *)malloc(accuracy_test_size * sizeof(double)); /* kept to match your original */
   double *own_results    = (double *)malloc(accuracy_test_size * sizeof(double));
@@ -203,7 +202,6 @@ static void run_precision_test(double lower, double upper,
   }
 
   fill_uniform(lower, upper, accuracy_test_size, test_values);
-  test_values[0] = upper;
 
   tan_simd(test_values, own_results, accuracy_test_size);
   for (size_t i = 0; i < accuracy_test_size; i++) {
@@ -259,7 +257,7 @@ static void plot_error_behavior(double lower, double upper, size_t accuracy_test
     return;
   }
 
-  /* linspace(lower, upper, accuracy_test_size) with inclusive endpoints */
+  /*
   if (accuracy_test_size == 1) {
     test_values[0] = lower;
   } else {
@@ -267,10 +265,12 @@ static void plot_error_behavior(double lower, double upper, size_t accuracy_test
     for (size_t i = 0; i < accuracy_test_size; i++) {
       test_values[i] = lower + step * (double)i;
     }
-    /* ensure exact endpoints (numerical hygiene) */
     test_values[0] = lower;
     test_values[accuracy_test_size - 1] = upper;
   }
+  */
+  
+  fill_dense_pi_over_2(lower,  upper, accuracy_test_size, test_values, 0.0001);
 
   /* run your implementation */
   tan_simd(test_values, own_results, accuracy_test_size);
@@ -305,6 +305,77 @@ static void plot_error_behavior(double lower, double upper, size_t accuracy_test
 }
 
 
+static void plot_data_ulp(double lower, double upper, size_t accuracy_test_size, int dtype)
+{
+    if (accuracy_test_size == 0) return;
+
+    double  *test_values = (double *)malloc(accuracy_test_size * sizeof(double));
+    double  *own_results = (double *)malloc(accuracy_test_size * sizeof(double));
+    int64_t *ulp_err     = (int64_t *)malloc(accuracy_test_size * sizeof(int64_t));
+
+    if (!test_values || !own_results || !ulp_err) {
+        fprintf(stderr, "Allocation failed in plot_data_ulp.\n");
+        free(test_values);
+        free(own_results);
+        free(ulp_err);
+        return;
+    }
+
+    if (dtype == 0) {
+      /* linspace(lower, upper, accuracy_test_size) with inclusive endpoints */
+      if (accuracy_test_size == 1) {
+          test_values[0] = lower;
+      } else {
+          double step = (upper - lower) / (double)(accuracy_test_size - 1);
+          for (size_t i = 0; i < accuracy_test_size; i++) {
+              test_values[i] = lower + step * (double)i;
+          }
+          /* ensure exact endpoints (numerical hygiene) */
+          test_values[0] = lower;
+          test_values[accuracy_test_size - 1] = upper;
+      }
+    } else if (dtype == 1) {
+      fill_uniform(lower, upper, accuracy_test_size, test_values);
+    } else if (dtype == 2) {
+      fill_dense_pi_over_2(lower, upper, accuracy_test_size, test_values, 0.0001);
+    }
+
+    /* run your implementation */
+    tan_simd(test_values, own_results, accuracy_test_size);
+
+    /*
+      compute signed ULP errors:
+      ulp_err[i] = ord(ref) - ord(own_results[i]),
+      where ref is tan(x) rounded to double via Arb
+    */
+    compare_results_tan_ulp_err_signed(test_values, own_results, ulp_err, accuracy_test_size);
+
+    /* write data for python (simple whitespace-separated columns: x ulp_err) */
+    const char *data_path = "tan_ulp_error_behavior.tsv";
+    FILE *f = fopen(data_path, "w");
+    if (!f) {
+        fprintf(stderr, "Failed to open %s for writing.\n", data_path);
+        free(test_values);
+        free(own_results);
+        free(ulp_err);
+        return;
+    }
+
+    /* header (optional, python-friendly) */
+    fprintf(f, "x\tulp_err\n");
+
+    for (size_t i = 0; i < accuracy_test_size; i++) {
+        fprintf(f, "%.17g\t%" PRId64 "\n", test_values[i], ulp_err[i]);
+    }
+    fclose(f);
+
+    printf("Wrote data: %s\n", data_path);
+
+    free(test_values);
+    free(own_results);
+    free(ulp_err);
+}
+
 int main(int argc, char *argv[]) {
 
   if (argc < 4) {
@@ -334,9 +405,10 @@ int main(int argc, char *argv[]) {
   srand((unsigned)time(NULL));
 
   // run_speed_test(lower, upper, speed_test_size);
-  run_precision_test(lower, upper, accuracy_test_size, speed_test_size);
+  // run_precision_test(lower, upper, accuracy_test_size);
   
   // plot_error_behavior(lower, upper, accuracy_test_size);
+  plot_data_ulp(lower, upper, accuracy_test_size, 0);
 
   return 0;
 }

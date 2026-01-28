@@ -38,6 +38,30 @@ static inline uint64_t ulp_distance_double(double a, double b)
     return (ua > ub) ? (ua - ub) : (ub - ua);
 }
 
+static inline int64_t ulp_error_signed_double(double f_hat, double f_ref)
+{
+    // Policy: if NaN involved, return 0 (or choose a sentinel if you prefer).
+    if (isnan(f_hat) || isnan(f_ref)) return 0;
+
+    // If either is inf: return 0 only if equal, else saturate to INT64_{MIN,MAX}.
+    if (isinf(f_hat) || isinf(f_ref)) {
+        if (f_hat == f_ref) return 0;
+        return (f_ref > f_hat) ? INT64_MAX : INT64_MIN;
+    }
+
+    uint64_t oh = double_to_ordered_u64(f_hat);
+    uint64_t orr = double_to_ordered_u64(f_ref);
+
+    // ord(ref) - ord(hat)
+    if (orr >= oh) {
+        uint64_t d = orr - oh;
+        return (d > (uint64_t)INT64_MAX) ? INT64_MAX : (int64_t)d;
+    } else {
+        uint64_t d = oh - orr;
+        return (d > (uint64_t)INT64_MAX) ? INT64_MIN : -(int64_t)d;
+    }
+}
+
 const slong PRECISION = 512;
 
 
@@ -219,4 +243,29 @@ void compare_results_tan_err(double *x, double *y, double *err, size_t n) {
   }
 
   flint_cleanup();
+}
+
+void compare_results_tan_ulp_err_signed(double *x, double *y, int64_t *ulp_err, size_t n) {
+    for (size_t i = 0; i < n; i++) {
+        arb_t arb_x, true_result;
+
+        arb_init(arb_x);
+        arb_init(true_result);
+
+        arb_set_d(arb_x, x[i]);
+
+        // High-precision reference tan(x)
+        arb_tan(true_result, arb_x, PRECISION);
+
+        // Reference rounded to double (nearest)
+        double ref = arf_get_d(arb_midref(true_result), ARF_RND_NEAR);
+
+        // Signed ULP error: ord(ref) - ord(y[i])
+        ulp_err[i] = ulp_error_signed_double(y[i], ref);
+
+        arb_clear(arb_x);
+        arb_clear(true_result);
+    }
+
+    flint_cleanup();
 }

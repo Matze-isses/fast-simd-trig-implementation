@@ -42,11 +42,30 @@ void tan_simd(double *input, double *res, size_t n) {
   const SDOUBLE one_over_pi_8 = LOAD_DOUBLE(1/M_PI_8);
   const SDOUBLE one_over_pi_2 = LOAD_DOUBLE(1/M_PI_2);
 
-  const SDOUBLE correction = LOAD_DOUBLE(TAN_CORRECTION);
-  const SDOUBLE range_reduction_correction = LOAD_DOUBLE(RANG_REDUCTION_CORRECTION);
+//const SDOUBLE correction = LOAD_DOUBLE(TAN_CORRECTION);
+//const SDOUBLE range_reduction_correction = LOAD_DOUBLE(RANG_REDUCTION_CORRECTION);
 
-//const SDOUBLE correction = LOAD_DOUBLE(0.0);
-//const SDOUBLE range_reduction_correction = LOAD_DOUBLE(0.0);
+  // -1 => -0.0000000000000000612323399570
+  //  0 =>  0.0000000000000000612323399570
+  //  1 =>  0.0000000000000001836970199000
+  //  2 =>  0.0000000000000003061616998040
+  // 
+  // 3/2 pi => 1 => -0.0000000000000000995799000000000
+  // 5/2 pi => 2 =>  0.0000000000000000114423776000000
+  // 
+  //
+  // 0.000000000000000122464679943 * num_ranges_away + 0.0000000000000000612323399570
+  //
+  double q2_bitshift_double = -pow(2, -52);
+  const SDOUBLE q2_bitshift = LOAD_DOUBLE(q2_bitshift_double);
+
+
+  double tan_correction_b = 0.0000000000000000612323399573676;
+  double tan_correction_a = 0.0000000000000001224646799430000;
+
+  const SDOUBLE a_correction = LOAD_DOUBLE(tan_correction_a);
+  const SDOUBLE b_correction = LOAD_DOUBLE(tan_correction_b);
+  const SDOUBLE range_reduction_correction = LOAD_DOUBLE(0.0);
 
   int last_taylor_coeff = 13;
   int taylor_loop_iteration = last_taylor_coeff - 1;
@@ -65,8 +84,11 @@ void tan_simd(double *input, double *res, size_t n) {
     const SDOUBLE ranges_away = MUL_DOUBLE_S(x, one_over_pi_2);
     const SDOUBLE num_ranges_away = FLOOR_DOUBLE_S(ranges_away);
     const SDOUBLE range_multiple = MUL_DOUBLE_S(num_ranges_away, pi_2);
-
     SDOUBLE in_outer_range = SUB_DOUBLE_S(x, range_multiple);
+
+    // here problems occure because negative singularities need a ceil not a floor
+    const SDOUBLE singularieties_away = MUL_DOUBLE_S(num_ranges_away, half);
+    const SDOUBLE num_singularities_away = FLOOR_DOUBLE_S(singularieties_away);
 
     SDOUBLE range_reduction_correction_term = MUL_DOUBLE_S(x, range_reduction_correction);
     x = SUB_DOUBLE_S(in_outer_range, range_reduction_correction_term);
@@ -79,6 +101,7 @@ void tan_simd(double *input, double *res, size_t n) {
     const SDOUBLE in_odd_range = SUB_DOUBLE_S(num_ranges_away, sign_adjust2);
     const SDOUBLE sign_adjust4 = MUL_DOUBLE_S(in_odd_range, two);
     const SDOUBLE sign_adjust = SUB_DOUBLE_S(one, sign_adjust4);
+    // PRINT_M256D(sign_adjust);
 
     SDOUBLE from_behind = SUB_DOUBLE_S(pi_2, x);
 
@@ -146,6 +169,9 @@ void tan_simd(double *input, double *res, size_t n) {
       result_q0 = FMADD_PD(result_q0, x_square, coeff);
     }
 
+    //PRINT_M256D(num_singularities_away);
+    SDOUBLE correction = FMADD_PD(a_correction, num_singularities_away, b_correction);
+
     SDOUBLE one_over_from_behind = DIV_DOUBLE_S(one, from_behind);
     SDOUBLE correction_term = MUL_DOUBLE_S(correction, one_over_from_behind);
     SDOUBLE first_coeff = FMADD_PD(correction_term, in_q3, one);
@@ -166,15 +192,25 @@ void tan_simd(double *input, double *res, size_t n) {
     /* ---- Calculation for fourth range ---- */
     SDOUBLE result_q3 = DIV_DOUBLE_S(one, result_q0);
 
-    // This is faster the using mask
+    // Add up of the results
     result = FMADD_PD(result_q0, in_q0, result);
     result = FMADD_PD(result_q1, in_q1, result);
     result = FMADD_PD(result_q2, in_q2, result);
+
+    // ULP of q2 is between +5 and -3 shifting one up  gives +4 -4 => smaller abs ULP
+    result = FMADD_PD(q2_bitshift, in_q2, result);
+
     result = FMADD_PD(result_q3, in_q3, result);
     
     result = MUL_DOUBLE_S(sign_adjust, result);
     SIMD_TO_DOUBLE_VEC(&res[i], result);
   }
+
+//for (size_t i = 0; i < n; i++) {
+//  if (M_PI_4 < input[i] && input[i] < 3.0 * M_PI_8) {
+//    res[i] = nextafter(res[i], -INFINITY);
+//  }
+//} 
 
   int num_left_over = (n % simd_doubles);
 
