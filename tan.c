@@ -106,9 +106,6 @@ void tan_simd(double *input, double *res, size_t n) {
     SDOUBLE constants_away = MUL_DOUBLE_S(num_singularities_away, two);
     constants_away = ADD_DOUBLE_S(constants_away, one);
 
-    SDOUBLE range_reduction_correction_term = MUL_DOUBLE_S(x, range_reduction_correction);
-    x = SUB_DOUBLE_S(in_outer_range, range_reduction_correction_term);
-
     // Check if even
     //  Default Range Reduction
     const SDOUBLE sign_adjust0 = MUL_DOUBLE_S(num_ranges_away, half);
@@ -191,12 +188,6 @@ void tan_simd(double *input, double *res, size_t n) {
     
     SDOUBLE correction = MUL_DOUBLE_S(b_correction, constants_away);
     correction = MUL_DOUBLE_S(correction, c_sign);
-
-//  PRINT_M256D(constants_away);
-//  PRINT_M256D(c_sign);
-//  PRINT_FULL_M256D(correction);
-    // PRINT_M256D(num_ranges_away);
-    // PRINT_FULL_M256D(correction);
 
     SDOUBLE one_over_from_behind = DIV_DOUBLE_S(one, from_behind);
     SDOUBLE correction_term = MUL_DOUBLE_S(correction, one_over_from_behind);

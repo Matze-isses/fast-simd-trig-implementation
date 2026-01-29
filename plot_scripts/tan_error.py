@@ -24,7 +24,7 @@ def simple_scatter_error_plot(x, err, title="Error Plot", error_metric="tan(x) -
     plt.xlabel("x")
     plt.ylabel(error_metric)
     plt.grid(True)
-    plt.scatter(np.tan(x), err)
+    plt.scatter(x, err)
     plt.show()
 
 def plot_range(x, err, bounds: tuple = (np.pi/2, 3/2 * np.pi)):
@@ -293,13 +293,13 @@ def ulp_and_abs_error(path_ulp, path_abs):
 
 if __name__ == "__main__":
     print("Next: ", 3/2 * np.pi - 0.00001, 3/2 * np.pi + 0.00001)
-    # x, err = get_data('./tan_ulp_error_behavior.tsv')
-    x, err = get_data('./tan_error_behavior.tsv')
+    x, err = get_data('./tan_ulp_error_behavior.tsv')
+    # x, err = get_data('./tan_error_behavior.tsv')
     # simple_error_plot(x, err) 
-    # simple_scatter_error_plot(x, err)
+    simple_scatter_error_plot(x, err)
     # plot_range(x, err)
     # problem_area_right(x, err)
     # problem_area_left(x, err)
-    problem_area_both(x, err)
+    # problem_area_both(x, err)
     # compare_correction('one_bit_smaller_correction.tsv', 'tan_error_behavior.tsv')
     # ulp_and_abs_error('./tan_ulp_error_behavior.tsv', './tan_error_behavior.tsv')
