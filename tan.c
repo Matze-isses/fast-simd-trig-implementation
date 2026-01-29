@@ -42,13 +42,14 @@ void tan_simd(double *input, double *res, size_t n) {
   const SDOUBLE one_over_pi_8 = LOAD_DOUBLE(1/M_PI_8);
   const SDOUBLE one_over_pi_2 = LOAD_DOUBLE(1/M_PI_2);
 
-//const SDOUBLE correction = LOAD_DOUBLE(TAN_CORRECTION);
-//const SDOUBLE range_reduction_correction = LOAD_DOUBLE(RANG_REDUCTION_CORRECTION);
+  //const SDOUBLE correction = LOAD_DOUBLE(TAN_CORRECTION);
+  //const SDOUBLE range_reduction_correction = LOAD_DOUBLE(RANG_REDUCTION_CORRECTION);
 
   // -1 => -0.0000000000000000612323399570
   //  0 =>  0.0000000000000000612323399570
   //  1 =>  0.0000000000000001836970199000
   //  2 =>  0.0000000000000003061616998040
+  //
   // 
   // 3/2 pi => 1 => -0.0000000000000000995799000000000
   // 5/2 pi => 2 =>  0.0000000000000000114423776000000
@@ -60,8 +61,12 @@ void tan_simd(double *input, double *res, size_t n) {
   const SDOUBLE q2_bitshift = LOAD_DOUBLE(q2_bitshift_double);
 
 
-  double tan_correction_b = 0.0000000000000000612323399573676;
   double tan_correction_a = 0.0000000000000001224646799430000;
+  // double tan_correction_a =-0.000000000000000244931000000000;
+  double tan_correction_b = 0.00000000000000006123233995736766;
+
+  //tan_correction_b = 0.0;
+  //tan_correction_a = 0.0;
 
   const SDOUBLE a_correction = LOAD_DOUBLE(tan_correction_a);
   const SDOUBLE b_correction = LOAD_DOUBLE(tan_correction_b);
@@ -72,14 +77,21 @@ void tan_simd(double *input, double *res, size_t n) {
 
   const SDOUBLE zero = SET_ZERO();
 
+  const SDOUBLE neg_one = LOAD_DOUBLE(-1.0);
   const SDOUBLE neg_half = LOAD_DOUBLE(-0.5);
   const SDOUBLE half = LOAD_DOUBLE(0.5);
   const SDOUBLE one = LOAD_DOUBLE(1.0);
   const SDOUBLE two = LOAD_DOUBLE(2.0);
+  const SDOUBLE three = LOAD_DOUBLE(3.0);
   
   for (int i = 0; i < (int) n; i += simd_doubles) {
     SDOUBLE result = LOAD_DOUBLE(0.0);
     SDOUBLE x   = LOAD_DOUBLE_VEC(&input[i]);
+
+    SDOUBLE x_negative = DIV_DOUBLE_S(x, ABS_PD(x));
+    SDOUBLE x_negative01 = MUL_DOUBLE_S(x_negative, neg_one);
+    x_negative01 = ADD_DOUBLE_S(x_negative01, one);
+    x_negative01 = MUL_DOUBLE_S(x_negative01, half);
 
     const SDOUBLE ranges_away = MUL_DOUBLE_S(x, one_over_pi_2);
     const SDOUBLE num_ranges_away = FLOOR_DOUBLE_S(ranges_away);
@@ -87,8 +99,12 @@ void tan_simd(double *input, double *res, size_t n) {
     SDOUBLE in_outer_range = SUB_DOUBLE_S(x, range_multiple);
 
     // here problems occure because negative singularities need a ceil not a floor
-    const SDOUBLE singularieties_away = MUL_DOUBLE_S(num_ranges_away, half);
-    const SDOUBLE num_singularities_away = FLOOR_DOUBLE_S(singularieties_away);
+    const SDOUBLE singularities_away0 = ADD_DOUBLE_S(num_ranges_away, x_negative01);
+    const SDOUBLE singularities_away1 = ABS_PD(singularities_away0);
+    const SDOUBLE singularities_away = MUL_DOUBLE_S(singularities_away1, half);
+    const SDOUBLE num_singularities_away = FLOOR_DOUBLE_S(singularities_away);
+    SDOUBLE constants_away = MUL_DOUBLE_S(num_singularities_away, two);
+    constants_away = ADD_DOUBLE_S(constants_away, one);
 
     SDOUBLE range_reduction_correction_term = MUL_DOUBLE_S(x, range_reduction_correction);
     x = SUB_DOUBLE_S(in_outer_range, range_reduction_correction_term);
@@ -99,6 +115,7 @@ void tan_simd(double *input, double *res, size_t n) {
     const SDOUBLE sign_adjust1 = FLOOR_DOUBLE_S(sign_adjust0);
     const SDOUBLE sign_adjust2 = MUL_DOUBLE_S(sign_adjust1, two);
     const SDOUBLE in_odd_range = SUB_DOUBLE_S(num_ranges_away, sign_adjust2);
+    const SDOUBLE in_even_range = SUB_DOUBLE_S(one, in_odd_range);
     const SDOUBLE sign_adjust4 = MUL_DOUBLE_S(in_odd_range, two);
     const SDOUBLE sign_adjust = SUB_DOUBLE_S(one, sign_adjust4);
     // PRINT_M256D(sign_adjust);
@@ -169,8 +186,17 @@ void tan_simd(double *input, double *res, size_t n) {
       result_q0 = FMADD_PD(result_q0, x_square, coeff);
     }
 
-    //PRINT_M256D(num_singularities_away);
-    SDOUBLE correction = FMADD_PD(a_correction, num_singularities_away, b_correction);
+    SDOUBLE c_sign0 = SUB_DOUBLE_S(in_even_range, in_odd_range);
+    SDOUBLE c_sign = MUL_DOUBLE_S(c_sign0, x_negative);
+    
+    SDOUBLE correction = MUL_DOUBLE_S(b_correction, constants_away);
+    correction = MUL_DOUBLE_S(correction, c_sign);
+
+//  PRINT_M256D(constants_away);
+//  PRINT_M256D(c_sign);
+//  PRINT_FULL_M256D(correction);
+    // PRINT_M256D(num_ranges_away);
+    // PRINT_FULL_M256D(correction);
 
     SDOUBLE one_over_from_behind = DIV_DOUBLE_S(one, from_behind);
     SDOUBLE correction_term = MUL_DOUBLE_S(correction, one_over_from_behind);

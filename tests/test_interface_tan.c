@@ -242,7 +242,7 @@ static void run_precision_test(double lower, double upper,
 }
 
 
-static void plot_error_behavior(double lower, double upper, size_t accuracy_test_size) {
+static void plot_error_behavior(double lower, double upper, size_t accuracy_test_size, int dtype) {
   if (accuracy_test_size == 0) return;
 
   double *test_values = (double *)malloc(accuracy_test_size * sizeof(double));
@@ -257,20 +257,24 @@ static void plot_error_behavior(double lower, double upper, size_t accuracy_test
     return;
   }
 
-  /*
-  if (accuracy_test_size == 1) {
-    test_values[0] = lower;
-  } else {
-    double step = (upper - lower) / (double)(accuracy_test_size - 1);
-    for (size_t i = 0; i < accuracy_test_size; i++) {
-      test_values[i] = lower + step * (double)i;
+  if (dtype == 0) {
+    /* linspace(lower, upper, accuracy_test_size) with inclusive endpoints */
+    if (accuracy_test_size == 1) {
+      test_values[0] = lower;
+    } else {
+      double step = (upper - lower) / (double)(accuracy_test_size - 1);
+      for (size_t i = 0; i < accuracy_test_size; i++) {
+          test_values[i] = lower + step * (double)i;
+      }
+      /* ensure exact endpoints (numerical hygiene) */
+      test_values[0] = lower;
+      test_values[accuracy_test_size - 1] = upper;
     }
-    test_values[0] = lower;
-    test_values[accuracy_test_size - 1] = upper;
+  } else if (dtype == 1) {
+    fill_uniform(lower, upper, accuracy_test_size, test_values);
+  } else if (dtype == 2) {
+    fill_dense_pi_over_2(lower, upper, accuracy_test_size, test_values, 0.0001);
   }
-  */
-  
-  fill_dense_pi_over_2(lower,  upper, accuracy_test_size, test_values, 0.0001);
 
   /* run your implementation */
   tan_simd(test_values, own_results, accuracy_test_size);
@@ -337,7 +341,7 @@ static void plot_data_ulp(double lower, double upper, size_t accuracy_test_size,
     } else if (dtype == 1) {
       fill_uniform(lower, upper, accuracy_test_size, test_values);
     } else if (dtype == 2) {
-      fill_dense_pi_over_2(lower, upper, accuracy_test_size, test_values, 0.0001);
+      fill_dense_pi_over_2(lower, upper, accuracy_test_size, test_values, 0.00001);
     }
 
     /* run your implementation */
@@ -404,11 +408,11 @@ int main(int argc, char *argv[]) {
 
   srand((unsigned)time(NULL));
 
-  // run_speed_test(lower, upper, speed_test_size);
-  // run_precision_test(lower, upper, accuracy_test_size);
+  run_speed_test(lower, upper, speed_test_size);
+  run_precision_test(lower, upper, accuracy_test_size);
   
-  // plot_error_behavior(lower, upper, accuracy_test_size);
-  plot_data_ulp(lower, upper, accuracy_test_size, 0);
+  // plot_error_behavior(lower, upper, accuracy_test_size, 2);
+  // plot_data_ulp(lower, upper, accuracy_test_size, 0);
 
   return 0;
 }
