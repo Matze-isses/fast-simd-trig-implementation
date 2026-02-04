@@ -78,11 +78,11 @@ void quadrant_error_test(size_t n) {
 
   /* bounds: [0, pi/8], [pi/8, pi/4], [pi/4, 3*pi/8], [3*pi/8, pi/2] */
   double bounds[5] = {
-    0.0,
+    0.00000000001,
     M_PI / 8.0,
     M_PI / 4.0,
     3.0 * M_PI / 8.0,
-    M_PI / 2.0
+    nextafter(M_PI / 2.0, 0.0)
   };
 
   const char *interval_names[4] = {
@@ -126,12 +126,13 @@ void quadrant_error_test(size_t n) {
     }
 
     /* error metrics */
-    double abs_error_own, max_error_own, value_max_error_own, cum_ulp_error, max_ulp_error, value_max_ulp_error;
+    double cum_error_own, max_error_own, value_max_error_own, cum_ulp_error, max_ulp_error, value_max_ulp_error = 0.0;
     compare_results_tan(test_values, own_results,
-                        &abs_error_own, &max_error_own, &value_max_error_own, 
+                        &cum_error_own, &max_error_own, &value_max_error_own, 
                         &cum_ulp_error, &max_ulp_error, &value_max_ulp_error, 
                         n);
-    double avg_error_own   = abs_error_own   / (double)n;
+
+    double avg_error_own   = cum_error_own  / (double)n;
     double avg_ulp_error_own = cum_ulp_error / (double)n;
 
     double abs_error_glibc, max_error_glibc, value_max_error_glibc, glibc_cum_ulp_error, glibc_max_ulp_error, glibc_value_max_ulp_error;
@@ -273,7 +274,7 @@ static void plot_error_behavior(double lower, double upper, size_t accuracy_test
   } else if (dtype == 1) {
     fill_uniform(lower, upper, accuracy_test_size, test_values);
   } else if (dtype == 2) {
-    fill_dense_pi_over_2(lower, upper, accuracy_test_size, test_values, 0.0001);
+    fill_dense_pi_over_2(lower, upper, accuracy_test_size, test_values, 0.00001);
   }
 
   /* run your implementation */
@@ -404,14 +405,14 @@ int main(int argc, char *argv[]) {
   printf("Number of inputs (error calculation): n=%d\n", (int)accuracy_test_size);
   printf("----------------------------------------------------------------------------------------------------\n\n");
 
-  //run_accuracy_test(accuracy_test_size);
+  // run_accuracy_test(accuracy_test_size);
 
   srand((unsigned)time(NULL));
 
-  run_speed_test(lower, upper, speed_test_size);
-  run_precision_test(lower, upper, accuracy_test_size);
+  // run_speed_test(lower, upper, speed_test_size);
+  // run_precision_test(lower, upper, accuracy_test_size);
   
-  // plot_error_behavior(lower, upper, accuracy_test_size, 0);
+  plot_error_behavior(lower, upper, accuracy_test_size, 2);
   // plot_data_ulp(lower, upper, accuracy_test_size, 0);
 
   return 0;

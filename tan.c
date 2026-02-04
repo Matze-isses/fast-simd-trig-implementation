@@ -62,11 +62,7 @@ void tan_simd(double *input, double *res, size_t n) {
 
 
   double tan_correction_a = 0.0000000000000001224646799430000;
-  // double tan_correction_a =-0.000000000000000244931000000000;
   double tan_correction_b = 0.00000000000000006123233995736766;
-
-  //tan_correction_b = 0.0;
-  //tan_correction_a = 0.0;
 
   const SDOUBLE a_correction = LOAD_DOUBLE(tan_correction_a);
   const SDOUBLE b_correction = LOAD_DOUBLE(tan_correction_b);
@@ -88,34 +84,39 @@ void tan_simd(double *input, double *res, size_t n) {
     SDOUBLE result = LOAD_DOUBLE(0.0);
     SDOUBLE x   = LOAD_DOUBLE_VEC(&input[i]);
 
-    SDOUBLE x_negative = DIV_DOUBLE_S(x, ABS_PD(x));
-    SDOUBLE x_negative01 = MUL_DOUBLE_S(x_negative, neg_one);
-    x_negative01 = ADD_DOUBLE_S(x_negative01, one);
-    x_negative01 = MUL_DOUBLE_S(x_negative01, half);
+    const SDOUBLE abs_x = ABS_PD(x);
+    const SDOUBLE x_negative = DIV_DOUBLE_S(x, abs_x);
+
+    const SDOUBLE x_negative01_0 = MUL_DOUBLE_S(x_negative, neg_one);
+    const SDOUBLE x_negative01_1 = ADD_DOUBLE_S(x_negative01_0, one);
+    const SDOUBLE x_negative01 = MUL_DOUBLE_S(x_negative01_1, half);
 
     const SDOUBLE ranges_away = MUL_DOUBLE_S(x, one_over_pi_2);
     const SDOUBLE num_ranges_away = FLOOR_DOUBLE_S(ranges_away);
     const SDOUBLE range_multiple = MUL_DOUBLE_S(num_ranges_away, pi_2);
-    SDOUBLE in_outer_range = SUB_DOUBLE_S(x, range_multiple);
+
+    x = SUB_DOUBLE_S(x, range_multiple);
 
     // here problems occure because negative singularities need a ceil not a floor
     const SDOUBLE singularities_away0 = ADD_DOUBLE_S(num_ranges_away, x_negative01);
     const SDOUBLE singularities_away1 = ABS_PD(singularities_away0);
     const SDOUBLE singularities_away = MUL_DOUBLE_S(singularities_away1, half);
     const SDOUBLE num_singularities_away = FLOOR_DOUBLE_S(singularities_away);
-    SDOUBLE constants_away = MUL_DOUBLE_S(num_singularities_away, two);
-    constants_away = ADD_DOUBLE_S(constants_away, one);
+
+    const SDOUBLE constants_away0 = MUL_DOUBLE_S(num_singularities_away, two);
+    const SDOUBLE constants_away = ADD_DOUBLE_S(constants_away0, one);
 
     // Check if even
     //  Default Range Reduction
-    const SDOUBLE sign_adjust0 = MUL_DOUBLE_S(num_ranges_away, half);
-    const SDOUBLE sign_adjust1 = FLOOR_DOUBLE_S(sign_adjust0);
-    const SDOUBLE sign_adjust2 = MUL_DOUBLE_S(sign_adjust1, two);
-    const SDOUBLE in_odd_range = SUB_DOUBLE_S(num_ranges_away, sign_adjust2);
+    const SDOUBLE sign_adjust_0 = MUL_DOUBLE_S(num_ranges_away, half);
+    const SDOUBLE sign_adjust_1 = FLOOR_DOUBLE_S(sign_adjust_0);
+    const SDOUBLE sign_adjust_2 = MUL_DOUBLE_S(sign_adjust_1, two);
+
+    const SDOUBLE in_odd_range  = SUB_DOUBLE_S(num_ranges_away, sign_adjust_2);
     const SDOUBLE in_even_range = SUB_DOUBLE_S(one, in_odd_range);
-    const SDOUBLE sign_adjust4 = MUL_DOUBLE_S(in_odd_range, two);
-    const SDOUBLE sign_adjust = SUB_DOUBLE_S(one, sign_adjust4);
-    // PRINT_M256D(sign_adjust);
+
+    const SDOUBLE sign_adjust_3 = MUL_DOUBLE_S(in_odd_range, two);
+    const SDOUBLE sign_adjust = SUB_DOUBLE_S(one, sign_adjust_3);
 
     SDOUBLE from_behind = SUB_DOUBLE_S(pi_2, x);
 
@@ -184,6 +185,7 @@ void tan_simd(double *input, double *res, size_t n) {
     }
 
     SDOUBLE c_sign0 = SUB_DOUBLE_S(in_even_range, in_odd_range);
+
     SDOUBLE c_sign = MUL_DOUBLE_S(c_sign0, x_negative);
     
     SDOUBLE correction = MUL_DOUBLE_S(b_correction, constants_away);
@@ -215,7 +217,7 @@ void tan_simd(double *input, double *res, size_t n) {
     result = FMADD_PD(result_q2, in_q2, result);
 
     // ULP of q2 is between +5 and -3 shifting one up  gives +4 -4 => smaller abs ULP
-    result = FMADD_PD(q2_bitshift, in_q2, result);
+    // result = FMADD_PD(q2_bitshift, in_q2, result);
 
     result = FMADD_PD(result_q3, in_q3, result);
     
@@ -223,11 +225,11 @@ void tan_simd(double *input, double *res, size_t n) {
     SIMD_TO_DOUBLE_VEC(&res[i], result);
   }
 
-//for (size_t i = 0; i < n; i++) {
-//  if (M_PI_4 < input[i] && input[i] < 3.0 * M_PI_8) {
-//    res[i] = nextafter(res[i], -INFINITY);
-//  }
-//} 
+  for (size_t i = 0; i < n; i++) {
+      if (isnan(res[i])) {
+          printf("THERE IS NAN AT: %25.17e", input[i]);
+      }
+  }
 
   int num_left_over = (n % simd_doubles);
 

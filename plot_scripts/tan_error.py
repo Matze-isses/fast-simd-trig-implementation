@@ -10,12 +10,25 @@ def get_data(path="./tan_error_behavior.tsv"):
 
 
 def simple_error_plot(x, err):
-    plt.figure(figsize=(14, 8))
-    plt.title("tan_simd absolute error vs input")
-    plt.xlabel("x")
-    plt.ylabel("tan(x) - tan_simd(x)")
+    plt.figure(figsize=(19.2, 10.8), dpi=100)
+    plt.xlabel(r"$x$")
+    plt.ylabel(r"$\tan_{\mathrm{impl}}(x) - \tan_{\mathrm{ref}}(x)$")
+    plt.yscale("log")
     plt.grid(True)
-    plt.plot(x, err)
+
+    plt.plot(x, -err)
+
+    ax = plt.gca()
+
+    ax.ticklabel_format(axis="x", style="plain", useOffset=False)
+
+    x_left  = x.min()
+    x_right = x.max()
+
+    ax.set_xticks([x_left, x_right])
+    ax.set_xticklabels([rf"${x_left:.5f}$", r"$\pi/2$"])
+
+    plt.savefig("tan_difference_uncorrected_first_singularity.png", dpi=100, bbox_inches="tight")
     plt.show()
 
 def simple_scatter_error_plot(x, err, title="Error Plot", error_metric="tan(x) - tan_simd(x)"):
@@ -128,7 +141,7 @@ def problem_area_left(x, err):
     plt.figure(figsize=(14, 8))
     plt.title(r"tan_simd absolute error left of poles $(1+2n)\pi/2$ (centered overlays)")
     plt.xlabel(r"offset from pole $x - (1+2n)\pi/2$")
-    plt.ylabel(r"$tan(x) - tan\_simd(x)$")
+    plt.ylabel(r"$\tan_{\mathrm{impl}}(x) - \tan_{\mathrm{ref}}(x)$")
     plt.grid(True)
 
     count = 0
@@ -189,7 +202,7 @@ def problem_area_left(x, err):
     plt.show()
 
 
-def problem_area_both(x, err, w_left=1e-5, w_right=1e-4):
+def problem_area_both(x, err, w_left=1e-7, w_right=1e-7):
     pi = np.pi
 
     xmin = np.min(x)
@@ -198,10 +211,11 @@ def problem_area_both(x, err, w_left=1e-5, w_right=1e-4):
     n_min = int(np.floor((2 * xmin / pi - 1) / 2))
     n_max = int(np.ceil((2 * xmax / pi - 1) / 2))
 
-    plt.figure(figsize=(14, 8))
-    plt.title(r"tan_simd absolute error near poles $(1+2n)\pi/2$ (centered overlays)")
-    plt.xlabel(r"offset from pole $x - (1+2n)\pi/2$")
-    plt.ylabel(r"$tan(x) - tan\_simd(x)$")
+    print(n_min, n_max)
+
+    plt.figure(figsize=(19.2, 10.8), dpi=100)
+    plt.xlabel(r"offset from pole")
+    plt.ylabel(r"$\tan_{\mathrm{impl}}(x) - \tan_{\mathrm{ref}}(x)$")
     plt.grid(True)
 
     # get default matplotlib color cycle
@@ -209,7 +223,7 @@ def problem_area_both(x, err, w_left=1e-5, w_right=1e-4):
 
     for i, n in enumerate(range(n_min, n_max + 1)):
         pole = (1 + 2*n) * pi / 2.0
-        label = rf"$x = \frac{{(1+2\cdot{n})\pi}}{{2}}$"
+        label = rf"$x = {1+2*n} \cdot pi/2$"
         color = colors[i % len(colors)]
         first_plot_for_n = True  # one legend entry per n
 
@@ -251,7 +265,10 @@ def problem_area_both(x, err, w_left=1e-5, w_right=1e-4):
                 )
 
     plt.xlim(-w_left, w_right)
-    plt.legend(loc="upper left", fontsize="small", ncol=2)
+    plt.ylim(-10, 0.5)
+    plt.legend(loc="lower right", fontsize="small", ncol=2)
+
+    plt.savefig("tan_positive_singularities.png", dpi=100, bbox_inches="tight")
     plt.show()
 
 
@@ -293,13 +310,13 @@ def ulp_and_abs_error(path_ulp, path_abs):
 
 if __name__ == "__main__":
     print("Next: ", 3/2 * np.pi - 0.00001, 3/2 * np.pi + 0.00001)
-    x, err = get_data('./tan_ulp_error_behavior.tsv')
-    # x, err = get_data('./tan_error_behavior.tsv')
+    # x, err = get_data('./tan_ulp_error_behavior.tsv')
+    x, err = get_data('./tan_error_behavior.tsv')
     # simple_error_plot(x, err) 
-    simple_scatter_error_plot(x, err)
+    # simple_scatter_error_plot(x, err)
     # plot_range(x, err)
     # problem_area_right(x, err)
     # problem_area_left(x, err)
-    # problem_area_both(x, err)
+    problem_area_both(x, err)
     # compare_correction('one_bit_smaller_correction.tsv', 'tan_error_behavior.tsv')
     # ulp_and_abs_error('./tan_ulp_error_behavior.tsv', './tan_error_behavior.tsv')
