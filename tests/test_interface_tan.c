@@ -405,14 +405,14 @@ int main(int argc, char *argv[]) {
   printf("Number of inputs (error calculation): n=%d\n", (int)accuracy_test_size);
   printf("----------------------------------------------------------------------------------------------------\n\n");
 
-  // run_accuracy_test(accuracy_test_size);
+  run_accuracy_test(accuracy_test_size);
 
   srand((unsigned)time(NULL));
 
   // run_speed_test(lower, upper, speed_test_size);
   // run_precision_test(lower, upper, accuracy_test_size);
   
-  plot_error_behavior(lower, upper, accuracy_test_size, 2);
+  // plot_error_behavior(lower, upper, accuracy_test_size, 0);
   // plot_data_ulp(lower, upper, accuracy_test_size, 0);
 
   return 0;

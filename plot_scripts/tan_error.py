@@ -11,16 +11,18 @@ def get_data(path="./tan_error_behavior.tsv"):
 
 def simple_error_plot(x, err):
     plt.figure(figsize=(19.2, 10.8), dpi=100)
-    plt.xlabel(r"$x$")
-    plt.ylabel(r"$\tan_{\mathrm{impl}}(x) - \tan_{\mathrm{ref}}(x)$")
-    plt.yscale("log")
+    plt.xlabel(r"$x$", fontsize=22)
+    plt.ylabel(r"$\tan_{\mathrm{HP}}(x) - \tan_{\mathrm{approx}}(x)$", fontsize=22)
     plt.grid(True)
 
-    plt.plot(x, -err)
+    plt.plot(x, err)
 
     ax = plt.gca()
 
     ax.ticklabel_format(axis="x", style="plain", useOffset=False)
+
+    ax.tick_params(axis="x", labelsize=16)
+    ax.tick_params(axis="y", labelsize=16)
 
     x_left  = x.min()
     x_right = x.max()
@@ -28,16 +30,25 @@ def simple_error_plot(x, err):
     ax.set_xticks([x_left, x_right])
     ax.set_xticklabels([rf"${x_left:.5f}$", r"$\pi/2$"])
 
+    plt.ylim(-10, 0.1)
+
     plt.savefig("tan_difference_uncorrected_first_singularity.png", dpi=100, bbox_inches="tight")
     plt.show()
 
-def simple_scatter_error_plot(x, err, title="Error Plot", error_metric="tan(x) - tan_simd(x)"):
-    plt.figure(figsize=(14, 8))
-    plt.title(title)
-    plt.xlabel("x")
-    plt.ylabel(error_metric)
+def simple_scatter_error_plot(x, err):
+    plt.figure(figsize=(19.2, 10.8), dpi=100)
+
+    plt.xlabel("x", fontsize=18)
+    plt.ylabel(
+        r"$\mathrm{ULP}(\tan_{\mathrm{impl}}(x),\tan_{\mathrm{ref}}(x), x)$",
+        fontsize=18
+    )
+
+    plt.tick_params(axis="both", which="major", labelsize=14)
     plt.grid(True)
-    plt.scatter(x, err)
+
+    plt.scatter(x, err, s=1.5, alpha=0.7)
+    plt.savefig("ulp_error_thierd_quadrant_corrected.png", dpi=100, bbox_inches="tight")
     plt.show()
 
 def plot_range(x, err, bounds: tuple = (np.pi/2, 3/2 * np.pi)):
@@ -222,6 +233,8 @@ def problem_area_both(x, err, w_left=1e-7, w_right=1e-7):
     colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
     for i, n in enumerate(range(n_min, n_max + 1)):
+        if abs(n) <= 3:
+            continue
         pole = (1 + 2*n) * pi / 2.0
         label = rf"$x = {1+2*n} \cdot pi/2$"
         color = colors[i % len(colors)]
@@ -238,9 +251,10 @@ def problem_area_both(x, err, w_left=1e-7, w_right=1e-7):
             ew = ew[finite]
             if t.size:
                 idx = np.argsort(t, kind="mergesort")
-                plt.plot(
+                plt.scatter(
                     t[idx], ew[idx],
-                    alpha=0.7,
+                    alpha=0.9,
+                    s=1.5,
                     color=color,
                     label=label if first_plot_for_n else None
                 )
@@ -257,15 +271,15 @@ def problem_area_both(x, err, w_left=1e-7, w_right=1e-7):
             ew = ew[finite]
             if t.size:
                 idx = np.argsort(t, kind="mergesort")
-                plt.plot(
+                plt.scatter(
                     t[idx], ew[idx],
-                    alpha=0.7,
+                    alpha=0.9,
+                    s=1.5,
                     color=color,
                     label=label if first_plot_for_n else None
                 )
 
     plt.xlim(-w_left, w_right)
-    plt.ylim(-10, 0.5)
     plt.legend(loc="lower right", fontsize="small", ncol=2)
 
     plt.savefig("tan_positive_singularities.png", dpi=100, bbox_inches="tight")
@@ -312,11 +326,11 @@ if __name__ == "__main__":
     print("Next: ", 3/2 * np.pi - 0.00001, 3/2 * np.pi + 0.00001)
     # x, err = get_data('./tan_ulp_error_behavior.tsv')
     x, err = get_data('./tan_error_behavior.tsv')
-    # simple_error_plot(x, err) 
+    simple_error_plot(x, err) 
     # simple_scatter_error_plot(x, err)
     # plot_range(x, err)
     # problem_area_right(x, err)
     # problem_area_left(x, err)
-    problem_area_both(x, err)
+    # problem_area_both(x, err)
     # compare_correction('one_bit_smaller_correction.tsv', 'tan_error_behavior.tsv')
     # ulp_and_abs_error('./tan_ulp_error_behavior.tsv', './tan_error_behavior.tsv')

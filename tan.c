@@ -16,7 +16,6 @@
 
 
 double TAYLOR_COEFF_TAN[] = {
-  1.000000000000000,
   0.3333333333333333,
   0.13333333333333333,
   0.05396825396825397,
@@ -35,53 +34,24 @@ double TAYLOR_COEFF_TAN[] = {
 
 
 void tan_simd(double *input, double *res, size_t n) {
-  //printf("%.17g %.17g", nextafter(M_PI/2.0, INFINITY), nextafter(3.0 * M_PI/2.0, -INFINITY));
   int simd_doubles = SIMD_LENGTH / 64;
 
   const SDOUBLE pi_2 = LOAD_DOUBLE(M_PI_2);
   const SDOUBLE one_over_pi_8 = LOAD_DOUBLE(1/M_PI_8);
   const SDOUBLE one_over_pi_2 = LOAD_DOUBLE(1/M_PI_2);
 
-  //const SDOUBLE correction = LOAD_DOUBLE(TAN_CORRECTION);
-  //const SDOUBLE range_reduction_correction = LOAD_DOUBLE(RANG_REDUCTION_CORRECTION);
-
-  // -1 => -0.0000000000000000612323399570
-  //  0 =>  0.0000000000000000612323399570
-  //  1 =>  0.0000000000000001836970199000
-  //  2 =>  0.0000000000000003061616998040
-  //
-  // 
-  // 3/2 pi => 1 => -0.0000000000000000995799000000000
-  // 5/2 pi => 2 =>  0.0000000000000000114423776000000
-  // 
-  //
-  // 0.000000000000000122464679943 * num_ranges_away + 0.0000000000000000612323399570
-  //
-  double q2_bitshift_double = -pow(2, -52);
-  const SDOUBLE q2_bitshift = LOAD_DOUBLE(q2_bitshift_double);
-
-
-  double tan_correction_a = 0.0000000000000001224646799430000;
-  double tan_correction_b = 0.00000000000000006123233995736766;
-
-  const SDOUBLE a_correction = LOAD_DOUBLE(tan_correction_a);
-  const SDOUBLE b_correction = LOAD_DOUBLE(tan_correction_b);
-  const SDOUBLE range_reduction_correction = LOAD_DOUBLE(0.0);
-
-  int last_taylor_coeff = 13;
-  int taylor_loop_iteration = last_taylor_coeff - 1;
-
-  const SDOUBLE zero = SET_ZERO();
+  const SDOUBLE q2_bitshift = LOAD_DOUBLE(-pow(2, -52));
+  const SDOUBLE b_correction = LOAD_DOUBLE(MIN_POSITIVE_COS_VALUE);
 
   const SDOUBLE neg_one = LOAD_DOUBLE(-1.0);
   const SDOUBLE neg_half = LOAD_DOUBLE(-0.5);
+  const SDOUBLE zero = SET_ZERO();
   const SDOUBLE half = LOAD_DOUBLE(0.5);
   const SDOUBLE one = LOAD_DOUBLE(1.0);
   const SDOUBLE two = LOAD_DOUBLE(2.0);
   const SDOUBLE three = LOAD_DOUBLE(3.0);
   
-  for (int i = 0; i < (int) n; i += simd_doubles) {
-    SDOUBLE result = LOAD_DOUBLE(0.0);
+  for (int i = 0; i < (int) n; i += SIMD_DOUBLES) {
     SDOUBLE x   = LOAD_DOUBLE_VEC(&input[i]);
 
     const SDOUBLE abs_x = ABS_PD(x);
@@ -175,61 +145,89 @@ void tan_simd(double *input, double *res, size_t n) {
     SDOUBLE q3_reduction = SUB_DOUBLE_S(from_behind, x);
     x = FMADD_PD(q3_reduction, in_q3, x);
     
-    /* ---- Calculation for first range ---- */
+    /* ---- Taylor Loop ---- */
     const SDOUBLE x_square = MUL_DOUBLE_S(x, x);
-    SDOUBLE result_q0 = LOAD_DOUBLE(TAYLOR_COEFF_TAN[last_taylor_coeff]);
+    const SDOUBLE result_q0_t0 = LOAD_DOUBLE(TAYLOR_COEFF_TAN[12]);
 
-    for (int j = taylor_loop_iteration; j >= 1; j-=1) {
-      SDOUBLE coeff = LOAD_DOUBLE(TAYLOR_COEFF_TAN[j]);
-      result_q0 = FMADD_PD(result_q0, x_square, coeff);
-    }
+    const SDOUBLE coeff12 = LOAD_DOUBLE(TAYLOR_COEFF_TAN[11]);
+    const SDOUBLE result_q0_t1 = FMADD_PD(result_q0_t0, x_square, coeff12);
 
-    SDOUBLE c_sign0 = SUB_DOUBLE_S(in_even_range, in_odd_range);
+    const SDOUBLE coeff11 = LOAD_DOUBLE(TAYLOR_COEFF_TAN[10]);
+    const SDOUBLE result_q0_t2 = FMADD_PD(result_q0_t1, x_square, coeff11);
 
-    SDOUBLE c_sign = MUL_DOUBLE_S(c_sign0, x_negative);
-    
-    SDOUBLE correction = MUL_DOUBLE_S(b_correction, constants_away);
-    correction = MUL_DOUBLE_S(correction, c_sign);
+    const SDOUBLE coeff10 = LOAD_DOUBLE(TAYLOR_COEFF_TAN[9]);
+    const SDOUBLE result_q0_t3 = FMADD_PD(result_q0_t2, x_square, coeff10);
 
-    SDOUBLE one_over_from_behind = DIV_DOUBLE_S(one, from_behind);
-    SDOUBLE correction_term = MUL_DOUBLE_S(correction, one_over_from_behind);
-    SDOUBLE first_coeff = FMADD_PD(correction_term, in_q3, one);
+    const SDOUBLE coeff9 = LOAD_DOUBLE(TAYLOR_COEFF_TAN[8]);
+    const SDOUBLE result_q0_t4 = FMADD_PD(result_q0_t3, x_square, coeff9);
 
-    result_q0 = FMADD_PD(result_q0, x_square, first_coeff);
-    result_q0 = MUL_DOUBLE_S(result_q0, x);
+    const SDOUBLE coeff8 = LOAD_DOUBLE(TAYLOR_COEFF_TAN[7]);
+    const SDOUBLE result_q0_t5 = FMADD_PD(result_q0_t4, x_square, coeff8);
+
+    const SDOUBLE coeff7 = LOAD_DOUBLE(TAYLOR_COEFF_TAN[6]);
+    const SDOUBLE result_q0_t6 = FMADD_PD(result_q0_t5, x_square, coeff7);
+
+    const SDOUBLE coeff6 = LOAD_DOUBLE(TAYLOR_COEFF_TAN[5]);
+    const SDOUBLE result_q0_t7 = FMADD_PD(result_q0_t6, x_square, coeff6);
+
+    const SDOUBLE coeff5 = LOAD_DOUBLE(TAYLOR_COEFF_TAN[4]);
+    const SDOUBLE result_q0_t8 = FMADD_PD(result_q0_t7, x_square, coeff5);
+
+    const SDOUBLE coeff4 = LOAD_DOUBLE(TAYLOR_COEFF_TAN[3]);
+    const SDOUBLE result_q0_t9 = FMADD_PD(result_q0_t8, x_square, coeff4);
+
+    const SDOUBLE coeff3 = LOAD_DOUBLE(TAYLOR_COEFF_TAN[2]);
+    const SDOUBLE result_q0_t10 = FMADD_PD(result_q0_t9, x_square, coeff3);
+
+    const SDOUBLE coeff2 = LOAD_DOUBLE(TAYLOR_COEFF_TAN[1]);
+    const SDOUBLE result_q0_t11 = FMADD_PD(result_q0_t10, x_square, coeff2);
+
+    const SDOUBLE coeff1 = LOAD_DOUBLE(TAYLOR_COEFF_TAN[0]);
+    const SDOUBLE result_q0_t12 = FMADD_PD(result_q0_t11, x_square, coeff1);
+
+    const SDOUBLE correction_sign_1 = SUB_DOUBLE_S(in_even_range, in_odd_range);
+    const SDOUBLE correction_sign  = MUL_DOUBLE_S(correction_sign_1, x_negative);
+
+    const SDOUBLE correction_0 = MUL_DOUBLE_S(b_correction, constants_away);
+    const SDOUBLE correction = MUL_DOUBLE_S(correction_0, correction_sign);
+
+    const SDOUBLE one_over_from_behind = DIV_DOUBLE_S(one, from_behind);
+
+    const SDOUBLE correction_term = MUL_DOUBLE_S(correction, one_over_from_behind);
+
+    const SDOUBLE coeff0 = FMADD_PD(correction_term, in_q3, one);
+    const SDOUBLE result_q0_1 = FMADD_PD(result_q0_t12, x_square, coeff0);
+
+    const SDOUBLE result_q0 = MUL_DOUBLE_S(result_q0_1, x);
     /* ---- End first Calculation ---- */
 
     /* ---- Readjusting for the second range ---- */
-    SDOUBLE nominator = MUL_DOUBLE_S(two, result_q0);
-    SDOUBLE result_q0_square = MUL_DOUBLE_S(result_q0, result_q0);
-    SDOUBLE denominator = SUB_DOUBLE_S(one, result_q0_square);
-    SDOUBLE result_q1 = DIV_DOUBLE_S(nominator, denominator);
+    const SDOUBLE nominator = MUL_DOUBLE_S(two, result_q0);
+    const SDOUBLE result_q0_square = MUL_DOUBLE_S(result_q0, result_q0);
+    const SDOUBLE denominator = SUB_DOUBLE_S(one, result_q0_square);
 
-    /* ---- Calculation for thierd range ---- */
-    SDOUBLE result_q2 = DIV_DOUBLE_S(one, result_q1);
-    
-    /* ---- Calculation for fourth range ---- */
-    SDOUBLE result_q3 = DIV_DOUBLE_S(one, result_q0);
+    /* Obtaining the interval results */
+    const SDOUBLE result_q1 = DIV_DOUBLE_S(nominator, denominator);
+    const SDOUBLE result_q2 = DIV_DOUBLE_S(one, result_q1);
+    const SDOUBLE result_q3 = DIV_DOUBLE_S(one, result_q0);
 
-    // Add up of the results
-    result = FMADD_PD(result_q0, in_q0, result);
-    result = FMADD_PD(result_q1, in_q1, result);
-    result = FMADD_PD(result_q2, in_q2, result);
+    // Add quadrant results together
+    const SDOUBLE partial_result_0 = MUL_DOUBLE_S(result_q0, in_q0);
+    const SDOUBLE partial_result_1 = FMADD_PD(result_q1, in_q1, partial_result_0);
+    const SDOUBLE partial_result_2 = FMADD_PD(result_q2, in_q2, partial_result_1);
 
-    // ULP of q2 is between +5 and -3 shifting one up  gives +4 -4 => smaller abs ULP
-    // result = FMADD_PD(q2_bitshift, in_q2, result);
+    const SDOUBLE partial_result_31 = FMADD_PD(q2_bitshift, in_q2, partial_result_2);
+    const SDOUBLE partial_result_3  = FMADD_PD(result_q3, in_q3, partial_result_31);
 
-    result = FMADD_PD(result_q3, in_q3, result);
-    
-    result = MUL_DOUBLE_S(sign_adjust, result);
+    const SDOUBLE result = MUL_DOUBLE_S(sign_adjust, partial_result_3);
     SIMD_TO_DOUBLE_VEC(&res[i], result);
   }
 
-  for (size_t i = 0; i < n; i++) {
-      if (isnan(res[i])) {
-          printf("THERE IS NAN AT: %25.17e", input[i]);
-      }
-  }
+//for (size_t i = 0; i < n; i++) {
+//    if (isnan(res[i])) {
+//        printf("THERE IS NAN AT: %25.17e", input[i]);
+//    }
+//}
 
   int num_left_over = (n % simd_doubles);
 

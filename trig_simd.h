@@ -13,6 +13,7 @@
 #if defined(__AVX2__)
 
 #define SIMD_LENGTH (256)
+#define SIMD_DOUBLES (4)
 
 // Double I/O
 #define SDOUBLE __m256d
