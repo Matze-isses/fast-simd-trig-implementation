@@ -40,9 +40,9 @@ def simple_scatter_error_plot(x, err):
 
     plt.xlabel("x", fontsize=18)
     plt.ylabel(
-        r"$\mathrm{ULP}(\tan_{\mathrm{impl}}(x),\tan_{\mathrm{ref}}(x), x)$",
-        fontsize=18
-    )
+            r"$\mathrm{ULP}(\tan_{\mathrm{impl}}(x),\tan_{\mathrm{ref}}(x), x)$",
+            fontsize=18
+            )
 
     plt.tick_params(axis="both", which="major", labelsize=14)
     plt.grid(True)
@@ -81,7 +81,7 @@ def problem_area_right(x, err):
     plt.figure(figsize=(14, 8))
     plt.title(r"tan_simd absolute error near poles $(1+2n)\pi/2$ (centered overlays)")
     plt.xlabel(r"offset from pole $x - (1+2n)\pi/2$")
-    plt.ylabel(r"$tan(x) - tan\_simd(x)$")
+    plt.ylabel(r"$\tan_{\mathrm{HP}}(x) - \tan_{\mathrm{approx}}(x)$")
     plt.grid(True)
 
     count = 0
@@ -213,7 +213,7 @@ def problem_area_left(x, err):
     plt.show()
 
 
-def problem_area_both(x, err, w_left=1e-7, w_right=1e-7):
+def problem_area_both(x, err, w_left=1e-7, w_right=1e-7, scatter_plot: bool = False):
     pi = np.pi
 
     xmin = np.min(x)
@@ -225,19 +225,19 @@ def problem_area_both(x, err, w_left=1e-7, w_right=1e-7):
     print(n_min, n_max)
 
     plt.figure(figsize=(19.2, 10.8), dpi=100)
-    plt.xlabel(r"offset from pole")
-    plt.ylabel(r"$\tan_{\mathrm{impl}}(x) - \tan_{\mathrm{ref}}(x)$")
+    plt.xlabel(r"offset from pole", fontsize=20)
+    plt.ylabel(r"$\tan_{\mathrm{HP}}(x) - \tan_{\mathrm{approx}}(x)$", fontsize=20)
     plt.grid(True)
 
     # get default matplotlib color cycle
     colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
     for i, n in enumerate(range(n_min, n_max + 1)):
-        if abs(n) <= 3:
+        if n != 9:
             continue
         pole = (1 + 2*n) * pi / 2.0
-        label = rf"$x = {1+2*n} \cdot pi/2$"
-        color = colors[i % len(colors)]
+        label = rf"$x = {1+2*n} \cdot pi/2 +" + r"\mathrm{offset}$"
+        color = colors[0]
         first_plot_for_n = True  # one legend entry per n
 
         # LEFT window: [pole - w_left, pole]
@@ -251,13 +251,21 @@ def problem_area_both(x, err, w_left=1e-7, w_right=1e-7):
             ew = ew[finite]
             if t.size:
                 idx = np.argsort(t, kind="mergesort")
-                plt.scatter(
-                    t[idx], ew[idx],
-                    alpha=0.9,
-                    s=1.5,
-                    color=color,
-                    label=label if first_plot_for_n else None
-                )
+                if scatter_plot: 
+                    plt.scatter(
+                        t[idx], ew[idx],
+                        alpha=0.9,
+                        s=1.5,
+                        color=color,
+                        label=label if first_plot_for_n else None
+                    )
+                else:
+                    plt.plot(
+                        t[idx], ew[idx],
+                        alpha=0.9,
+                        color=color,
+                        label=label if first_plot_for_n else None
+                    )
                 first_plot_for_n = False
 
         # RIGHT window: [pole, pole + w_right]
@@ -271,18 +279,119 @@ def problem_area_both(x, err, w_left=1e-7, w_right=1e-7):
             ew = ew[finite]
             if t.size:
                 idx = np.argsort(t, kind="mergesort")
-                plt.scatter(
-                    t[idx], ew[idx],
-                    alpha=0.9,
-                    s=1.5,
-                    color=color,
-                    label=label if first_plot_for_n else None
-                )
+                if scatter_plot: 
+                    plt.scatter(
+                        t[idx], ew[idx],
+                        alpha=0.9,
+                        s=1.5,
+                        color=color,
+                        label=label if first_plot_for_n else None
+                    )
+                else:
+                    plt.plot(
+                        t[idx], ew[idx],
+                        alpha=0.9,
+                        color=color,
+                        label=label if first_plot_for_n else None
+                    )
 
     plt.xlim(-w_left, w_right)
+    plt.ylim(-1e-6, 1e-6)
     plt.legend(loc="lower right", fontsize="small", ncol=2)
 
+    ax = plt.gca()
+    ax.tick_params(axis="x", labelsize=15)
+    ax.tick_params(axis="y", labelsize=15)
+
+    ax.xaxis.get_offset_text().set_fontsize(15)
+    ax.yaxis.get_offset_text().set_fontsize(15)
+
     plt.savefig("tan_positive_singularities.png", dpi=100, bbox_inches="tight")
+    plt.show()
+
+
+def problem_area_both_with_ulp(
+    x, err, x_ulp, err_ulp,
+    w_left=1e-7, w_right=1e-7,
+    n_only=9,
+    outfile="tan_positive_singularities.png",
+):
+    pi = np.pi
+
+    xmin = np.min(x)
+    xmax = np.max(x)
+
+    n_min = int(np.floor((2 * xmin / pi - 1) / 2))
+    n_max = int(np.ceil((2 * xmax / pi - 1) / 2))
+
+    # ---- FULL HD, FULL WIDTH ----
+    fig, (ax_top, ax_bot) = plt.subplots(
+        2, 1, sharex=True,
+        figsize=(19.2, 10.8), dpi=100,
+        gridspec_kw={"height_ratios": [2.2, 1.0], "hspace": 0.05}
+    )
+
+    ax_top.set_ylabel(
+        r"$\tan_{\mathrm{HP}}(x) - \tan_{\mathrm{approx}}(x)$", fontsize=20
+    )
+    ax_bot.set_xlabel(r"offset from pole", fontsize=20)
+
+    ax_bot.set_ylabel(
+        r"$\mathrm{ULP}(\tan_{\mathrm{HP}}, \tan_{\mathrm{approx}}, x)$", fontsize=20
+    )
+
+    ax_top.grid(True)
+    ax_bot.grid(True)
+
+    colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+
+    def _plot_window(ax, xdat, ydat, pole, *, color, label=None, scatter=False):
+        mask = (xdat >= pole - w_left) & (xdat <= pole + w_right)
+        t = xdat[mask] - pole
+        y = ydat[mask]
+        finite = np.isfinite(t) & np.isfinite(y)
+        t = t[finite]
+        y = y[finite]
+
+        if t.size:
+            idx = np.argsort(t, kind="mergesort")
+            if scatter:
+                ax.scatter(t[idx], y[idx], s=6, alpha=0.9, color=color)
+            else:
+                ax.plot(t[idx], y[idx], alpha=0.9, color=color, label=label)
+
+    for i, n in enumerate(range(n_min, n_max + 1)):
+        if (n_only is not None) and (n != n_only):
+            continue
+
+        pole = (1 + 2 * n) * pi / 2.0
+        label = rf"$x = {1+2*n} \cdot \pi/2 + \mathrm{{offset}}$"
+        color = colors[i % len(colors)]
+
+        _plot_window(ax_top, x, err, pole, color=color, label=label, scatter=False)
+        _plot_window(ax_bot, x_ulp, err_ulp, pole, color=color, scatter=True)
+
+    # ---- limits ----
+    ax_bot.set_xlim(-w_left, w_right)
+    ax_top.set_ylim(-1e-6, 1e-6)
+
+    # ---- ULP ticks: force ±3 ----
+    ax_bot.set_yticks([-3, -2, -1, 0, 1, 2, 3])
+    ax_bot.set_ylim(-3.2, 3.2)
+
+    # ---- ticks + scientific offset font sizes ----
+    for ax in (ax_top, ax_bot):
+        ax.tick_params(axis="both", labelsize=15)
+        ax.xaxis.get_offset_text().set_fontsize(15)
+        ax.yaxis.get_offset_text().set_fontsize(15)
+
+    ax_top.legend(
+        loc="upper right",
+        ncol=2,
+        fontsize=16,      # ← increase this
+    )
+
+    fig.savefig(outfile, dpi=100, bbox_inches="tight")
     plt.show()
 
 
@@ -326,11 +435,14 @@ if __name__ == "__main__":
     print("Next: ", 3/2 * np.pi - 0.00001, 3/2 * np.pi + 0.00001)
     # x, err = get_data('./tan_ulp_error_behavior.tsv')
     x, err = get_data('./tan_error_behavior.tsv')
-    simple_error_plot(x, err) 
+
+    # simple_error_plot(x, err) 
     # simple_scatter_error_plot(x, err)
     # plot_range(x, err)
     # problem_area_right(x, err)
     # problem_area_left(x, err)
     # problem_area_both(x, err)
+
+    problem_area_both_with_ulp(x, err, *get_data('./tan_ulp_error_behavior.tsv'), n_only=9)
     # compare_correction('one_bit_smaller_correction.tsv', 'tan_error_behavior.tsv')
     # ulp_and_abs_error('./tan_ulp_error_behavior.tsv', './tan_error_behavior.tsv')

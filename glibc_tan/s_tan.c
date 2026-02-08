@@ -237,8 +237,7 @@ double SECTION __tan (double x) {
 	}
 
       /* (VI) The case 0.787 < abs(x) <= 25,    0 < abs(y) <= 0.0608 */
-      if (ya <= gy2.d)
-	{
+  if (ya <= gy2.d) {
 	  a2 = a * a;
 	  t2 = d9.d + a2 * d11.d;
 	  t2 = d7.d + a2 * t2;
@@ -246,8 +245,7 @@ double SECTION __tan (double x) {
 	  t2 = d3.d + a2 * t2;
 	  t2 = da + a * a2 * t2;
 
-	  if (n)
-	    {
+	  if (n) {
 	      /* -cot */
 	      EADD (a, t2, b, db);
 	      DIV2 (1.0, 0.0, b, db, c, dc, t1, t2, t3, t4);
@@ -255,16 +253,14 @@ double SECTION __tan (double x) {
 	      retval = (-y);
 	      /* Max ULP is 0.506.  */
 	      goto ret;
-	    }
-	  else
-	    {
+	    } else {
 	      /* tan */
 	      y = a + t2;
 	      retval = y;
 	      /* Max ULP is 0.506.  */
 	      goto ret;
 	    }
-	}
+  }
 
       /* (VII) The case 0.787 < abs(x) <= 25,    0.0608 < abs(y) <= 0.787 */
 
@@ -275,24 +271,21 @@ double SECTION __tan (double x) {
       fi = xfg[i][1].d;
       gi = xfg[i][2].d;
 
-      if (n)
-	{
-	  /* -cot */
-	  t2 = pz * (fi + gi) / (fi + pz);
-	  y = gi - t2;
-	  retval = (-sy * y);
-	  /* Max ULP is 0.62.  */
-	  goto ret;
-	}
-      else
-	{
-	  /* tan */
-	  t2 = pz * (gi + fi) / (gi - pz);
-	  y = fi + t2;
-	  retval = (sy * y);
-	  /* Max ULP is 0.62.  */
-	  goto ret;
-	}
+      if (n) {
+        /* -cot */
+        t2 = pz * (fi + gi) / (fi + pz);
+        y = gi - t2;
+        retval = (-sy * y);
+        /* Max ULP is 0.62.  */
+        goto ret;
+      } else {
+        /* tan */
+        t2 = pz * (gi + fi) / (gi - pz);
+        y = fi + t2;
+        retval = (sy * y);
+        /* Max ULP is 0.62.  */
+        goto ret;
+      }
     }
 
   /* (---) The case 25 < abs(x) <= 1e8 */
