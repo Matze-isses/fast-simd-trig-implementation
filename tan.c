@@ -79,6 +79,7 @@ void tan_simd(double *input, double *res, size_t n) {
     const SDOUBLE sign_adjust   = SUB_DOUBLE_S(one, sign_adjust_3);
 
     const SDOUBLE uneval_from_behind       = SUB_DOUBLE_S(pi_2, x);
+
     const SDOUBLE in_odd_range_reduction_1 = MUL_DOUBLE_S(uneval_from_behind, in_odd_range);
     const SDOUBLE in_odd_range_reduction   = SUB_DOUBLE_S(in_odd_range_reduction_1, x);
 
@@ -144,6 +145,7 @@ void tan_simd(double *input, double *res, size_t n) {
     const SDOUBLE result_q0_t11 = FMADD_PD(result_q0_t10, x_square, taylor_coeff2);
     const SDOUBLE result_q0_t12 = FMADD_PD(result_q0_t11, x_square, taylor_coeff1);
 
+    /* ---- Correction Calculation ---- */
     const SDOUBLE one_over_from_behind = DIV_DOUBLE_S(one, from_behind);
 
     const SDOUBLE correction_sign_1 = SUB_DOUBLE_S(in_even_range, in_odd_range);
@@ -177,6 +179,7 @@ void tan_simd(double *input, double *res, size_t n) {
     const SDOUBLE partial_result_3  = FMADD_PD(result_q3, in_q3, partial_result_31);
 
     const SDOUBLE result = MUL_DOUBLE_S(sign_adjust, partial_result_3);
+
     SIMD_TO_DOUBLE_VEC(&res[i], result);
   }
 
