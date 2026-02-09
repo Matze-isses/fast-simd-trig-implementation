@@ -53,9 +53,25 @@ void speed_test(double *test_values, double *own_results, size_t test_size) {
 
 
 
+  /* ---- GLIBC Warmup Results ---- */
+  double *glibc_results = malloc(test_size * sizeof(double));
+
+  START_TCLOCK;
+  for (size_t i = 0; i < test_size; i++) { glibc_results[i] = tan(test_values[i]); }
+  glibc_time_old_clock = GET_TCLOCK;
+
+  printf("Warmup GLIBC Time OC: %.17g\n", glibc_time_old_clock);
+
+  clk._begin = current();
+  for (size_t i = 0; i < test_size; i++) { glibc_results[i] = tan(test_values[i]); }
+  clk._end   = current();
+
+  glibc_execution_ms = duration_ms1(clk);
+  printf("Warmup GLIBC Time CC: %.17g\n\n", glibc_execution_ms);
+
+
   /* ---- GLIBC Results ---- */
   // Written last to obtain here the best case for glibc, where mine could still be in warmup
-  double *glibc_results = malloc(test_size * sizeof(double));
 
   START_TCLOCK;
   for (size_t i = 0; i < test_size; i++) { glibc_results[i] = tan(test_values[i]); }
