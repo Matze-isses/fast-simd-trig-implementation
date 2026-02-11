@@ -4,6 +4,8 @@
 #pragma once
 #include <immintrin.h>
 
+#define __AVX2__ 1
+
 #define M_PI_8 (M_PI / 8)
 #define TAN_CORRECTION (0.00000000000000006123233995736765)
 #define RANG_REDUCTION_CORRECTION (3.8981718325193755e-17)

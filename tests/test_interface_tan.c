@@ -290,7 +290,7 @@ static void plot_error_behavior(double lower, double upper, size_t accuracy_test
   } else if (dtype == 1) {
     fill_uniform(lower, upper, accuracy_test_size, test_values);
   } else if (dtype == 2) {
-    fill_dense_pi_over_2(lower, upper, accuracy_test_size, test_values, 0.00001);
+    fill_dense_pi_over_2(lower, upper, accuracy_test_size, test_values, 0.01);
   }
 
   /* run your implementation */
@@ -358,7 +358,7 @@ static void plot_data_ulp(double lower, double upper, size_t accuracy_test_size,
     } else if (dtype == 1) {
       fill_uniform(lower, upper, accuracy_test_size, test_values);
     } else if (dtype == 2) {
-      fill_dense_pi_over_2(lower, upper, accuracy_test_size, test_values, 0.00001);
+      fill_dense_pi_over_2(lower, upper, accuracy_test_size, test_values, 0.01);
     }
 
     /* run your implementation */
@@ -432,8 +432,8 @@ int main(int argc, char *argv[]) {
   printf("Hi3");
   //run_precision_test(lower, upper, accuracy_test_size);
   
-  //plot_error_behavior(lower, upper, accuracy_test_size, 2);
-  //plot_data_ulp(lower, upper, accuracy_test_size, 2);
+  plot_error_behavior(lower, upper, accuracy_test_size, 1);
+  plot_data_ulp(lower, upper, accuracy_test_size, 1);
 
   return 0;
 }

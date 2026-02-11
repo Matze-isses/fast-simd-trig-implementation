@@ -430,19 +430,275 @@ def ulp_and_abs_error(path_ulp, path_abs):
     plt.legend()
     plt.show()
 
+def scatter_err_near_tan_poles(x, err, outfile="tan_err_near_poles.png", isulp=False):
+    x = np.asarray(x, dtype=float)
+    err = np.asarray(err, dtype=float)
+    if x.shape != err.shape:
+        raise ValueError("x and err must have the same shape")
+
+    m = np.isfinite(x) & np.isfinite(err)
+    x = x[m]
+    err = err[m]
+    if x.size == 0:
+        raise ValueError("No finite (x, err) pairs")
+
+    pi = np.pi
+
+    # distance to nearest tan pole: reduce x modulo π into [0, π)
+    r = np.mod(x, pi)                 # in [0, π)
+    d = np.abs(r - pi/2.0)            # distance to π/2 within the cell
+    keep = d <= (pi/8.0)
+
+    xk = x[keep]
+    ek = err[keep]
+
+    fig, ax = plt.subplots(figsize=(19.2, 10.8), dpi=100)
+    ax.scatter(xk, ek, s=8, alpha=0.85)
+
+    ax.set_xlabel("x", fontsize=18)
+
+    if isulp:
+        ax.set_ylabel(
+            r"$\mathrm{ULP}(\tan_{\mathrm{HP}}, \tan_{\mathrm{approx}}, x)$", fontsize=18
+        )
+    else:
+        ax.set_ylabel(r"$\tan_{\mathrm{HP}}(x) - \tan_{\mathrm{approx}}(x)$", fontsize=22)
+
+    ax.grid(True)
+    ax.tick_params(axis="both", labelsize=14)
+
+    fig.savefig(outfile, dpi=100, bbox_inches="tight")
+    plt.show()
+
+def scatter_err_tan_poles_annulus(x, err, outfile="tan_err_pole_annulus.png", isulp=False):
+    """
+    Scatter-plot (x, err) only for points whose distance to the nearest tan pole is:
+        π/8 <= d <= π/4
+    where poles are at x = (2n+1)*π/2.
+
+    Inputs: x, err, outfile
+    """
+    x = np.asarray(x, dtype=float)
+    err = np.asarray(err, dtype=float)
+    if x.shape != err.shape:
+        raise ValueError("x and err must have the same shape")
+
+    m = np.isfinite(x) & np.isfinite(err)
+    x = x[m]
+    err = err[m]
+    if x.size == 0:
+        raise ValueError("No finite (x, err) pairs")
+
+    pi = np.pi
+
+    # distance to nearest tan pole using reduction modulo π
+    r = np.mod(x, pi)                 # in [0, π)
+    d = np.abs(r - pi/2.0)            # distance to π/2 within the cell
+
+    keep = (d >= (pi/8.0)) & (d <= (pi/4.0))
+
+    xk = x[keep]
+    ek = err[keep]
+
+    fig, ax = plt.subplots(figsize=(19.2, 10.8), dpi=100)
+    ax.scatter(xk, ek, s=0.1, alpha=0.7)
+
+    ax.set_xlabel("x", fontsize=18)
+    if isulp:
+        ax.set_ylabel(
+            r"$\mathrm{ULP}(\tan_{\mathrm{HP}}, \tan_{\mathrm{approx}}, x)$", fontsize=18
+        )
+    else:
+        ax.set_ylabel(r"$\tan_{\mathrm{HP}}(x) - \tan_{\mathrm{approx}}(x)$", fontsize=22)
+
+    ax.tick_params(axis="both", labelsize=15)
+    ax.xaxis.get_offset_text().set_fontsize(15)
+    ax.yaxis.get_offset_text().set_fontsize(15)
+
+    ax.grid(True)
+    ax.tick_params(axis="both", labelsize=14)
+
+    fig.savefig(outfile, dpi=100, bbox_inches="tight")
+    plt.show()
+
+
+def scatter_err_tan_poles_outer_annulus(x, err, outfile="tan_err_pole_outer_annulus_small_range.png", isulp=False):
+    """
+    Scatter-plot (x, err) only for points whose distance to the nearest tan pole is:
+        π/4 <= d <= 3π/8
+    where poles are at x = (2n+1)*π/2.
+
+    Inputs: x, err, outfile
+    """
+    x = np.asarray(x, dtype=float)
+    err = np.asarray(err, dtype=float)
+    if x.shape != err.shape:
+        raise ValueError("x and err must have the same shape")
+
+    m = np.isfinite(x) & np.isfinite(err)
+    x = x[m]
+    err = err[m]
+    if x.size == 0:
+        raise ValueError("No finite (x, err) pairs")
+
+    pi = np.pi
+
+    # distance to nearest tan pole using reduction modulo π
+    r = np.mod(x, pi)                 # in [0, π)
+    d = np.abs(r - pi/2.0)            # distance to π/2 within the cell
+
+    keep = (d >= (pi/4.0)) & (d <= (3.0*pi/8.0))
+
+    xk = x[keep]
+    ek = err[keep]
+
+    fig, ax = plt.subplots(figsize=(19.2, 10.8), dpi=100)
+    ax.scatter(xk, ek, s=0.1, alpha=0.7)
+
+    ax.set_xlabel("x", fontsize=18)
+    if isulp:
+        ax.set_ylabel(
+            r"$\mathrm{ULP}(\tan_{\mathrm{HP}}, \tan_{\mathrm{approx}}, x)$", fontsize=18
+        )
+    else:
+        ax.set_ylabel(r"$\tan_{\mathrm{HP}}(x) - \tan_{\mathrm{approx}}(x)$", fontsize=22)
+
+    ax.tick_params(axis="both", labelsize=15)
+    ax.xaxis.get_offset_text().set_fontsize(15)
+    ax.yaxis.get_offset_text().set_fontsize(15)
+
+    ax.grid(True)
+    ax.tick_params(axis="both", labelsize=14)
+
+    fig.savefig(outfile, dpi=100, bbox_inches="tight")
+    plt.show()
+
+
+def scatter_err_tan_poles_far_region(x, err, outfile="tan_err_pole_far_region_small_range.png", isulp=False):
+    """
+    Scatter-plot (x, err) only for points whose distance to the nearest tan pole is:
+        3π/8 < d <= π/2
+    where poles are at x = (2n+1)*π/2.
+
+    Inputs: x, err, outfile
+    """
+    x = np.asarray(x, dtype=float)
+    err = np.asarray(err, dtype=float)
+    if x.shape != err.shape:
+        raise ValueError("x and err must have the same shape")
+
+    m = np.isfinite(x) & np.isfinite(err)
+    x = x[m]
+    err = err[m]
+    if x.size == 0:
+        raise ValueError("No finite (x, err) pairs")
+
+    pi = np.pi
+
+    # distance to nearest tan pole using reduction modulo π
+    r = np.mod(x, pi)                 # in [0, π)
+    d = np.abs(r - pi/2.0)            # distance to π/2 within the cell
+
+    keep = (d > (3.0*pi/8.0)) & (d <= (pi/2.0))
+
+    xk = x[keep]
+    ek = err[keep]
+
+    fig, ax = plt.subplots(figsize=(19.2, 10.8), dpi=100)
+    ax.scatter(xk, ek, s=0.1, alpha=0.7)
+
+    ax.set_xlabel("x", fontsize=18)
+
+    if isulp:
+        ax.set_ylabel(
+            r"$\mathrm{ULP}(\tan_{\mathrm{HP}}, \tan_{\mathrm{approx}}, x)$", fontsize=18
+        )
+    else:
+        ax.set_ylabel(r"$\tan_{\mathrm{HP}}(x) - \tan_{\mathrm{approx}}(x)$", fontsize=22)
+
+    ax.tick_params(axis="both", labelsize=15)
+    ax.xaxis.get_offset_text().set_fontsize(15)
+    ax.yaxis.get_offset_text().set_fontsize(15)
+
+    ax.grid(True)
+    ax.tick_params(axis="both", labelsize=14)
+
+    fig.savefig(outfile, dpi=100, bbox_inches="tight")
+    plt.show()
+
+def fit_linear_constants_poleband(x, err, dmin, dmax):
+    x = np.asarray(x, dtype=float).ravel()
+    err = np.asarray(err, dtype=float).ravel()
+    if x.shape != err.shape:
+        raise ValueError("x and err must have the same shape")
+
+    if not (np.isfinite(dmin) and np.isfinite(dmax) and dmin <= dmax):
+        raise ValueError("Require finite dmin <= dmax")
+
+    # keep finite pairs
+    m = np.isfinite(x) & np.isfinite(err)
+    x = x[m]
+    err = err[m]
+    if x.size == 0:
+        raise ValueError("No finite (x, err) pairs")
+
+    pi = np.pi
+
+    # distance to nearest tan pole via reduction modulo pi
+    r = np.mod(x, pi)          # in [0, pi)
+    d = np.abs(r - pi/2.0)     # in [0, pi/2]
+
+    # apply pole-distance band
+    keep = (d >= dmin) & (d <= dmax)
+    xk = x[keep]
+    ek = err[keep]
+    if xk.size < 2:
+        raise ValueError("Not enough points after filtering (need >= 2)")
+
+    # OLS fit: ek ≈ a*xk + b
+    A = np.column_stack([xk, np.ones_like(xk)])
+    (a, b), *_ = np.linalg.lstsq(A, ek, rcond=None)
+    return a, b
+
 
 if __name__ == "__main__":
     print("Next: ", 3/2 * np.pi - 0.00001, 3/2 * np.pi + 0.00001)
     # x, err = get_data('./tan_ulp_error_behavior.tsv')
-    x, err = get_data('./tan_error_behavior.tsv')
+    # x, err = get_data('./tan_error_behavior.tsv')
 
     # simple_error_plot(x, err) 
     # simple_scatter_error_plot(x, err)
+
+    # scatter_err_near_tan_poles(x, err)
+
+#   x, err = get_data()
+#   a, b = fit_linear_constants_poleband(x, err, 3*np.pi/8, np.pi/2)
+#   print(a)
+
+
+    name = "large_corrected"
+    x, err = get_data('./tan_error_behavior.tsv')
+
+#   scatter_err_tan_poles_far_region(x, err, f"error_first_range_{name}_range.png", False)
+#   scatter_err_tan_poles_outer_annulus(x, err, f"error_second_range_{name}_range.png", False)
+#   scatter_err_tan_poles_annulus(x, err, f"error_thierd_range_{name}_range.png", False)
+    
+    x, err = get_data('./tan_ulp_error_behavior.tsv')
+#   scatter_err_tan_poles_outer_annulus(x, err, f"error_second_range_{name}_range_ulp.png", True)
+    scatter_err_tan_poles_annulus(x, err, f"error_thierd_range_{name}_range_ulp.png", True)
+#   scatter_err_near_tan_poles(x, err, f"error_fourth_range_{name}_range_ulp.png", True)
+
+    # scatter_err_tan_poles_outer_annulus(x, err, "error_second_range_small_range_ulp.png")
+    # scatter_err_tan_poles_outer_annulus(x, err, "error_second_range_large_range_ulp.png")
+
+    # scatter_err_tan_poles_far_region(x, err, "error_first_range_small_range.png")
+
     # plot_range(x, err)
     # problem_area_right(x, err)
     # problem_area_left(x, err)
     # problem_area_both(x, err)
 
-    problem_area_both_with_ulp(x, err, *get_data('./tan_ulp_error_behavior.tsv'), n_only=9)
+    # problem_area_both_with_ulp(x, err, *get_data('./tan_ulp_error_behavior.tsv'), n_only=9)
+    # ulp_error_by_singularity(*get_data('./tan_ulp_error_behavior.tsv'), "test_plot.png")
     # compare_correction('one_bit_smaller_correction.tsv', 'tan_error_behavior.tsv')
     # ulp_and_abs_error('./tan_ulp_error_behavior.tsv', './tan_error_behavior.tsv')
