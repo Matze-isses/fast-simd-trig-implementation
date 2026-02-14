@@ -9,10 +9,10 @@
 #include <stdlib.h>
 #include "trig_simd.h"
 
-#include <string.h>   // just used for the error calculation
-                      
-#include "./util/bit_printing.h"
+#include <string.h>
 
+// Compilation with: gcc ./tan.c -o test -lm -mavx -mavx2 -mfma -O2 -lflint -Wextra
+                      
 void tan_simd(double *input, double *res, size_t n) {
   int simd_doubles = SIMD_LENGTH / 64;
 

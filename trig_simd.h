@@ -109,7 +109,7 @@
         _mm512_setzero_pd() \
     )
 
-#endif // __AVX512__ && __AVX512F__
+#endif
 
 void sin_simd(double *input, double *res, size_t n);
 void tan_simd(double *input, double *res, size_t n);

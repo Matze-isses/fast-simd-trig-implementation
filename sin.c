@@ -8,14 +8,6 @@
 #include "trig_simd.h"
 
 #include <string.h>   // just used for the error calculation
-                      
-#include "./util/bit_printing.h"
-
-#define MAX_EXACT_INT (9007199254740992)
-#define LONG_RANGE_END (57952155664616982739.0)
-
-const double END_FRIENDLY_RANGE = M_PI * 2.0 * INT_MAX;
-
 // ---------- SIN -----------
 
 // const double RANG_REDUCTION_CORRECTION = 3.8981718325193755e-17;
@@ -54,74 +46,6 @@ const double TAYLOR_COEFF_SIN[] = {
   2.9893108271424046e-50,
 };
 
-// ---------- TAN -----------
-const double RANGE_MAX_TAN = M_PI;
-const double SMALL_RANGE_TAN = M_PI_2;
-const double RANGE_CENTER_TAN = 0;
-const double ONE_OVER_RANGE_TAN = 1 / RANGE_MAX_TAN;
-const double ONE_OVER_SMALL_RANGE_TAN = 1 / SMALL_RANGE_TAN;
-
-const double ONE_OVER_PI_2 = 1 / M_PI_2;
-
-const int MAX_SIMD_DOUBLES = (int)(SIMD_LENGTH / 64);
-const int MAX_SIMD_FLOAT = (int)(SIMD_LENGTH / 32);
-
-const int TAYLOR_DEGREE = 20;
-const int TAYLOR_LAST_COEFF = TAYLOR_DEGREE - 1;
-const int TAYLOR_LOOP_INTERATIONS = TAYLOR_DEGREE - 2;
-
-
-void get_reduced_range(double x, int *quadrant, double *reduced_range, double one_over_range_max, double range_max) {
-  int n;
-
-  n = floor(x * one_over_range_max);
-  *reduced_range = x - n * range_max;
-  *quadrant = floor(*reduced_range * ONE_OVER_PI_2);
-  *quadrant = (*quadrant < 0) ? ((*quadrant + 4) % 4) : *quadrant;
-}
-
-double taylor_eval(double x, double a, const double coeffs[], int n) {
-    double result = coeffs[n - 1];
-    for (int i = n - 2; i >= 0; --i) {
-        result = result * (x - a) + coeffs[i];
-    }
-    return result;
-}
-
-static inline int taylor_degree_from_prec(double max_input, double req_prec) {
-    uint64_t bits;
-    memcpy(&bits, &max_input, sizeof bits);
-
-    // extract 11-bit exponent field
-    int exp_bits = (int)((bits >> 52) & 0x7FF);
-
-    // subtract IEEE-754 bias (1023) + 1 due to the lost bit
-    int exponent =  exp_bits - 1023;
-    int bit_loss = 52 - exponent;
-    double item_loss = pow(2, -bit_loss);
-
-    // get taylor loss if used 0 degree
-    double taylor_loss = 0;
-    for (int i = 0; i < SIZE_TAYLOR_COEFF; i++) { taylor_loss += fabs(TAYLOR_COEFF_SIN[i]); }
-
-    int used_coeffs = 0;
-    double total_loss = item_loss + taylor_loss;
-
-    while (total_loss > req_prec) {
-      total_loss -= fabs(TAYLOR_COEFF_SIN[used_coeffs]);
-      used_coeffs += 1;
-
-      if (used_coeffs >= SIZE_TAYLOR_COEFF) {
-        printf("[WARNING] The required precision of sin_simd cannot be reached! The best possible precision is %.17g, which is used!", total_loss);
-        break;
-      }
-    }
-
-    used_coeffs += 1; // safety ensurance
-
-    // printf("Precision: %.17g -> Taylor Degree: %d\n", total_loss, used_coeffs);
-    return used_coeffs;
-}
 
 void sin_simd(double *input, double *res, size_t n) {
   int taylor_degree = 19;
@@ -147,7 +71,7 @@ void sin_simd(double *input, double *res, size_t n) {
   const SDOUBLE quadrant_multiplier = LOAD_DOUBLE(-2.0);
   const SDOUBLE ones = LOAD_DOUBLE(1.0);
 
-  for (int i = 0; i < (int) n; i += MAX_SIMD_DOUBLES) {
+  for (int i = 0; i < (int) n; i += SIMD_DOUBLES) {
     SDOUBLE x   = LOAD_DOUBLE_VEC(&input[i]);
 
     // works but is potentially negative
@@ -166,14 +90,8 @@ void sin_simd(double *input, double *res, size_t n) {
     // Gives Quadrant of the result
     const SDOUBLE small_ranges_away = MUL_DOUBLE_S(in_outer_range, one_over_small_range);
     const SDOUBLE q = FLOOR_DOUBLE_S(small_ranges_away);
-
-    // [0, 1, 2, 3] -> [1, 0, 1, 2]
     const SDOUBLE q1 = ABS_PD(SUB_DOUBLE_S(q, ones));
-
-    // [1, 0, 1, 2] -> [1, 0, 1, 4]
     const SDOUBLE q2 = MUL_DOUBLE_S(q1, q1);
-
-    // [1, 0, 1, 4] -> [0, 1, 0, 3]
     const SDOUBLE q3 = ABS_PD(SUB_DOUBLE_S(q2, ones));
 
     // q3 * pi gives the mirroring points, where 0 and 2 do not need to be mirrored

@@ -1,8 +1,9 @@
 import numpy as np
+import os
 import matplotlib.pyplot as plt
 
 
-def get_data(path="./tan_error_behavior.tsv"):
+def get_data(path="./sin_error_behavior.tsv"):
     data = np.loadtxt(path, delimiter="\t", skiprows=1)
     x = data[:, 0]
     err = data[:, 1]
@@ -11,28 +12,22 @@ def get_data(path="./tan_error_behavior.tsv"):
 
 def simple_error_plot(x, err):
     plt.figure(figsize=(19.2, 10.8), dpi=100)
+
     plt.xlabel(r"$x$", fontsize=22)
-    plt.ylabel(r"$\tan_{\mathrm{HP}}(x) - \tan_{\mathrm{approx}}(x)$", fontsize=22)
+    plt.ylabel(r"$E(x)$", fontsize=22)
     plt.grid(True)
 
-    plt.plot(x, err)
+    plt.scatter(x, err, s=0.1, alpha=0.7)
 
     ax = plt.gca()
-
-    ax.ticklabel_format(axis="x", style="plain", useOffset=False)
 
     ax.tick_params(axis="x", labelsize=16)
     ax.tick_params(axis="y", labelsize=16)
 
-    x_left  = x.min()
-    x_right = x.max()
+    ax.xaxis.get_offset_text().set_fontsize(15)
+    ax.yaxis.get_offset_text().set_fontsize(15)
 
-    ax.set_xticks([x_left, x_right])
-    ax.set_xticklabels([rf"${x_left:.5f}$", r"$\pi/2$"])
-
-    plt.ylim(-10, 0.1)
-
-    plt.savefig("tan_difference_uncorrected_first_singularity.png", dpi=100, bbox_inches="tight")
+    plt.savefig("range_reduction_error.png", dpi=100, bbox_inches="tight")
     plt.show()
 
 def simple_scatter_error_plot(x, err):
@@ -40,7 +35,7 @@ def simple_scatter_error_plot(x, err):
 
     plt.xlabel("x", fontsize=18)
     plt.ylabel(
-            r"$\mathrm{ULP}(\tan_{\mathrm{impl}}(x),\tan_{\mathrm{ref}}(x), x)$",
+            r"$\mathrm{ULP}(\sin_{\mathrm{impl}}(x),\sin_{\mathrm{ref}}(x), x)$",
             fontsize=18
             )
 
@@ -60,9 +55,9 @@ def plot_range(x, err, bounds: tuple = (np.pi/2, 3/2 * np.pi)):
             plot_y.append(_y)
 
     plt.figure(figsize=(14, 8))
-    plt.title("tan_simd absolute error vs input")
+    plt.title("sin_simd absolute error vs input")
     plt.xlabel("x")
-    plt.ylabel("tan(x) - tan_simd(x)")
+    plt.ylabel("sin(x) - sin_simd(x)")
     plt.grid(True)
     plt.plot(plot_x, plot_y)
     plt.show()
@@ -79,9 +74,9 @@ def problem_area_right(x, err):
     n_max = int(np.ceil((2 * xmax / pi - 1) / 2))
 
     plt.figure(figsize=(14, 8))
-    plt.title(r"tan_simd absolute error near poles $(1+2n)\pi/2$ (centered overlays)")
+    plt.title(r"sin_simd absolute error near poles $(1+2n)\pi/2$ (centered overlays)")
     plt.xlabel(r"offset from pole $x - (1+2n)\pi/2$")
-    plt.ylabel(r"$\tan_{\mathrm{HP}}(x) - \tan_{\mathrm{approx}}(x)$")
+    plt.ylabel(r"$\sin_{\mathrm{HP}}(x) - \sin_{\mathrm{approx}}(x)$")
     plt.grid(True)
 
     count = 0
@@ -150,9 +145,9 @@ def problem_area_left(x, err):
     n_max = int(np.ceil((2 * xmax / pi - 1) / 2))
 
     plt.figure(figsize=(14, 8))
-    plt.title(r"tan_simd absolute error left of poles $(1+2n)\pi/2$ (centered overlays)")
+    plt.title(r"sin_simd absolute error left of poles $(1+2n)\pi/2$ (centered overlays)")
     plt.xlabel(r"offset from pole $x - (1+2n)\pi/2$")
-    plt.ylabel(r"$\tan_{\mathrm{impl}}(x) - \tan_{\mathrm{ref}}(x)$")
+    plt.ylabel(r"$\sin_{\mathrm{impl}}(x) - \sin_{\mathrm{ref}}(x)$")
     plt.grid(True)
 
     count = 0
@@ -226,7 +221,7 @@ def problem_area_both(x, err, w_left=1e-7, w_right=1e-7, scatter_plot: bool = Fa
 
     plt.figure(figsize=(19.2, 10.8), dpi=100)
     plt.xlabel(r"offset from pole", fontsize=20)
-    plt.ylabel(r"$\tan_{\mathrm{HP}}(x) - \tan_{\mathrm{approx}}(x)$", fontsize=20)
+    plt.ylabel(r"$\sin_{\mathrm{HP}}(x) - \sin_{\mathrm{approx}}(x)$", fontsize=20)
     plt.grid(True)
 
     # get default matplotlib color cycle
@@ -306,7 +301,7 @@ def problem_area_both(x, err, w_left=1e-7, w_right=1e-7, scatter_plot: bool = Fa
     ax.xaxis.get_offset_text().set_fontsize(15)
     ax.yaxis.get_offset_text().set_fontsize(15)
 
-    plt.savefig("tan_positive_singularities.png", dpi=100, bbox_inches="tight")
+    plt.savefig("sin_positive_singularities.png", dpi=100, bbox_inches="tight")
     plt.show()
 
 
@@ -314,7 +309,7 @@ def problem_area_both_with_ulp(
     x, err, x_ulp, err_ulp,
     w_left=1e-7, w_right=1e-7,
     n_only=9,
-    outfile="tan_positive_singularities.png",
+    outfile="sin_positive_singularities.png",
 ):
     pi = np.pi
 
@@ -332,12 +327,12 @@ def problem_area_both_with_ulp(
     )
 
     ax_top.set_ylabel(
-        r"$\tan_{\mathrm{HP}}(x) - \tan_{\mathrm{approx}}(x)$", fontsize=20
+        r"$\sin_{\mathrm{HP}}(x) - \sin_{\mathrm{approx}}(x)$", fontsize=20
     )
     ax_bot.set_xlabel(r"offset from pole", fontsize=20)
 
     ax_bot.set_ylabel(
-        r"$\mathrm{ULP}(\tan_{\mathrm{HP}}, \tan_{\mathrm{approx}}, x)$", fontsize=20
+        r"$\mathrm{ULP}(\sin_{\mathrm{HP}}, \sin_{\mathrm{approx}}, x)$", fontsize=20
     )
 
     ax_top.grid(True)
@@ -403,7 +398,7 @@ def compare_correction(path1, path2):
     plt.figure(figsize=(14, 8))
     plt.title(fr"Compare {path1} and {path2}")
     plt.xlabel(r"offset from pole $x - (1+2n)\pi/2$")
-    plt.ylabel(r"$tan(x) - tan\_simd(x)$")
+    plt.ylabel(r"$sin(x) - sin\_simd(x)$")
     plt.grid(True)
 
     plt.plot(x1, y1, label=f'{path1}')
@@ -421,7 +416,7 @@ def ulp_and_abs_error(path_ulp, path_abs):
     plt.figure(figsize=(14, 8))
     plt.title(fr"Compare {path_ulp} and {path_abs}")
     plt.xlabel(r"offset from pole $x - (1+2n)\pi/2$")
-    plt.ylabel(r"$tan(x) - tan\_simd(x)$")
+    plt.ylabel(r"$sin(x) - sin\_simd(x)$")
     plt.grid(True)
 
     plt.plot(x1, y1, label=f'{path_ulp}')
@@ -430,7 +425,36 @@ def ulp_and_abs_error(path_ulp, path_abs):
     plt.legend()
     plt.show()
 
-def scatter_err_near_tan_poles(x, err, outfile="tan_err_near_poles.png", isulp=False):
+
+def _get_plot_quadrant_default():
+    q = os.environ.get("PLOT_QUADRANT", "1")
+    try:
+        q = int(q)
+    except ValueError:
+        q = 1
+    return q if q in (1, 2, 3, 4) else 1
+
+
+def _quadrant_mask_sin(x, q):
+    """
+    Quadrants over [0, 2π) using x mod 2π:
+      Q1: [0, π/2)
+      Q2: [π/2, π)
+      Q3: [π, 3π/2)
+      Q4: [3π/2, 2π)
+    """
+    t = np.mod(np.asarray(x, dtype=float), 2.0 * np.pi)
+    if q == 1:
+        return (t >= 0.0) & (t < 0.5 * np.pi)
+    if q == 2:
+        return (t >= 0.5 * np.pi) & (t < 1.0 * np.pi)
+    if q == 3:
+        return (t >= 1.0 * np.pi) & (t < 1.5 * np.pi)
+    # q == 4
+    return (t >= 1.5 * np.pi) & (t < 2.0 * np.pi)
+
+
+def scatter_err_near_sin_poles(x, err, outfile="sin_err_near_poles.png", isulp=False):
     x = np.asarray(x, dtype=float)
     err = np.asarray(err, dtype=float)
     if x.shape != err.shape:
@@ -442,12 +466,8 @@ def scatter_err_near_tan_poles(x, err, outfile="tan_err_near_poles.png", isulp=F
     if x.size == 0:
         raise ValueError("No finite (x, err) pairs")
 
-    pi = np.pi
-
-    # distance to nearest tan pole: reduce x modulo π into [0, π)
-    r = np.mod(x, pi)                 # in [0, π)
-    d = np.abs(r - pi/2.0)            # distance to π/2 within the cell
-    keep = d <= (pi/8.0)
+    q = _get_plot_quadrant_default()
+    keep = _quadrant_mask_sin(x, q)
 
     xk = x[keep]
     ek = err[keep]
@@ -456,13 +476,10 @@ def scatter_err_near_tan_poles(x, err, outfile="tan_err_near_poles.png", isulp=F
     ax.scatter(xk, ek, s=8, alpha=0.85)
 
     ax.set_xlabel("x", fontsize=18)
-
     if isulp:
-        ax.set_ylabel(
-            r"$\mathrm{ULP}(\tan_{\mathrm{HP}}, \tan_{\mathrm{approx}}, x)$", fontsize=18
-        )
+        ax.set_ylabel(r"$\mathrm{ULP}(\sin_{\mathrm{HP}}, \sin_{\mathrm{approx}}, x)$", fontsize=18)
     else:
-        ax.set_ylabel(r"$\tan_{\mathrm{HP}}(x) - \tan_{\mathrm{approx}}(x)$", fontsize=22)
+        ax.set_ylabel(r"$\sin_{\mathrm{HP}}(x) - \sin_{\mathrm{approx}}(x)$", fontsize=22)
 
     ax.grid(True)
     ax.tick_params(axis="both", labelsize=14)
@@ -470,13 +487,12 @@ def scatter_err_near_tan_poles(x, err, outfile="tan_err_near_poles.png", isulp=F
     fig.savefig(outfile, dpi=100, bbox_inches="tight")
     plt.show()
 
-def scatter_err_tan_poles_annulus(x, err, outfile="tan_err_pole_annulus.png", isulp=False):
-    """
-    Scatter-plot (x, err) only for points whose distance to the nearest tan pole is:
-        π/8 <= d <= π/4
-    where poles are at x = (2n+1)*π/2.
 
-    Inputs: x, err, outfile
+def scatter_err_sin_poles_annulus(x, err, outfile="sin_err_pole_annulus.png", isulp=False):
+    """
+    Kept name/signature for compatibility.
+    Now: plots only points in one quadrant (default Q1).
+    Quadrant can be set via env var PLOT_QUADRANT=1|2|3|4.
     """
     x = np.asarray(x, dtype=float)
     err = np.asarray(err, dtype=float)
@@ -489,13 +505,8 @@ def scatter_err_tan_poles_annulus(x, err, outfile="tan_err_pole_annulus.png", is
     if x.size == 0:
         raise ValueError("No finite (x, err) pairs")
 
-    pi = np.pi
-
-    # distance to nearest tan pole using reduction modulo π
-    r = np.mod(x, pi)                 # in [0, π)
-    d = np.abs(r - pi/2.0)            # distance to π/2 within the cell
-
-    keep = (d >= (pi/8.0)) & (d <= (pi/4.0))
+    q = _get_plot_quadrant_default()
+    keep = _quadrant_mask_sin(x, q)
 
     xk = x[keep]
     ek = err[keep]
@@ -505,16 +516,13 @@ def scatter_err_tan_poles_annulus(x, err, outfile="tan_err_pole_annulus.png", is
 
     ax.set_xlabel("x", fontsize=18)
     if isulp:
-        ax.set_ylabel(
-            r"$\mathrm{ULP}(\tan_{\mathrm{HP}}, \tan_{\mathrm{approx}}, x)$", fontsize=18
-        )
+        ax.set_ylabel(r"$\mathrm{ULP}(\sin_{\mathrm{HP}}, \sin_{\mathrm{approx}}, x)$", fontsize=18)
     else:
-        ax.set_ylabel(r"$\tan_{\mathrm{HP}}(x) - \tan_{\mathrm{approx}}(x)$", fontsize=22)
+        ax.set_ylabel(r"$\sin_{\mathrm{HP}}(x) - \sin_{\mathrm{approx}}(x)$", fontsize=22)
 
     ax.tick_params(axis="both", labelsize=15)
     ax.xaxis.get_offset_text().set_fontsize(15)
     ax.yaxis.get_offset_text().set_fontsize(15)
-
     ax.grid(True)
     ax.tick_params(axis="both", labelsize=14)
 
@@ -522,13 +530,11 @@ def scatter_err_tan_poles_annulus(x, err, outfile="tan_err_pole_annulus.png", is
     plt.show()
 
 
-def scatter_err_tan_poles_outer_annulus(x, err, outfile="tan_err_pole_outer_annulus_small_range.png", isulp=False):
+def scatter_err_sin_poles_outer_annulus(x, err, outfile="sin_err_pole_outer_annulus_small_range.png", isulp=False):
     """
-    Scatter-plot (x, err) only for points whose distance to the nearest tan pole is:
-        π/4 <= d <= 3π/8
-    where poles are at x = (2n+1)*π/2.
-
-    Inputs: x, err, outfile
+    Kept name/signature for compatibility.
+    Now: plots only points in one quadrant (default Q1).
+    Quadrant can be set via env var PLOT_QUADRANT=1|2|3|4.
     """
     x = np.asarray(x, dtype=float)
     err = np.asarray(err, dtype=float)
@@ -541,13 +547,8 @@ def scatter_err_tan_poles_outer_annulus(x, err, outfile="tan_err_pole_outer_annu
     if x.size == 0:
         raise ValueError("No finite (x, err) pairs")
 
-    pi = np.pi
-
-    # distance to nearest tan pole using reduction modulo π
-    r = np.mod(x, pi)                 # in [0, π)
-    d = np.abs(r - pi/2.0)            # distance to π/2 within the cell
-
-    keep = (d >= (pi/4.0)) & (d <= (3.0*pi/8.0))
+    q = _get_plot_quadrant_default()
+    keep = _quadrant_mask_sin(x, q)
 
     xk = x[keep]
     ek = err[keep]
@@ -557,16 +558,13 @@ def scatter_err_tan_poles_outer_annulus(x, err, outfile="tan_err_pole_outer_annu
 
     ax.set_xlabel("x", fontsize=18)
     if isulp:
-        ax.set_ylabel(
-            r"$\mathrm{ULP}(\tan_{\mathrm{HP}}, \tan_{\mathrm{approx}}, x)$", fontsize=18
-        )
+        ax.set_ylabel(r"$\mathrm{ULP}(\sin_{\mathrm{HP}}, \sin_{\mathrm{approx}}, x)$", fontsize=18)
     else:
-        ax.set_ylabel(r"$\tan_{\mathrm{HP}}(x) - \tan_{\mathrm{approx}}(x)$", fontsize=22)
+        ax.set_ylabel(r"$\sin_{\mathrm{HP}}(x) - \sin_{\mathrm{approx}}(x)$", fontsize=22)
 
     ax.tick_params(axis="both", labelsize=15)
     ax.xaxis.get_offset_text().set_fontsize(15)
     ax.yaxis.get_offset_text().set_fontsize(15)
-
     ax.grid(True)
     ax.tick_params(axis="both", labelsize=14)
 
@@ -574,13 +572,11 @@ def scatter_err_tan_poles_outer_annulus(x, err, outfile="tan_err_pole_outer_annu
     plt.show()
 
 
-def scatter_err_tan_poles_far_region(x, err, outfile="tan_err_pole_far_region_small_range.png", isulp=False):
+def scatter_err_sin_poles_far_region(x, err, outfile="sin_err_pole_far_region_small_range.png", isulp=False):
     """
-    Scatter-plot (x, err) only for points whose distance to the nearest tan pole is:
-        3π/8 < d <= π/2
-    where poles are at x = (2n+1)*π/2.
-
-    Inputs: x, err, outfile
+    Kept name/signature for compatibility.
+    Now: plots only points in one quadrant (default Q1).
+    Quadrant can be set via env var PLOT_QUADRANT=1|2|3|4.
     """
     x = np.asarray(x, dtype=float)
     err = np.asarray(err, dtype=float)
@@ -593,13 +589,8 @@ def scatter_err_tan_poles_far_region(x, err, outfile="tan_err_pole_far_region_sm
     if x.size == 0:
         raise ValueError("No finite (x, err) pairs")
 
-    pi = np.pi
-
-    # distance to nearest tan pole using reduction modulo π
-    r = np.mod(x, pi)                 # in [0, π)
-    d = np.abs(r - pi/2.0)            # distance to π/2 within the cell
-
-    keep = (d > (3.0*pi/8.0)) & (d <= (pi/2.0))
+    q = _get_plot_quadrant_default()
+    keep = _quadrant_mask_sin(x, q)
 
     xk = x[keep]
     ek = err[keep]
@@ -608,25 +599,22 @@ def scatter_err_tan_poles_far_region(x, err, outfile="tan_err_pole_far_region_sm
     ax.scatter(xk, ek, s=0.1, alpha=0.7)
 
     ax.set_xlabel("x", fontsize=18)
-
     if isulp:
-        ax.set_ylabel(
-            r"$\mathrm{ULP}(\tan_{\mathrm{HP}}, \tan_{\mathrm{approx}}, x)$", fontsize=18
-        )
+        ax.set_ylabel(r"$\mathrm{ULP}(\sin_{\mathrm{HP}}, \sin_{\mathrm{approx}}, x)$", fontsize=18)
     else:
-        ax.set_ylabel(r"$\tan_{\mathrm{HP}}(x) - \tan_{\mathrm{approx}}(x)$", fontsize=22)
+        ax.set_ylabel(r"$\sin_{\mathrm{HP}}(x) - \sin_{\mathrm{approx}}(x)$", fontsize=22)
 
     ax.tick_params(axis="both", labelsize=15)
     ax.xaxis.get_offset_text().set_fontsize(15)
     ax.yaxis.get_offset_text().set_fontsize(15)
-
     ax.grid(True)
     ax.tick_params(axis="both", labelsize=14)
 
     fig.savefig(outfile, dpi=100, bbox_inches="tight")
     plt.show()
 
-def fit_linear_constants_poleband(x, err, dmin, dmax):
+
+def fit_linear_conssints_poleband(x, err, dmin, dmax):
     x = np.asarray(x, dtype=float).ravel()
     err = np.asarray(err, dtype=float).ravel()
     if x.shape != err.shape:
@@ -644,7 +632,7 @@ def fit_linear_constants_poleband(x, err, dmin, dmax):
 
     pi = np.pi
 
-    # distance to nearest tan pole via reduction modulo pi
+    # distance to nearest sin pole via reduction modulo pi
     r = np.mod(x, pi)          # in [0, pi)
     d = np.abs(r - pi/2.0)     # in [0, pi/2]
 
@@ -663,42 +651,43 @@ def fit_linear_constants_poleband(x, err, dmin, dmax):
 
 if __name__ == "__main__":
     print("Next: ", 3/2 * np.pi - 0.00001, 3/2 * np.pi + 0.00001)
-    # x, err = get_data('./tan_ulp_error_behavior.tsv')
-    # x, err = get_data('./tan_error_behavior.tsv')
+    # x, err = get_data('./sin_ulp_error_behavior.tsv')
+    # x, err = get_data('./sin_error_behavior.tsv')
+    x, err = get_data('./range_reduction_error.tsv')
+    simple_error_plot(x, err) 
 
-    # simple_error_plot(x, err) 
     # simple_scatter_error_plot(x, err)
 
-    # scatter_err_near_tan_poles(x, err)
+    # scatter_err_near_sin_poles(x, err)
 
 #   x, err = get_data()
-#   a, b = fit_linear_constants_poleband(x, err, 3*np.pi/8, np.pi/2)
+#   a, b = fit_linear_conssints_poleband(x, err, 3*np.pi/8, np.pi/2)
 #   print(a)
 
 
-    name = "large_corrected"
-    x, err = get_data('./tan_error_behavior.tsv')
+#   name = "large_corrected"
+#   x, err = get_data('./sin_error_behavior.tsv')
 
-    scatter_err_tan_poles_far_region(x, err, f"error_first_range_{name}_range.png", False)
-    scatter_err_tan_poles_outer_annulus(x, err, f"error_second_range_{name}_range.png", False)
-    scatter_err_tan_poles_annulus(x, err, f"error_thierd_range_{name}_range.png", False)
+#   scatter_err_sin_poles_far_region(x, err, f"error_first_range_{name}_range.png", False)
+#   scatter_err_sin_poles_outer_annulus(x, err, f"error_second_range_{name}_range.png", False)
+#   scatter_err_sin_poles_annulus(x, err, f"error_thierd_range_{name}_range.png", False)
     
-#   x, err = get_data('./tan_ulp_error_behavior.tsv')
-#   scatter_err_tan_poles_outer_annulus(x, err, f"error_second_range_{name}_range_ulp.png", True)
-#   scatter_err_tan_poles_annulus(x, err, f"error_thierd_range_{name}_range_ulp.png", True)
-#   scatter_err_near_tan_poles(x, err, f"error_fourth_range_{name}_range_ulp.png", True)
+#   x, err = get_data('./sin_ulp_error_behavior.tsv')
+#   scatter_err_sin_poles_outer_annulus(x, err, f"error_second_range_{name}_range_ulp.png", True)
+#   scatter_err_sin_poles_annulus(x, err, f"error_thierd_range_{name}_range_ulp.png", True)
+#   scatter_err_near_sin_poles(x, err, f"error_fourth_range_{name}_range_ulp.png", True)
 
-    # scatter_err_tan_poles_outer_annulus(x, err, "error_second_range_small_range_ulp.png")
-    # scatter_err_tan_poles_outer_annulus(x, err, "error_second_range_large_range_ulp.png")
+    # scatter_err_sin_poles_outer_annulus(x, err, "error_second_range_small_range_ulp.png")
+    # scatter_err_sin_poles_outer_annulus(x, err, "error_second_range_large_range_ulp.png")
 
-    # scatter_err_tan_poles_far_region(x, err, "error_first_range_small_range.png")
+    # scatter_err_sin_poles_far_region(x, err, "error_first_range_small_range.png")
 
     # plot_range(x, err)
     # problem_area_right(x, err)
     # problem_area_left(x, err)
     # problem_area_both(x, err)
 
-    # problem_area_both_with_ulp(x, err, *get_data('./tan_ulp_error_behavior.tsv'), n_only=9)
-    # ulp_error_by_singularity(*get_data('./tan_ulp_error_behavior.tsv'), "test_plot.png")
-    # compare_correction('one_bit_smaller_correction.tsv', 'tan_error_behavior.tsv')
-    # ulp_and_abs_error('./tan_ulp_error_behavior.tsv', './tan_error_behavior.tsv')
+    # problem_area_both_with_ulp(x, err, *get_data('./sin_ulp_error_behavior.tsv'), n_only=9)
+    # ulp_error_by_singularity(*get_data('./sin_ulp_error_behavior.tsv'), "test_plot.png")
+    # compare_correction('one_bit_smaller_correction.tsv', 'sin_error_behavior.tsv')
+    # ulp_and_abs_error('./sin_ulp_error_behavior.tsv', './sin_error_behavior.tsv')
