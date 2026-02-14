@@ -13,8 +13,9 @@
 #include "./util/bit_printing.h"
 
 // Compilation with: gcc ./tan.c -o test -lm -mavx -mavx2 -mfma -O2 -lflint -Wextra
+//
                       
-void tan_simd(double *input, double *res, size_t n) {
+void tan_simd_avx512(double *input, double *res, size_t n) {
   int simd_doubles = SIMD_LENGTH / 64;
 
   const SDOUBLE pi_2 = LOAD_DOUBLE(M_PI_2);
@@ -172,6 +173,11 @@ void tan_simd(double *input, double *res, size_t n) {
   for (size_t i = n - num_left_over; i < n; i++) {
     res[i] = tan(input[i]);
   }
+}
+
+void tan_simd(double *input, double *res, size_t n) {
+  if (USE_AVX512) { return tan_simd_avx512(double *input, double *res, size_t n); }
+  return tan_simd_avx512(double *input, double *res, size_t n);
 }
 
 

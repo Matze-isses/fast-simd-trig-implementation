@@ -13,6 +13,7 @@
 
 #if defined(__AVX512F__)
 
+#define USE_AVX512 (true)
 #define SIMD_LENGTH (512)
 #define SIMD_DOUBLES (8)
 
@@ -53,6 +54,7 @@
 
 #elif defined(__AVX2__)
 
+#define USE_AVX512 (false)
 #define SIMD_LENGTH (256)
 #define SIMD_DOUBLES (4)
 
