@@ -32,24 +32,12 @@
 #define SUB_DOUBLE_S _mm512_sub_pd
 
 // floor(a)
-#define FLOOR_DOUBLE_S(a) \
-    _mm512_roundscale_pd((a), _MM_FROUND_TO_NEG_INF | _MM_FROUND_NO_EXC)
+#define FLOOR_DOUBLE_S(a) _mm512_roundscale_pd((a), _MM_FROUND_TO_NEG_INF)
 
-// for (a, b, c) does return (a * b) + c
 #define FMADD_PD _mm512_fmadd_pd
-
-// ceil(a)
-#define CEIL_PD(a) \
-    _mm512_roundscale_pd((a), _MM_FROUND_TO_POS_INF | _MM_FROUND_NO_EXC)
-
-// keep the same macro names as AVX2
 #define CMP_PD _mm512_cmp_pd_mask
 
-// AVX512 blend-by-mask equivalent (mask in k-register)
-#define BLEND_PD(src, a, mask) _mm512_mask_blend_pd((mask), (src), (a))
-
-#define ABS_PD(a) \
-    _mm512_max_pd((a), _mm512_mul_pd(_mm512_set1_pd(-1.0), (a)))
+#define ABS_PD(a) _mm512_abs_pd((a))
 
 // Replace +/-inf (by absolute value) with 0.0
 #define REMOVE_INF(a) \
@@ -63,9 +51,7 @@
         _mm512_setzero_pd() \
     )
 
-#endif // __AVX2__ 
-
-#if defined(__AVX2__)
+#elif defined(__AVX2__)
 
 #define SIMD_LENGTH (256)
 #define SIMD_DOUBLES (4)
