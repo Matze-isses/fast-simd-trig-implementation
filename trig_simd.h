@@ -11,53 +11,7 @@
 #define RANG_REDUCTION_CORRECTION (3.8981718325193755e-17)
 #define MIN_POSITIVE_COS_VALUE (0.00000000000000006123233995736766)
 
-#if defined(__AVX2__)
-
-#define SIMD_LENGTH (256)
-#define SIMD_DOUBLES (4)
-
-// Double I/O
-#define SDOUBLE __m256d
-#define LOAD_DOUBLE _mm256_set1_pd
-#define LOAD_DOUBLE_VEC _mm256_loadu_pd
-#define SIMD_TO_DOUBLE_VEC _mm256_storeu_pd
-
-#define SET_ZERO _mm256_setzero_pd
-
-// Double Operations
-#define MUL_DOUBLE_S _mm256_mul_pd
-#define DIV_DOUBLE_S _mm256_div_pd
-
-#define ADD_DOUBLE_S _mm256_add_pd
-#define SUB_DOUBLE_S _mm256_sub_pd
-
-#define FLOOR_DOUBLE_S _mm256_floor_pd
-
-
-// for (a, b, c) does return (a * b) + c
-#define FMADD_PD _mm256_fmadd_pd 
-#define CEIL_PD _mm256_ceil_pd
-#define CMP_PD _mm256_cmp_pd
-#define BLEND_PD _mm256_blendv_pd
-
-
-#define ABS_PD(a) \
-    _mm256_max_pd((a), _mm256_mul_pd(_mm256_set1_pd(-1.0), (a)))
-
-#define REMOVE_INF(a) \
-    _mm256_blendv_pd( \
-        (a), \
-        _mm256_setzero_pd(), \
-        _mm256_cmp_pd( \
-            _mm256_andnot_pd(_mm256_set1_pd(-0.0), (a)), \
-            _mm256_set1_pd(INFINITY), \
-            _CMP_EQ_OQ \
-        ) \
-    )
-
-#endif // __AVX2__ 
-
-#if defined(__AVX512__) && defined(__AVX512F__)
+#if defined(__AVX512F__)
 
 #define SIMD_LENGTH (512)
 #define SIMD_DOUBLES (8)
@@ -107,6 +61,52 @@
             _CMP_EQ_OQ \
         ), \
         _mm512_setzero_pd() \
+    )
+
+#endif // __AVX2__ 
+
+#if defined(__AVX2__)
+
+#define SIMD_LENGTH (256)
+#define SIMD_DOUBLES (4)
+
+// Double I/O
+#define SDOUBLE __m256d
+#define LOAD_DOUBLE _mm256_set1_pd
+#define LOAD_DOUBLE_VEC _mm256_loadu_pd
+#define SIMD_TO_DOUBLE_VEC _mm256_storeu_pd
+
+#define SET_ZERO _mm256_setzero_pd
+
+// Double Operations
+#define MUL_DOUBLE_S _mm256_mul_pd
+#define DIV_DOUBLE_S _mm256_div_pd
+
+#define ADD_DOUBLE_S _mm256_add_pd
+#define SUB_DOUBLE_S _mm256_sub_pd
+
+#define FLOOR_DOUBLE_S _mm256_floor_pd
+
+
+// for (a, b, c) does return (a * b) + c
+#define FMADD_PD _mm256_fmadd_pd 
+#define CEIL_PD _mm256_ceil_pd
+#define CMP_PD _mm256_cmp_pd
+#define BLEND_PD _mm256_blendv_pd
+
+
+#define ABS_PD(a) \
+    _mm256_max_pd((a), _mm256_mul_pd(_mm256_set1_pd(-1.0), (a)))
+
+#define REMOVE_INF(a) \
+    _mm256_blendv_pd( \
+        (a), \
+        _mm256_setzero_pd(), \
+        _mm256_cmp_pd( \
+            _mm256_andnot_pd(_mm256_set1_pd(-0.0), (a)), \
+            _mm256_set1_pd(INFINITY), \
+            _CMP_EQ_OQ \
+        ) \
     )
 
 #endif
