@@ -15,7 +15,7 @@
 // Compilation with: gcc ./tan.c -o test -lm -mavx -mavx2 -mfma -O2 -lflint -Wextra
 //
                       
-void tan_simd_avx512(double *input, double *res, size_t n) {
+void tan_simd(double *input, double *res, size_t n) {
   int simd_doubles = SIMD_LENGTH / 64;
 
   const SDOUBLE pi_2 = LOAD_DOUBLE(M_PI_2);
@@ -52,8 +52,8 @@ void tan_simd_avx512(double *input, double *res, size_t n) {
   for (int i = 0; i < (int) n; i += SIMD_DOUBLES) {
     SDOUBLE x   = LOAD_DOUBLE_VEC(&input[i]);
 
-    __mmask8 m_pos = _mm512_cmp_pd_mask(x, zero, _CMP_GT_OQ);
-    __mmask8 m_neg = _mm512_cmp_pd_mask(x, zero, _CMP_LT_OQ);
+    MASK8 m_pos = CMP_MASK(x, zero, _CMP_GT_OQ);
+    MASK8 m_neg = CMP_MASK(x, zero, _CMP_LT_OQ);
 
     SDOUBLE x_negative = _mm512_mask_mov_pd(neg_one, m_pos, one);
     SDOUBLE x_negative01 = _mm512_maskz_mov_pd(m_neg, one);
@@ -95,25 +95,25 @@ void tan_simd_avx512(double *input, double *res, size_t n) {
     const SDOUBLE quadrant = FLOOR_DOUBLE_S(not_floored);
 
     /* obtaining bool vectors for the each quadrant */
-    __mmask8 m0 = _mm512_cmp_pd_mask(quadrant, zero,  _CMP_EQ_OQ);
-    __mmask8 m1 = _mm512_cmp_pd_mask(quadrant, one,   _CMP_EQ_OQ);
-    __mmask8 m2 = _mm512_cmp_pd_mask(quadrant, two,   _CMP_EQ_OQ);
-    __mmask8 m3 = _mm512_cmp_pd_mask(quadrant, three, _CMP_EQ_OQ);
+    MASK8 m0 = CMP_MASK(quadrant, zero,  _CMP_EQ_OQ);
+    MASK8 m1 = CMP_MASK(quadrant, one,   _CMP_EQ_OQ);
+    MASK8 m2 = CMP_MASK(quadrant, two,   _CMP_EQ_OQ);
+    MASK8 m3 = CMP_MASK(quadrant, three, _CMP_EQ_OQ);
 
     // Mirror it to move it to range 1
-    const SDOUBLE q2_reduction_1 = _mm512_mask_add_pd(zero, m2, from_behind, zero);
+    const SDOUBLE q2_reduction_1 = MASK_ADD_PD(zero, m2, from_behind, zero);
     const SDOUBLE q2_reduction = SUB_DOUBLE_S(q2_reduction_1, x);
-    x = _mm512_mask_add_pd(x, m2, q2_reduction, x);
+    x = MASK_ADD_PD(x, m2, q2_reduction, x);
     // x = q2_reduction if q2_reduction != 0 else x
 
     // reduce to move it to range 0
     const SDOUBLE q1_reduction = MUL_DOUBLE_S(x, neg_half);
-    x = _mm512_mask_add_pd(x, m1, q1_reduction, x);
-    x = _mm512_mask_add_pd(x, m2, q1_reduction, x);
+    x = MASK_ADD_PD(x, m1, q1_reduction, x);
+    x = MASK_ADD_PD(x, m2, q1_reduction, x);
 
     // move q3 in q0
     const SDOUBLE q3_reduction = SUB_DOUBLE_S(from_behind, x);
-    x = _mm512_mask_add_pd(x, m3, q3_reduction, x);
+    x = MASK_ADD_PD(x, m3, q3_reduction, x);
     
     const SDOUBLE x_square = MUL_DOUBLE_S(x, x);
 
@@ -141,7 +141,7 @@ void tan_simd_avx512(double *input, double *res, size_t n) {
     const SDOUBLE correction_term_2 = MUL_DOUBLE_S(correction_term_1, correction_sign);
     const SDOUBLE correction_term = MUL_DOUBLE_S(correction_term_2, one_over_from_behind);
 
-    const SDOUBLE coeff0 = _mm512_mask_add_pd(one, m3, correction_term, one);
+    const SDOUBLE coeff0 = MASK_ADD_PD(one, m3, correction_term, one);
     const SDOUBLE result_q0_1 = FMADD_PD(result_q0_t12, x_square, coeff0);
 
     const SDOUBLE result_q0 = MUL_DOUBLE_S(result_q0_1, x);
@@ -157,11 +157,11 @@ void tan_simd_avx512(double *input, double *res, size_t n) {
     const SDOUBLE result_q3 = DIV_DOUBLE_S(one, result_q0);
 
     /* Add quadrant results together */
-    const SDOUBLE partial_result_0  = _mm512_mask_add_pd(zero, m0, result_q0, zero);
-    const SDOUBLE partial_result_1  = _mm512_mask_add_pd(partial_result_0, m1, result_q1, partial_result_0);
-    const SDOUBLE partial_result_2  = _mm512_mask_add_pd(partial_result_1, m2, result_q2, partial_result_1);
-    const SDOUBLE partial_result_31 = _mm512_mask_add_pd(partial_result_2, m2, q2_bitshift, partial_result_2);
-    const SDOUBLE partial_result_3  = _mm512_mask_add_pd(partial_result_31, m3, result_q3, partial_result_31);
+    const SDOUBLE partial_result_0  = MASK_ADD_PD(zero, m0, result_q0, zero);
+    const SDOUBLE partial_result_1  = MASK_ADD_PD(partial_result_0, m1, result_q1, partial_result_0);
+    const SDOUBLE partial_result_2  = MASK_ADD_PD(partial_result_1, m2, result_q2, partial_result_1);
+    const SDOUBLE partial_result_31 = MASK_ADD_PD(partial_result_2, m2, q2_bitshift, partial_result_2);
+    const SDOUBLE partial_result_3  = MASK_ADD_PD(partial_result_31, m3, result_q3, partial_result_31);
     const SDOUBLE result = MUL_DOUBLE_S(sign_adjust, partial_result_3);
 
     SIMD_TO_DOUBLE_VEC(&res[i], result);
@@ -173,11 +173,6 @@ void tan_simd_avx512(double *input, double *res, size_t n) {
   for (size_t i = n - num_left_over; i < n; i++) {
     res[i] = tan(input[i]);
   }
-}
-
-void tan_simd(double *input, double *res, size_t n) {
-  if (USE_AVX512) { return tan_simd_avx512(double *input, double *res, size_t n); }
-  return tan_simd_avx512(double *input, double *res, size_t n);
 }
 
 

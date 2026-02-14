@@ -84,7 +84,9 @@ void speed_test(double *test_values, double *own_results, size_t test_size) {
   clk._end   = current();
 
   glibc_execution_ms = duration_ms1(clk);
-  printf("GLIBC Time CC: %.17g\n", glibc_execution_ms);
+  printf("GLIBC Time CC: %.17g\n\n", glibc_execution_ms);
+
+  printf("Total Speedup %.17g\n", glibc_execution_ms/own_execution_ms);
 
   free(glibc_results);
 }
@@ -421,19 +423,17 @@ int main(int argc, char *argv[]) {
   printf("Number of inputs (error calculation): n=%d\n", (int)accuracy_test_size);
   printf("----------------------------------------------------------------------------------------------------\n\n");
 
-  printf("Hi1");
-
   // run_accuracy_test(accuracy_test_size);
 
   srand((unsigned)time(NULL));
 
-  printf("Hi2");
   run_speed_test(lower, upper, speed_test_size);
-  printf("Hi3");
-  //run_precision_test(lower, upper, accuracy_test_size);
+  // quadrant_error_test(accuracy_test_size);
   
-  plot_error_behavior(lower, upper, accuracy_test_size, 1);
-  plot_data_ulp(lower, upper, accuracy_test_size, 1);
+  run_precision_test(lower, upper, accuracy_test_size);
+  
+  //plot_error_behavior(lower, upper, accuracy_test_size, 1);
+  //plot_data_ulp(lower, upper, accuracy_test_size, 1);
 
   return 0;
 }

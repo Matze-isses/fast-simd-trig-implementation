@@ -6,7 +6,7 @@ SRC := \
   ./cmeasure/cbind_to_hw_thread.c \
   ./cmeasure/cmeasure.c \
   ./cmeasure/CrystalClockInC.c \
-  ./tests/test_interface.c \
+  ./tests/test_interface_tan.c \
   ./tests/value_generation.c \
   ./tests/arb_comparison.c \
   ./util/bit_printing.c \

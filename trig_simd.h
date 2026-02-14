@@ -25,6 +25,10 @@
 
 #define SET_ZERO _mm512_setzero_pd
 
+#define MASK8 __mmask8
+#define CMP_MASK _mm512_cmp_pd_mask
+#define MASK_ADD_PD _mm512_mask_add_pd
+
 // Double Operations
 #define MUL_DOUBLE_S _mm512_mul_pd
 #define DIV_DOUBLE_S _mm512_div_pd
