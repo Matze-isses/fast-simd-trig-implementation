@@ -25,6 +25,7 @@ void tan_simd(double *input, double *res, size_t n) {
 
   const SDOUBLE neg_one = LOAD_DOUBLE(-1.0);
   const SDOUBLE neg_half = LOAD_DOUBLE(-0.5);
+  const SDOUBLE zero = _mm512_setzero_pd();
   const SDOUBLE half = LOAD_DOUBLE(0.5);
   const SDOUBLE one = LOAD_DOUBLE(1.0);
   const SDOUBLE two = LOAD_DOUBLE(2.0);
@@ -46,12 +47,11 @@ void tan_simd(double *input, double *res, size_t n) {
   for (int i = 0; i < (int) n; i += SIMD_DOUBLES) {
     SDOUBLE x   = LOAD_DOUBLE_VEC(&input[i]);
 
-    const SDOUBLE abs_x = ABS_PD(x);
-    const SDOUBLE x_negative = DIV_DOUBLE_S(x, abs_x);
+    __mmask8 m_pos = _mm512_cmp_pd_mask(x, zero, _CMP_GT_OQ); // x > 0
+    __mmask8 m_neg = _mm512_cmp_pd_mask(x, zero, _CMP_LT_OQ); // x < 0
 
-    const SDOUBLE x_negative01_0 = MUL_DOUBLE_S(x_negative, neg_one);
-    const SDOUBLE x_negative01_1 = ADD_DOUBLE_S(x_negative01_0, one);
-    const SDOUBLE x_negative01 = MUL_DOUBLE_S(x_negative01_1, half);
+    SDOUBLE x_negative = _mm512_mask_mov_pd(neg_one, m_pos, one);
+    SDOUBLE x_negative01 = _mm512_maskz_mov_pd(m_neg, one);
 
     const SDOUBLE ranges_away = MUL_DOUBLE_S(x, one_over_pi_2);
     const SDOUBLE num_ranges_away = FLOOR_DOUBLE_S(ranges_away);
