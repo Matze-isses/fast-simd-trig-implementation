@@ -121,7 +121,10 @@ static void speed_test(func_kind_t fk, double *test_values, double *own_results,
   for (size_t i = 0; i < test_size; i++) glibc_results[i] = libm(test_values[i]);
   clk._end   = current();
   glibc_execution_ms = duration_ms1(clk);
-  printf("GLIBC %s Time CC: %.17g\n", func_name(fk), glibc_execution_ms);
+
+  printf("GLIBC %s Time CC: %.17g\n\n", func_name(fk), glibc_execution_ms);
+
+  printf("Speedup: (GLIBC/OWN): %.17g\n\n", glibc_execution_ms / own_execution_ms);
 
   free(glibc_results);
 }
@@ -464,12 +467,13 @@ int main(int argc, char *argv[])
   /* Enable/disable as you like */
   /* run_accuracy_test(fk, accuracy_test_size); */
   run_speed_test(fk, lower, upper, speed_test_size);
-  quadrant_error_test(fk, accuracy_test_size);
+
   /* run_precision_test(fk, lower, upper, accuracy_test_size); */
 
   /* dtype: 0 linspace, 1 uniform random, 2 dense near pi/2 (mostly for tan) */
-  plot_error_behavior(fk, lower, upper, accuracy_test_size, 1);
-  plot_data_ulp(fk, lower, upper, accuracy_test_size, 1);
+  // quadrant_error_test(fk, accuracy_test_size);
+  // plot_error_behavior(fk, lower, upper, accuracy_test_size, 1);
+  // plot_data_ulp(fk, lower, upper, accuracy_test_size, 1);
 
   return 0;
 }
