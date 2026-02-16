@@ -14,6 +14,7 @@
 #include "../trig_simd.h"
 
 #include "../cmeasure/cmeasure.h"
+#include "../cmeasure/cbind_to_hw_thread.h"
 #include "../cmeasure/CrystalClockInC.h"
 
 typedef enum {
@@ -134,12 +135,39 @@ static void quadrant_error_test(func_kind_t fk, size_t n)
   simd_fn_t own_fn = pick_simd(fk);
   libm_fn_t libm   = pick_libm(fk);
 
-  const char *interval_names[4] = {
+  const char *interval_names_sin[4] = {
     "Q1 (0, pi/2)",
     "Q2 (pi/2, pi)",
     "Q3 (pi, 3pi/2)",
     "Q4 (3pi/2, 2pi)"
   };
+
+  const char *interval_names_tan[4] = {
+    "[0, pi/8]",
+    "[pi/8, pi/4]",
+    "[pi/4, 3pi/8]",
+    "[3pi/8, pi/2]"
+  };
+
+  double bounds_sin[5] = {
+    nextafter(0.0, 1.0),
+    nextafter(M_PI / 2.0, 0.0),
+    nextafter(M_PI, 0.0),
+    nextafter(3.0 * M_PI / 2.0, M_PI),
+    nextafter(2.0 * M_PI, 0.0)
+  };
+
+  /* For tan: stay in (0, pi/2) but split into 4 sub-intervals */
+  double bounds_tan[5] = {
+    1e-11,                /* avoid exactly 0 if you want (optional) */
+    M_PI / 8.0,
+    M_PI / 4.0,
+    3.0 * M_PI / 8.0,
+    nextafter(M_PI / 2.0, 0.0) /* avoid pole */
+  };
+
+  const char **interval_names = (fk == F_TAN) ? interval_names_tan : interval_names_sin;
+  double *bounds              = (fk == F_TAN) ? bounds_tan         : bounds_sin;
 
   printf("==============================================================================================================\n");
   printf("Quadrant Error Analysis for %s, n = %d\n", func_name(fk), (int)n);
@@ -150,26 +178,8 @@ static void quadrant_error_test(func_kind_t fk, size_t n)
   printf("+----------------+----------------+---------------------------+---------------------------+---------------------------+---------------------------+\n");
 
   for (int q = 0; q < 4; ++q) {
-    double lower, upper;
-
-    switch (q) {
-      case 0: /* Q1: (0, pi/2) */
-        lower = nextafter(0.0, 1.0);
-        upper = nextafter(M_PI / 2.0, 0.0);
-        break;
-      case 1: /* Q2: (pi/2, pi) */
-        lower = nextafter(M_PI / 2.0, M_PI);
-        upper = nextafter(M_PI, 0.0);
-        break;
-      case 2: /* Q3: (pi, 3pi/2) */
-        lower = nextafter(M_PI, 2.0 * M_PI);
-        upper = nextafter(3.0 * M_PI / 2.0, M_PI);
-        break;
-      default: /* Q4: (3pi/2, 2pi) */
-        lower = nextafter(3.0 * M_PI / 2.0, 2.0 * M_PI);
-        upper = nextafter(2.0 * M_PI, 0.0);
-        break;
-    }
+    double lower = bounds[q];
+    double upper = bounds[q + 1];
 
     double *test_values   = (double*)malloc(n * sizeof(double));
     double *own_results   = (double*)malloc(n * sizeof(double));
@@ -183,10 +193,8 @@ static void quadrant_error_test(func_kind_t fk, size_t n)
       return;
     }
 
-    /* random inputs in the chosen quadrant interval */
     fill_uniform(lower, upper, n, test_values);
 
-    /* compute results */
     own_fn(test_values, own_results, n);
     for (size_t i = 0; i < n; ++i) glibc_results[i] = libm(test_values[i]);
 
@@ -214,7 +222,6 @@ static void quadrant_error_test(func_kind_t fk, size_t n)
     double avg_error_glibc     = cum_error_glibc / (double)n;
     double avg_ulp_error_glibc = cum_ulp_error_glibc / (double)n;
 
-    /* print table rows */
     printf("| %-14s | %-14s | %25.17e | %25.17e | %25.17e | %25.17e |\n",
            interval_names[q], "own",
            max_error_own, avg_error_own, max_ulp_error_own, avg_ulp_error_own);
@@ -430,8 +437,81 @@ static void plot_data_ulp(func_kind_t fk, double lower, double upper, size_t acc
   free(ulp_err);
 }
 
-int main(int argc, char *argv[])
+static void interval_accuracy_table(func_kind_t fk, double lower, double upper, size_t n)
 {
+  simd_fn_t own_fn = pick_simd(fk);
+  libm_fn_t libm   = pick_libm(fk);
+
+  double *x            = (double*)malloc(n * sizeof(double));
+  double *own_results  = (double*)malloc(n * sizeof(double));
+  double *glibc_results= (double*)malloc(n * sizeof(double));
+
+  if (!x || !own_results || !glibc_results) {
+    fprintf(stderr, "Allocation failed in interval_accuracy_table.\n");
+    free(x); free(own_results); free(glibc_results);
+    return;
+  }
+
+  fill_uniform(lower, upper, n, x);
+
+  own_fn(x, own_results, n);
+  for (size_t i = 0; i < n; ++i) glibc_results[i] = libm(x[i]);
+
+  double cum_error_own=0.0, max_error_own=0.0, value_max_error_own=0.0;
+  double cum_ulp_own=0.0,  max_ulp_own=0.0,  value_max_ulp_own=0.0;
+
+  double cum_error_glibc=0.0, max_error_glibc=0.0, value_max_error_glibc=0.0;
+  double cum_ulp_glibc=0.0,  max_ulp_glibc=0.0,  value_max_ulp_glibc=0.0;
+
+  compare_results_generic(fk, x, own_results,
+                          &cum_error_own, &max_error_own, &value_max_error_own,
+                          &cum_ulp_own, &max_ulp_own, &value_max_ulp_own,
+                          n);
+
+  compare_results_generic(fk, x, glibc_results,
+                          &cum_error_glibc, &max_error_glibc, &value_max_error_glibc,
+                          &cum_ulp_glibc, &max_ulp_glibc, &value_max_ulp_glibc,
+                          n);
+
+  double avg_error_own     = cum_error_own / (double)n;
+  double avg_ulp_error_own = cum_ulp_own   / (double)n;
+
+  double avg_error_glibc     = cum_error_glibc / (double)n;
+  double avg_ulp_error_glibc = cum_ulp_glibc   / (double)n;
+
+  printf("==============================================================================================================\n");
+  printf("Interval Error Analysis for %s on [%.17g, %.17g], n = %d\n", func_name(fk), lower, upper, (int)n);
+  printf("==============================================================================================================\n\n");
+
+  printf("+----------------------+----------------+---------------------------+---------------------------+---------------------------+---------------------------+\n");
+  printf("| Interval             | Implementation | Max Error                 | Avg Abs Error             | Max ULP Error             | Avg ULP Error             |\n");
+  printf("+----------------------+----------------+---------------------------+---------------------------+---------------------------+---------------------------+\n");
+
+  char interval_label[64];
+  snprintf(interval_label, sizeof(interval_label), "[%.6g, %.6g]", lower, upper);
+
+  printf("| %-20s | %-14s | %25.17e | %25.17e | %25.17e | %25.17e |\n",
+         interval_label, "own",
+         max_error_own, avg_error_own, max_ulp_own, avg_ulp_error_own);
+
+  printf("| %-20s | %-14s | %25.17e | %25.17e | %25.17e | %25.17e |\n",
+         "", "glibc",
+         max_error_glibc, avg_error_glibc, max_ulp_glibc, avg_ulp_error_glibc);
+
+  printf("+----------------------+----------------+---------------------------+---------------------------+---------------------------+---------------------------+\n\n");
+
+  /* optional: show where worst cases happen */
+  printf("Own   worst abs err at x=%.17g;  worst ulp err at x=%.17g\n", value_max_error_own, value_max_ulp_own);
+  printf("glibc worst abs err at x=%.17g;  worst ulp err at x=%.17g\n\n", value_max_error_glibc, value_max_ulp_glibc);
+
+  free(x);
+  free(own_results);
+  free(glibc_results);
+}
+
+int main(int argc, char *argv[]) {
+  cbind_to_hw_thread(2, 1);
+
   if (argc < 5) {
     fprintf(stderr, "Usage: %s n lower upper tan|sin [accuracy_test_size]\n", argv[0]);
     return 1;
@@ -466,12 +546,14 @@ int main(int argc, char *argv[])
 
   /* Enable/disable as you like */
   /* run_accuracy_test(fk, accuracy_test_size); */
+
   run_speed_test(fk, lower, upper, speed_test_size);
+  interval_accuracy_table(fk, lower, upper, accuracy_test_size);
+  // quadrant_error_test(fk, accuracy_test_size);
 
   /* run_precision_test(fk, lower, upper, accuracy_test_size); */
 
   /* dtype: 0 linspace, 1 uniform random, 2 dense near pi/2 (mostly for tan) */
-  // quadrant_error_test(fk, accuracy_test_size);
   // plot_error_behavior(fk, lower, upper, accuracy_test_size, 1);
   // plot_data_ulp(fk, lower, upper, accuracy_test_size, 1);
 
