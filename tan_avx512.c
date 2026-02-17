@@ -12,7 +12,7 @@
 #include <string.h>
 #include "./util/bit_printing.h"
 
-void tan_simd(double *input, double *res, size_t n) {
+void safe_tan_simd(double *input, double *res, size_t n) {
   int simd_doubles = SIMD_LENGTH / 64;
 
   const SDOUBLE pi_2 = LOAD_DOUBLE(M_PI_2);
@@ -173,9 +173,10 @@ void tan_simd(double *input, double *res, size_t n) {
 }
 
 
-void safe_tan_simd(double *input, double *res, size_t n, double error_threshold) {
+void tan_simd(double *input, double *res, size_t n) {
   // based on the error of the interval [pi/4, 3 pi/8] 
   // because there it is the largest and is not at singularity
+  double error_threshold = 1e-10
   double maximum_error_coeff = 2.62e-16;
 
   for (size_t i = 0; i < n; i++) {

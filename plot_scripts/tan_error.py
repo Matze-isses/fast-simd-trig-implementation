@@ -453,7 +453,7 @@ def scatter_err_near_tan_poles(x, err, outfile="tan_err_near_poles.png", isulp=F
     ek = err[keep]
 
     fig, ax = plt.subplots(figsize=(19.2, 10.8), dpi=100)
-    ax.scatter(xk, ek, s=8, alpha=0.85)
+    ax.scatter(xk, ek, s=0.1, alpha=0.7)
 
     ax.set_xlabel("x", fontsize=18)
 
@@ -679,7 +679,7 @@ if __name__ == "__main__":
 #   print(a)
 
 
-    name = "large_corrected"
+    name = "large_uniform"
 #   x, err = get_data('./tan_error_behavior.tsv')
 
 #   scatter_err_tan_poles_far_region(x, err, f"error_first_range_{name}_range.png", False)
@@ -687,22 +687,7 @@ if __name__ == "__main__":
 #   scatter_err_tan_poles_annulus(x, err, f"error_thierd_range_{name}_range.png", False)
     
     x, err = get_data('./tan_ulp_error_behavior.tsv')
-
-    x = np.asarray(x, dtype=float)
-    err = np.asarray(err, dtype=float)
-
-    pi = np.pi
-    r = np.mod(x, pi)                 # in [0, π)
-    d = np.abs(r - pi/2.0)            # distance to π/2 within the cell
-
-    keep = d <= (pi / 8.0)
-
-    xk = x[keep]
-    ek = err[keep]
-
-    print(f"MAX ULP ERROR: {np.max(np.abs(np.array(ek)))}")
-    print(f"Linear Coeff:  {np.max(np.abs(np.array(ek)))/np.max(xk)}")
-
+    
 #   scatter_err_tan_poles_outer_annulus(x, err, f"error_second_range_{name}_range_ulp.png", True)
 #   scatter_err_tan_poles_annulus(x, err, f"error_thierd_range_{name}_range_ulp.png", True)
     scatter_err_near_tan_poles(x, err, f"error_fourth_range_{name}_range_ulp.png", True)

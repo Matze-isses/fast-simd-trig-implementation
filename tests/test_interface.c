@@ -351,7 +351,7 @@ static void plot_error_behavior(func_kind_t fk, double lower, double upper, size
   } else if (dtype == 1) {
     fill_uniform(lower, upper, accuracy_test_size, test_values);
   } else if (dtype == 2) {
-    fill_dense_pi_over_2(lower, upper, accuracy_test_size, test_values, 0.01);
+    fill_dense_pi_over_2(lower, upper, accuracy_test_size, test_values, 0.0001);
   }
 
   own_fn(test_values, own_results, accuracy_test_size);
@@ -408,7 +408,7 @@ static void plot_data_ulp(func_kind_t fk, double lower, double upper, size_t acc
   } else if (dtype == 1) {
     fill_uniform(lower, upper, accuracy_test_size, test_values);
   } else if (dtype == 2) {
-    fill_dense_pi_over_2(lower, upper, accuracy_test_size, test_values, 0.01);
+    fill_dense_pi_over_2(lower, upper, accuracy_test_size, test_values, 0.0001);
   }
 
   own_fn(test_values, own_results, accuracy_test_size);
