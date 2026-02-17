@@ -176,11 +176,11 @@ void safe_tan_simd(double *input, double *res, size_t n) {
 void tan_simd(double *input, double *res, size_t n) {
   // based on the error of the interval [pi/4, 3 pi/8] 
   // because there it is the largest and is not at singularity
-  double error_threshold = 1e-10
+  double error_threshold = 1e-1
   double maximum_error_coeff = 2.62e-16;
 
   for (size_t i = 0; i < n; i++) {
-    double error_of_element = maximum_error_coeff * fabs(x);
+    double error_of_element = maximum_error_coeff * fabs(input[i]);
     if (error_of_element > error_threshold) {
       printf("[Warning] Tan calculation exceeds error threshold for Element at index %d!\n");
     }
