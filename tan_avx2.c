@@ -20,7 +20,7 @@ void tan_simd(double *input, double *res, size_t n) {
   const SDOUBLE one_over_pi_2 = LOAD_DOUBLE(1/M_PI_2);
 
   const SDOUBLE q2_bitshift = LOAD_DOUBLE(-pow(2, -52));
-  const SDOUBLE b_correction = LOAD_DOUBLE(MIN_POSITIVE_COS_VALUE);
+  const SDOUBLE min_positive_cos_value = LOAD_DOUBLE(MIN_POSITIVE_COS_VALUE);
 
   const SDOUBLE neg_one = LOAD_DOUBLE(-1.0);
   const SDOUBLE neg_half = LOAD_DOUBLE(-0.5);
@@ -150,7 +150,7 @@ void tan_simd(double *input, double *res, size_t n) {
     const SDOUBLE correction_sign_1 = SUB_DOUBLE_S(in_even_range, in_odd_range);
     const SDOUBLE correction_sign  = MUL_DOUBLE_S(correction_sign_1, x_negative);
 
-    const SDOUBLE correction_term_1 = MUL_DOUBLE_S(b_correction, constants_away);
+    const SDOUBLE correction_term_1 = MUL_DOUBLE_S(min_positive_cos_value, constants_away);
     const SDOUBLE correction_term_2 = MUL_DOUBLE_S(correction_term_1, correction_sign);
     const SDOUBLE correction_term = MUL_DOUBLE_S(correction_term_2, one_over_from_behind);
 
@@ -188,4 +188,18 @@ void tan_simd(double *input, double *res, size_t n) {
   for (size_t i = n - num_left_over; i < n; i++) {
     res[i] = tan(input[i]);
   }
+}
+
+void safe_tan_simd(double *input, double *res, size_t n, double error_threshold) {
+  // based on the error of the interval [pi/4, 3 pi/8] 
+  // because there it is the largest and is not at singularity
+  double maximum_error_coeff = 2.62e-16;
+
+  for (size_t i = 0; i < n; i++) {
+    double error_of_element = maximum_error_coeff * fabs(input[i]);
+    if (error_of_element > error_threshold) {
+      printf("[Warning] Tan calculation exceeds error threshold for Element at index %d!\n");
+    }
+  }
+  tan_simd(input, res, n);
 }
