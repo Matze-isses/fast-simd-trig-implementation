@@ -665,7 +665,6 @@ def fit_linear_constants_poleband(x, err, dmin, dmax):
 
 
 if __name__ == "__main__":
-    print("Next: ", 3/2 * np.pi - 0.00001, 3/2 * np.pi + 0.00001)
     # x, err = get_data('./tan_ulp_error_behavior.tsv')
     # x, err = get_data('./tan_error_behavior.tsv')
 
@@ -679,7 +678,7 @@ if __name__ == "__main__":
 #   print(a)
 
 
-    name = "large_uniform"
+#   name = "large_uniform"
 #   x, err = get_data('./tan_error_behavior.tsv')
 
 #   scatter_err_tan_poles_far_region(x, err, f"error_first_range_{name}_range.png", False)
@@ -687,10 +686,30 @@ if __name__ == "__main__":
 #   scatter_err_tan_poles_annulus(x, err, f"error_thierd_range_{name}_range.png", False)
     
     x, err = get_data('./tan_ulp_error_behavior.tsv')
+
+    x = np.asarray(x, dtype=float)
+    err = np.asarray(err, dtype=float)
+
+    pi = np.pi
+    r = np.mod(x, pi)
+    d = np.abs(r - pi/2.0)
+
+    keep = [
+            ("fourth", (d > 0) & (d <= pi/8.0)),
+            ("third", (d > pi/8.0) & (d <= pi/4.0)),
+            ("second", (d > pi/4.0) & (d <= (3.0*pi/8.0))),
+            ("first", (d > (3.0*pi/8.0)) & (d <= (pi/2.0)))
+    ]
+
+    for name, mask in reversed(keep):
+        xk = x[mask]
+        ek = err[mask]
+        i = np.argmax(np.abs(ek))
+        print(f"{np.abs(ek[i]/xk[i])} for {name} with {ek[i]}")
     
 #   scatter_err_tan_poles_outer_annulus(x, err, f"error_second_range_{name}_range_ulp.png", True)
 #   scatter_err_tan_poles_annulus(x, err, f"error_thierd_range_{name}_range_ulp.png", True)
-    scatter_err_near_tan_poles(x, err, f"error_fourth_range_{name}_range_ulp.png", True)
+#   scatter_err_near_tan_poles(x, err, f"error_fourth_range_{name}_range_ulp.png", True)
 
     # scatter_err_tan_poles_outer_annulus(x, err, "error_second_range_small_range_ulp.png")
     # scatter_err_tan_poles_outer_annulus(x, err, "error_second_range_large_range_ulp.png")
