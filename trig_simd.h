@@ -66,6 +66,8 @@
 #define MASK8 __mmask8
 #define CMP_MASK _mm512_cmp_pd_mask
 #define MASK_ADD_PD _mm512_mask_add_pd
+#define MASK_SUB_PD _mm512_mask_sub_pd
+#define MASK_MUL_PD _mm512_mask_mul_pd
 
 // Double Operations
 #define MUL_DOUBLE_S _mm512_mul_pd

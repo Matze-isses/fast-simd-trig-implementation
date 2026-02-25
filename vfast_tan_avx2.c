@@ -166,7 +166,7 @@ void vfast_tan(double *input, double *res, size_t n) {
 
     /* Obtaining the interval results */
     const SDOUBLE result_q1 = DIV_DOUBLE_S(nominator, denominator);
-    const SDOUBLE result_q2 = DIV_DOUBLE_S(one, result_q1);
+    const SDOUBLE result_q2 = DIV_DOUBLE_S(denominator, nominator);
     const SDOUBLE result_q3 = DIV_DOUBLE_S(one, result_q0);
 
     /* Add quadrant results together */

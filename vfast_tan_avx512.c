@@ -16,6 +16,7 @@ void vfast_tan(double *input, double *res, size_t n) {
   int simd_doubles = SIMD_LENGTH / 64;
 
   const SDOUBLE pi_2 = LOAD_DOUBLE(M_PI_2);
+  const SDOUBLE pi_4 = LOAD_DOUBLE(M_PI_4);
   const SDOUBLE one_over_pi_8 = LOAD_DOUBLE(1/M_PI_8);
   const SDOUBLE one_over_pi_2 = LOAD_DOUBLE(1/M_PI_2);
 
@@ -97,19 +98,11 @@ void vfast_tan(double *input, double *res, size_t n) {
     MASK8 m2 = CMP_MASK(quadrant, two,   _CMP_EQ_OQ);
     MASK8 m3 = CMP_MASK(quadrant, three, _CMP_EQ_OQ);
 
-    // Mirror it to move it to range 1
-    const SDOUBLE q2_reduction_1 = MASK_ADD_PD(zero, m2, from_behind, zero);
-    const SDOUBLE q2_reduction   = SUB_DOUBLE_S(q2_reduction_1, x);
-    x = MASK_ADD_PD(x, m2, q2_reduction, x);
+    x = MASK_MUL_PD(x, m1, x, half);
+    x = MASK_SUB_PD(x, m3, pi_2, x);
 
-    const SDOUBLE q3_reduction = SUB_DOUBLE_S(from_behind, x);
-    x = MASK_ADD_PD(x, m3, q3_reduction, x);
-    // x = q2_reduction if q2_reduction != 0 else x
-
-    // reduce to move it to range 0
-    const SDOUBLE q1_reduction = MUL_DOUBLE_S(x, neg_half);
-    x = MASK_ADD_PD(x, m1, q1_reduction, x);
-    x = MASK_ADD_PD(x, m2, q1_reduction, x);
+    x = MASK_MUL_PD(x, m2, x, half);
+    x = MASK_SUB_PD(x, m2, pi_4, x);
 
 
     const SDOUBLE x_square = MUL_DOUBLE_S(x, x);

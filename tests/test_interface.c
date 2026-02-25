@@ -555,7 +555,7 @@ int main(int argc, char *argv[]) {
 
   /* dtype: 0 linspace, 1 uniform random, 2 dense near pi/2 (mostly for tan) */
   // plot_error_behavior(fk, lower, upper, accuracy_test_size, 1);
-  plot_data_ulp(fk, lower, upper, accuracy_test_size, 1);
+  // plot_data_ulp(fk, lower, upper, accuracy_test_size, 1);
 
   return 0;
 }
