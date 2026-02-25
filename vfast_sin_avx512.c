@@ -47,7 +47,7 @@ const double TAYLOR_COEFF_SIN[] = {
 };
 
 
-void sin_simd(double *input, double *res, size_t n) {
+void vfast_sin(double *input, double *res, size_t n) {
   int taylor_degree = 19;
 
   const int taylor_last_coeff = taylor_degree - 1;
@@ -70,6 +70,27 @@ void sin_simd(double *input, double *res, size_t n) {
 
   const SDOUBLE quadrant_multiplier = LOAD_DOUBLE(-2.0);
   const SDOUBLE ones = LOAD_DOUBLE(1.0);
+
+  const SDOUBLE taylor_coeff0  = LOAD_DOUBLE(sin_tp0);
+  const SDOUBLE taylor_coeff1  = LOAD_DOUBLE(sin_tp1);
+  const SDOUBLE taylor_coeff2  = LOAD_DOUBLE(sin_tp2);
+  const SDOUBLE taylor_coeff3  = LOAD_DOUBLE(sin_tp3);
+  const SDOUBLE taylor_coeff4  = LOAD_DOUBLE(sin_tp4);
+  const SDOUBLE taylor_coeff5  = LOAD_DOUBLE(sin_tp5);
+  const SDOUBLE taylor_coeff6  = LOAD_DOUBLE(sin_tp6);
+  const SDOUBLE taylor_coeff7  = LOAD_DOUBLE(sin_tp7);
+  const SDOUBLE taylor_coeff8  = LOAD_DOUBLE(sin_tp8);
+  const SDOUBLE taylor_coeff9  = LOAD_DOUBLE(sin_tp9);
+  const SDOUBLE taylor_coeff10 = LOAD_DOUBLE(sin_tp10);
+  const SDOUBLE taylor_coeff11 = LOAD_DOUBLE(sin_tp11);
+  const SDOUBLE taylor_coeff12 = LOAD_DOUBLE(sin_tp12);
+  const SDOUBLE taylor_coeff13 = LOAD_DOUBLE(sin_tp13);
+  const SDOUBLE taylor_coeff14 = LOAD_DOUBLE(sin_tp14);
+  const SDOUBLE taylor_coeff15 = LOAD_DOUBLE(sin_tp15);
+  const SDOUBLE taylor_coeff16 = LOAD_DOUBLE(sin_tp16);
+  const SDOUBLE taylor_coeff17 = LOAD_DOUBLE(sin_tp17);
+  const SDOUBLE taylor_coeff18 = LOAD_DOUBLE(sin_tp18);
+  const SDOUBLE taylor_coeff19 = LOAD_DOUBLE(sin_tp19);
 
   for (int i = 0; i < (int) n; i += SIMD_DOUBLES) {
     SDOUBLE x   = LOAD_DOUBLE_VEC(&input[i]);
@@ -110,13 +131,28 @@ void sin_simd(double *input, double *res, size_t n) {
     SDOUBLE result = LOAD_DOUBLE(TAYLOR_COEFF_SIN[taylor_last_coeff]);
     const SDOUBLE x_square = MUL_DOUBLE_S(in_range, in_range);
 
-    for (int j = taylor_loop_iteration; j >= 0; j-=1) {
-      SDOUBLE coeff = LOAD_DOUBLE(TAYLOR_COEFF_SIN[j]);
-      result = FMADD_PD(result, x_square, coeff);
-    }
+    /* ---- Taylor Loop ---- */
+    const SDOUBLE result_q0_t17 = FMADD_PD(taylor_coeff18, x_square, taylor_coeff17);
+    const SDOUBLE result_q0_t16 = FMADD_PD(result_q0_t17,  x_square, taylor_coeff16);
+    const SDOUBLE result_q0_t15 = FMADD_PD(result_q0_t16,  x_square, taylor_coeff15);
+    const SDOUBLE result_q0_t14 = FMADD_PD(result_q0_t15,  x_square, taylor_coeff14);
+    const SDOUBLE result_q0_t13 = FMADD_PD(result_q0_t14,  x_square, taylor_coeff13);
+    const SDOUBLE result_q0_t12 = FMADD_PD(result_q0_t13,  x_square, taylor_coeff12);
+    const SDOUBLE result_q0_t11 = FMADD_PD(result_q0_t12,  x_square, taylor_coeff11);
+    const SDOUBLE result_q0_t10 = FMADD_PD(result_q0_t11,  x_square, taylor_coeff10);
+    const SDOUBLE result_q0_t9  = FMADD_PD(result_q0_t10,  x_square, taylor_coeff9);
+    const SDOUBLE result_q0_t8  = FMADD_PD(result_q0_t9,   x_square, taylor_coeff8);
+    const SDOUBLE result_q0_t7  = FMADD_PD(result_q0_t8,   x_square, taylor_coeff7);
+    const SDOUBLE result_q0_t6  = FMADD_PD(result_q0_t7,   x_square, taylor_coeff6);
+    const SDOUBLE result_q0_t5  = FMADD_PD(result_q0_t6,   x_square, taylor_coeff5);
+    const SDOUBLE result_q0_t4  = FMADD_PD(result_q0_t5,   x_square, taylor_coeff4);
+    const SDOUBLE result_q0_t3  = FMADD_PD(result_q0_t4,   x_square, taylor_coeff3);
+    const SDOUBLE result_q0_t2  = FMADD_PD(result_q0_t3,   x_square, taylor_coeff2);
+    const SDOUBLE result_q0_t1  = FMADD_PD(result_q0_t2,   x_square, taylor_coeff1);
+    const SDOUBLE result_q0_t0  = FMADD_PD(result_q0_t1,   x_square, taylor_coeff0);
 
     // to uneven the degrees
-    result = MUL_DOUBLE_S(result, in_range);
+    result = MUL_DOUBLE_S(result_q0_t0, in_range);
 
     const SDOUBLE multiplied_quadrants = MUL_DOUBLE_S(sign, quadrant_multiplier);
     const SDOUBLE quadrant_evaluation = ADD_DOUBLE_S(multiplied_quadrants, ones);

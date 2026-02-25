@@ -12,7 +12,7 @@
 #include <string.h>
 #include "./util/bit_printing.h"
 
-void tan_simd(double *input, double *res, size_t n) {
+void vfast_tan(double *input, double *res, size_t n) {
   int simd_doubles = SIMD_LENGTH / 64;
 
   const SDOUBLE pi_2 = LOAD_DOUBLE(M_PI_2);
@@ -32,19 +32,19 @@ void tan_simd(double *input, double *res, size_t n) {
   const SDOUBLE two = LOAD_DOUBLE(2.0);
   const SDOUBLE three = LOAD_DOUBLE(3.0);
 
-  const SDOUBLE taylor_coeff1 = LOAD_DOUBLE(0.3333333333333333);
-  const SDOUBLE taylor_coeff2 = LOAD_DOUBLE(0.13333333333333333);
-  const SDOUBLE taylor_coeff3 = LOAD_DOUBLE(0.05396825396825397);
-  const SDOUBLE taylor_coeff4 = LOAD_DOUBLE(0.021869488536155203);
-  const SDOUBLE taylor_coeff5 = LOAD_DOUBLE(0.008863235529902197);
-  const SDOUBLE taylor_coeff6 = LOAD_DOUBLE(0.003592128036572481);
-  const SDOUBLE taylor_coeff7 = LOAD_DOUBLE(0.0014558343870513183);
-  const SDOUBLE taylor_coeff8 = LOAD_DOUBLE(0.000590027440945586);
-  const SDOUBLE taylor_coeff9 = LOAD_DOUBLE(0.00023912911424355248);
-  const SDOUBLE taylor_coeff10 = LOAD_DOUBLE(9.691537956929451e-05);
-  const SDOUBLE taylor_coeff11 = LOAD_DOUBLE(3.927832388331683e-05);
-  const SDOUBLE taylor_coeff12 = LOAD_DOUBLE(1.5918905069328964e-05);
-  const SDOUBLE taylor_coeff13 = LOAD_DOUBLE(6.451689215655431e-06);
+  const SDOUBLE taylor_coeff1  = LOAD_DOUBLE(tan_tp1);
+  const SDOUBLE taylor_coeff2  = LOAD_DOUBLE(tan_tp2);
+  const SDOUBLE taylor_coeff3  = LOAD_DOUBLE(tan_tp3);
+  const SDOUBLE taylor_coeff4  = LOAD_DOUBLE(tan_tp4);
+  const SDOUBLE taylor_coeff5  = LOAD_DOUBLE(tan_tp5);
+  const SDOUBLE taylor_coeff6  = LOAD_DOUBLE(tan_tp6);
+  const SDOUBLE taylor_coeff7  = LOAD_DOUBLE(tan_tp7);
+  const SDOUBLE taylor_coeff8  = LOAD_DOUBLE(tan_tp8);
+  const SDOUBLE taylor_coeff9  = LOAD_DOUBLE(tan_tp9);
+  const SDOUBLE taylor_coeff10 = LOAD_DOUBLE(tan_tp10);
+  const SDOUBLE taylor_coeff11 = LOAD_DOUBLE(tan_tp11);
+  const SDOUBLE taylor_coeff12 = LOAD_DOUBLE(tan_tp12);
+  const SDOUBLE taylor_coeff13 = LOAD_DOUBLE(tan_tp13);
   
   for (int i = 0; i < (int) n; i += SIMD_DOUBLES) {
     SDOUBLE x   = LOAD_DOUBLE_VEC(&input[i]);
@@ -99,8 +99,11 @@ void tan_simd(double *input, double *res, size_t n) {
 
     // Mirror it to move it to range 1
     const SDOUBLE q2_reduction_1 = MASK_ADD_PD(zero, m2, from_behind, zero);
-    const SDOUBLE q2_reduction = SUB_DOUBLE_S(q2_reduction_1, x);
+    const SDOUBLE q2_reduction   = SUB_DOUBLE_S(q2_reduction_1, x);
     x = MASK_ADD_PD(x, m2, q2_reduction, x);
+
+    const SDOUBLE q3_reduction = SUB_DOUBLE_S(from_behind, x);
+    x = MASK_ADD_PD(x, m3, q3_reduction, x);
     // x = q2_reduction if q2_reduction != 0 else x
 
     // reduce to move it to range 0
@@ -108,10 +111,7 @@ void tan_simd(double *input, double *res, size_t n) {
     x = MASK_ADD_PD(x, m1, q1_reduction, x);
     x = MASK_ADD_PD(x, m2, q1_reduction, x);
 
-    // move q3 in q0
-    const SDOUBLE q3_reduction = SUB_DOUBLE_S(from_behind, x);
-    x = MASK_ADD_PD(x, m3, q3_reduction, x);
-    
+
     const SDOUBLE x_square = MUL_DOUBLE_S(x, x);
 
     /* ---- Taylor Loop ---- */
@@ -150,7 +150,7 @@ void tan_simd(double *input, double *res, size_t n) {
 
     /* Obtaining the interval results */
     const SDOUBLE result_q1 = DIV_DOUBLE_S(nominator, denominator);
-    const SDOUBLE result_q2 = DIV_DOUBLE_S(one, result_q1);
+    const SDOUBLE result_q2 = DIV_DOUBLE_S(denominator, nominator);
     const SDOUBLE result_q3 = DIV_DOUBLE_S(one, result_q0);
 
     /* Add quadrant results together */
@@ -159,6 +159,7 @@ void tan_simd(double *input, double *res, size_t n) {
     const SDOUBLE partial_result_2  = MASK_ADD_PD(partial_result_1, m2, result_q2, partial_result_1);
     const SDOUBLE partial_result_31 = MASK_ADD_PD(partial_result_2, m2, q2_bitshift, partial_result_2);
     const SDOUBLE partial_result_3  = MASK_ADD_PD(partial_result_31, m3, result_q3, partial_result_31);
+
     const SDOUBLE result = MUL_DOUBLE_S(sign_adjust, partial_result_3);
 
     SIMD_TO_DOUBLE_VEC(&res[i], result);
@@ -173,7 +174,7 @@ void tan_simd(double *input, double *res, size_t n) {
 }
 
 
-void safe_tan_simd(double *input, double *res, size_t n, double error_threshold) {
+void safe_vfast_tan(double *input, double *res, size_t n, double error_threshold) {
   // based on the error of the interval [pi/4, 3 pi/8] 
   // because there it is the largest and is not at singularity
   double maximum_error_coeff = 2.62e-16;
@@ -184,5 +185,5 @@ void safe_tan_simd(double *input, double *res, size_t n, double error_threshold)
       printf("[Warning] Tan calculation exceeds error threshold for Element at index %d!\n");
     }
   }
-  tan_simd(input, res, n);
+  vfast_tan(input, res, n);
 }

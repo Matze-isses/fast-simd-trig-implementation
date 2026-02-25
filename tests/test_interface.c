@@ -26,7 +26,7 @@ typedef void (*simd_fn_t)(double*, double*, size_t);
 typedef double (*libm_fn_t)(double);
 
 static inline const char* func_name(func_kind_t k) { return (k == F_SIN) ? "sin" : "tan"; }
-static inline simd_fn_t   pick_simd(func_kind_t k) { return (k == F_SIN) ? sin_simd : tan_simd; }
+static inline simd_fn_t   pick_simd(func_kind_t k) { return (k == F_SIN) ? vfast_sin : vfast_tan; }
 static inline libm_fn_t   pick_libm(func_kind_t k) { return (k == F_SIN) ? sin : tan; }
 
 static inline void compare_results_generic(func_kind_t fk,
@@ -173,9 +173,9 @@ static void quadrant_error_test(func_kind_t fk, size_t n)
   printf("Quadrant Error Analysis for %s, n = %d\n", func_name(fk), (int)n);
   printf("==============================================================================================================\n\n");
 
-  printf("+----------------+----------------+---------------------------+---------------------------+---------------------------+---------------------------+\n");
-  printf("| Interval       | Implementation | Max Error                 | Avg Abs Error             | Max ULP Error             | Avg ULP Error             |\n");
-  printf("+----------------+----------------+---------------------------+---------------------------+---------------------------+---------------------------+\n");
+  printf("+------------------+----------------+---------------------------+---------------------------+---------------------------+---------------------------+\n");
+  printf("| Interval         | Implementation | Max Error                 | Avg Abs Error             | Max ULP Error             | Avg ULP Error             |\n");
+  printf("+------------------+----------------+---------------------------+---------------------------+---------------------------+---------------------------+\n");
 
   for (int q = 0; q < 4; ++q) {
     double lower = bounds[q];
@@ -222,15 +222,15 @@ static void quadrant_error_test(func_kind_t fk, size_t n)
     double avg_error_glibc     = cum_error_glibc / (double)n;
     double avg_ulp_error_glibc = cum_ulp_error_glibc / (double)n;
 
-    printf("| %-14s | %-14s | %25.17e | %25.17e | %25.17e | %25.17e |\n",
+    printf("| %-16s | %-14s | %25.17e | %25.17e | %25.17e | %25.17e |\n",
            interval_names[q], "own",
            max_error_own, avg_error_own, max_ulp_error_own, avg_ulp_error_own);
 
-    printf("| %-14s | %-14s | %25.17e | %25.17e | %25.17e | %25.17e |\n",
+    printf("| %-16s | %-14s | %25.17e | %25.17e | %25.17e | %25.17e |\n",
            "", "glibc",
            max_error_glibc, avg_error_glibc, max_ulp_error_glibc, avg_ulp_error_glibc);
 
-    printf("+----------------+----------------+---------------------------+---------------------------+---------------------------+---------------------------+\n");
+    printf("+------------------+----------------+---------------------------+---------------------------+---------------------------+---------------------------+\n");
 
     free(test_values);
     free(own_results);
@@ -483,22 +483,22 @@ static void interval_accuracy_table(func_kind_t fk, double lower, double upper, 
   printf("Interval Error Analysis for %s on [%.17g, %.17g], n = %d\n", func_name(fk), lower, upper, (int)n);
   printf("==============================================================================================================\n\n");
 
-  printf("+----------------------+----------------+---------------------------+---------------------------+---------------------------+---------------------------+\n");
-  printf("| Interval             | Implementation | Max Error                 | Avg Abs Error             | Max ULP Error             | Avg ULP Error             |\n");
-  printf("+----------------------+----------------+---------------------------+---------------------------+---------------------------+---------------------------+\n");
+  printf("+-----------------------+----------------+---------------------------+---------------------------+---------------------------+---------------------------+\n");
+  printf("| Interval              | Implementation | Max Error                 | Avg Abs Error             | Max ULP Error             | Avg ULP Error             |\n");
+  printf("+-----------------------+----------------+---------------------------+---------------------------+---------------------------+---------------------------+\n");
 
   char interval_label[64];
   snprintf(interval_label, sizeof(interval_label), "[%.6g, %.6g]", lower, upper);
 
-  printf("| %-20s | %-14s | %25.17e | %25.17e | %25.17e | %25.17e |\n",
+  printf("| %-22s | %-14s | %25.17e | %25.17e | %25.17e | %25.17e |\n",
          interval_label, "own",
          max_error_own, avg_error_own, max_ulp_own, avg_ulp_error_own);
 
-  printf("| %-20s | %-14s | %25.17e | %25.17e | %25.17e | %25.17e |\n",
+  printf("| %-22s | %-14s | %25.17e | %25.17e | %25.17e | %25.17e |\n",
          "", "glibc",
          max_error_glibc, avg_error_glibc, max_ulp_glibc, avg_ulp_error_glibc);
 
-  printf("+----------------------+----------------+---------------------------+---------------------------+---------------------------+---------------------------+\n\n");
+  printf("+-----------------------+----------------+---------------------------+---------------------------+---------------------------+---------------------------+\n\n");
 
   /* optional: show where worst cases happen */
   printf("Own   worst abs err at x=%.17g;  worst ulp err at x=%.17g\n", value_max_error_own, value_max_ulp_own);
@@ -549,15 +549,13 @@ int main(int argc, char *argv[]) {
 
   run_speed_test(fk, lower, upper, speed_test_size);
   // interval_accuracy_table(fk, lower, upper, accuracy_test_size);
-  // quadrant_error_test(fk, accuracy_test_size);
+  quadrant_error_test(fk, accuracy_test_size);
 
   /* run_precision_test(fk, lower, upper, accuracy_test_size); */
 
-  printf("%25.17e\n", tan(nextafter(M_PI_2, 0)));
-
   /* dtype: 0 linspace, 1 uniform random, 2 dense near pi/2 (mostly for tan) */
   // plot_error_behavior(fk, lower, upper, accuracy_test_size, 1);
-  // plot_data_ulp(fk, lower, upper, accuracy_test_size, 1);
+  plot_data_ulp(fk, lower, upper, accuracy_test_size, 1);
 
   return 0;
 }

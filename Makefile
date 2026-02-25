@@ -13,8 +13,8 @@ SRC_COMMON := \
   ./util/bit_printing.c
 
 # SIMD impl sources
-SRC_AVX2   := ./sin_avx2.c ./tan_avx2.c
-SRC_AVX512 := ./sin_avx512.c ./tan_avx512.c
+SRC_AVX2   := ./vfast_sin_avx2.c ./vfast_tan_avx2.c
+SRC_AVX512 := ./vfast_sin_avx512.c ./vfast_tan_avx512.c
 
 AVX2FLAGS   := -mavx2 -mfma
 AVX512FLAGS := -mavx512f -mavx512bw -mavx512dq -mavx512vl -mfma

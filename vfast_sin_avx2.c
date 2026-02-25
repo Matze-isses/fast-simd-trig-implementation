@@ -47,7 +47,7 @@ const double TAYLOR_COEFF_SIN[] = {
 };
 
 
-void sin_simd(double *input, double *res, size_t n) {
+void vfast_sin(double *input, double *res, size_t n) {
   int taylor_degree = 19;
 
   const int taylor_last_coeff = taylor_degree - 1;
@@ -70,6 +70,27 @@ void sin_simd(double *input, double *res, size_t n) {
 
   const SDOUBLE quadrant_multiplier = LOAD_DOUBLE(-2.0);
   const SDOUBLE ones = LOAD_DOUBLE(1.0);
+
+  const SDOUBLE taylor_coeff0  = LOAD_DOUBLE(sin_tp0);
+  const SDOUBLE taylor_coeff1  = LOAD_DOUBLE(sin_tp1);
+  const SDOUBLE taylor_coeff2  = LOAD_DOUBLE(sin_tp2);
+  const SDOUBLE taylor_coeff3  = LOAD_DOUBLE(sin_tp3);
+  const SDOUBLE taylor_coeff4  = LOAD_DOUBLE(sin_tp4);
+  const SDOUBLE taylor_coeff5  = LOAD_DOUBLE(sin_tp5);
+  const SDOUBLE taylor_coeff6  = LOAD_DOUBLE(sin_tp6);
+  const SDOUBLE taylor_coeff7  = LOAD_DOUBLE(sin_tp7);
+  const SDOUBLE taylor_coeff8  = LOAD_DOUBLE(sin_tp8);
+  const SDOUBLE taylor_coeff9  = LOAD_DOUBLE(sin_tp9);
+  const SDOUBLE taylor_coeff10 = LOAD_DOUBLE(sin_tp10);
+  const SDOUBLE taylor_coeff11 = LOAD_DOUBLE(sin_tp11);
+  const SDOUBLE taylor_coeff12 = LOAD_DOUBLE(sin_tp12);
+  const SDOUBLE taylor_coeff13 = LOAD_DOUBLE(sin_tp13);
+  const SDOUBLE taylor_coeff14 = LOAD_DOUBLE(sin_tp14);
+  const SDOUBLE taylor_coeff15 = LOAD_DOUBLE(sin_tp15);
+  const SDOUBLE taylor_coeff16 = LOAD_DOUBLE(sin_tp16);
+  const SDOUBLE taylor_coeff17 = LOAD_DOUBLE(sin_tp17);
+  const SDOUBLE taylor_coeff18 = LOAD_DOUBLE(sin_tp18);
+  const SDOUBLE taylor_coeff19 = LOAD_DOUBLE(sin_tp19);
 
   for (int i = 0; i < (int) n; i += SIMD_DOUBLES) {
     SDOUBLE x   = LOAD_DOUBLE_VEC(&input[i]);
