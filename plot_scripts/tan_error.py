@@ -47,7 +47,7 @@ def simple_scatter_error_plot(x, err):
     plt.tick_params(axis="both", which="major", labelsize=14)
     plt.grid(True)
 
-    plt.scatter(x, err, s=1.5, alpha=0.7)
+    plt.scatter(x, err, s=0.5, alpha=1.0)
     plt.savefig("ulp_error_thierd_quadrant_corrected.png", dpi=100, bbox_inches="tight")
     plt.show()
 

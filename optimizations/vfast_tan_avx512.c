@@ -7,7 +7,8 @@
 #include "trig_simd.h"
 
 
-void vfast_tan(double *input, double *res, size_t n) {
+void vfast_tan(double *input, double *res, double *taylor_poly, size_t n) {
+
   int simd_doubles = SIMD_LENGTH / 64;
 
   const SDOUBLE pi_2 = LOAD_DOUBLE(M_PI_2);
@@ -29,19 +30,19 @@ void vfast_tan(double *input, double *res, size_t n) {
   const SDOUBLE three = LOAD_DOUBLE(3.0);
 
 
-  const SDOUBLE taylor_coeff1  = LOAD_DOUBLE(tan_tp1 );
-  const SDOUBLE taylor_coeff2  = LOAD_DOUBLE(tan_tp2 );
-  const SDOUBLE taylor_coeff3  = LOAD_DOUBLE(tan_tp3 );
-  const SDOUBLE taylor_coeff4  = LOAD_DOUBLE(tan_tp4 );
-  const SDOUBLE taylor_coeff5  = LOAD_DOUBLE(tan_tp5 );
-  const SDOUBLE taylor_coeff6  = LOAD_DOUBLE(tan_tp6 );
-  const SDOUBLE taylor_coeff7  = LOAD_DOUBLE(tan_tp7 );
-  const SDOUBLE taylor_coeff8  = LOAD_DOUBLE(tan_tp8 );
-  const SDOUBLE taylor_coeff9  = LOAD_DOUBLE(tan_tp9 );
-  const SDOUBLE taylor_coeff10 = LOAD_DOUBLE(tan_tp10);
-  const SDOUBLE taylor_coeff11 = LOAD_DOUBLE(tan_tp11);
-  const SDOUBLE taylor_coeff12 = LOAD_DOUBLE(tan_tp12);
-  const SDOUBLE taylor_coeff13 = LOAD_DOUBLE(tan_tp13);
+  const SDOUBLE taylor_coeff1  = LOAD_DOUBLE(taylor_poly[0]);
+  const SDOUBLE taylor_coeff2  = LOAD_DOUBLE(taylor_poly[1]);
+  const SDOUBLE taylor_coeff3  = LOAD_DOUBLE(taylor_poly[2]);
+  const SDOUBLE taylor_coeff4  = LOAD_DOUBLE(taylor_poly[3]);
+  const SDOUBLE taylor_coeff5  = LOAD_DOUBLE(taylor_poly[4]);
+  const SDOUBLE taylor_coeff6  = LOAD_DOUBLE(taylor_poly[5]);
+  const SDOUBLE taylor_coeff7  = LOAD_DOUBLE(taylor_poly[6]);
+  const SDOUBLE taylor_coeff8  = LOAD_DOUBLE(taylor_poly[7]);
+  const SDOUBLE taylor_coeff9  = LOAD_DOUBLE(taylor_poly[8]);
+  const SDOUBLE taylor_coeff10 = LOAD_DOUBLE(taylor_poly[9]);
+  const SDOUBLE taylor_coeff11 = LOAD_DOUBLE(taylor_poly[10]);
+  const SDOUBLE taylor_coeff12 = LOAD_DOUBLE(taylor_poly[11]);
+  const SDOUBLE taylor_coeff13 = LOAD_DOUBLE(taylor_poly[12]);
 
   
   for (int i = 0; i < (int) n; i += SIMD_DOUBLES) {
@@ -50,7 +51,7 @@ void vfast_tan(double *input, double *res, size_t n) {
     MASK8 m_pos = CMP_MASK(x, zero, _CMP_GT_OQ);
     MASK8 m_neg = CMP_MASK(x, zero, _CMP_LT_OQ);
 
-    SDOUBLE x_negative   = _mm512_mask_mov_pd(neg_one, m_pos, one);
+    SDOUBLE x_negative = _mm512_mask_mov_pd(neg_one, m_pos, one);
     SDOUBLE x_negative01 = _mm512_maskz_mov_pd(m_neg, one);
 
     const SDOUBLE ranges_away = MUL_DOUBLE_S(x, one_over_pi_2);
@@ -137,7 +138,7 @@ void vfast_tan(double *input, double *res, size_t n) {
 
     /* ---- Readjusting for the second range ---- */
     const SDOUBLE nominator = MUL_DOUBLE_S(two, result_q0);
-    const SDOUBLE result_q0_square = MUL_DOUBLE_S(result  _q0, result_q0);
+    const SDOUBLE result_q0_square = MUL_DOUBLE_S(result_q0, result_q0);
     const SDOUBLE denominator = SUB_DOUBLE_S(one, result_q0_square);
 
     /* Obtaining the interval results */
@@ -165,17 +166,3 @@ void vfast_tan(double *input, double *res, size_t n) {
   }
 }
 
-
-void safe_vfast_tan(double *input, double *res, size_t n, double error_threshold) {
-  // based on the error of the interval [pi/4, 3 pi/8] 
-  // because there it is the largest and is not at singularity
-  double maximum_error_coeff = 2.62e-16;
-
-  for (size_t i = 0; i < n; i++) {
-    double error_of_element = maximum_error_coeff * fabs(input[i]);
-    if (error_of_element > error_threshold) {
-      printf("[Warning] Tan calculation exceeds error threshold for Element at index %d!\n");
-    }
-  }
-  vfast_tan(input, res, n);
-}
