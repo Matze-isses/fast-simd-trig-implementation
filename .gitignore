@@ -1,6 +1,14 @@
 # Build directory
 build/
+*.tsv
+*.png
+
 
 # Final executables
 trig_simd_avx2
 trig_simd_avx512
+
+vfast_testinterface2
+vfast_testinterface512
+
+

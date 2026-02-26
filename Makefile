@@ -33,13 +33,13 @@ OBJ_AVX512 := $(patsubst ./%.c,$(OBJDIR_AVX512)/%.o,$(SRC_AVX512))
 
 all: avx2 avx512
 
-avx2: trig_simd_avx2
-avx512: trig_simd_avx512
+avx2: vfast_testinterface2
+avx512: vfast_testinterface512
 
-trig_simd_avx2: $(OBJ_COMMON_AVX2) $(OBJ_AVX2)
+vfast_testinterface2: $(OBJ_COMMON_AVX2) $(OBJ_AVX2)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
-trig_simd_avx512: $(OBJ_COMMON_AVX512) $(OBJ_AVX512)
+vfast_testinterface512: $(OBJ_COMMON_AVX512) $(OBJ_AVX512)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
 # Compile rules (same source path, different obj dirs + flags)

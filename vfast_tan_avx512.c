@@ -10,7 +10,7 @@
 #include "trig_simd.h"
 
 #include <string.h>
-#include "./util/bit_printing.h"
+
 
 void vfast_tan(double *input, double *res, size_t n) {
   int simd_doubles = SIMD_LENGTH / 64;
