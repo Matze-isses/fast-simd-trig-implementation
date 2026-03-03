@@ -549,13 +549,13 @@ int main(int argc, char *argv[]) {
 
   // run_speed_test(fk, lower, upper, speed_test_size);
   // interval_accuracy_table(fk, lower, upper, accuracy_test_size);
-  // quadrant_error_test(fk, accuracy_test_size);
+  quadrant_error_test(fk, accuracy_test_size);
 
   /* run_precision_test(fk, lower, upper, accuracy_test_size); */
 
   /* dtype: 0 linspace, 1 uniform random, 2 dense near pi/2 (mostly for tan) */
   // plot_error_behavior(fk, lower, upper, accuracy_test_size, 1);
-  plot_data_ulp(fk, lower, upper, accuracy_test_size, 1);
+  // plot_data_ulp(fk, lower, upper, accuracy_test_size, 1);
 
   return 0;
 }
