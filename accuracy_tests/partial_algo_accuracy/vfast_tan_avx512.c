@@ -53,28 +53,31 @@ void vfast_tan(double *input, double *res, int *lsb, size_t n) {
     for (int i = 0; i < (int) n; i += SIMD_DOUBLES) {
         SDOUBLE x   = LOAD_DOUBLE_VEC(&input[i]);
 
+        // Fehler Möglich erklärt aber nicht das pattern
         const SDOUBLE from_behind = SUB_DOUBLE_S(pi_2_hi, x);
         const SDOUBLE not_floored = MUL_DOUBLE_S(x, one_over_pi_8);
         const SDOUBLE quadrant = FLOOR_DOUBLE_S(not_floored);
 
-        /* obtaining bool vectors for the each quadrant */
+        // Masken haben keinen Fehler
         MASK8 m0 = CMP_MASK(quadrant, zero,  _CMP_EQ_OQ);
         MASK8 m1 = CMP_MASK(quadrant, one,   _CMP_EQ_OQ);
         MASK8 m2 = CMP_MASK(quadrant, two,   _CMP_EQ_OQ);
         MASK8 m3 = CMP_MASK(quadrant, three, _CMP_EQ_OQ);
 
-        x = MASK_MUL_PD(x, m1, x, half); // Without loss
+        // Kann kein fehler haben da nur exponent geaendert wird
+        x = MASK_MUL_PD(x, m1, x, half);
 
+        // Die subtraction als solche is korrekt, da 
+        // 
+        // 1/2 a < b < 2 * a (Sterbenz)
+        //
+        // a = pi/2; b = x
+        //
         x = MASK_SUB_PD(x, m2, pi_2_hi, x);
+        x = MASK_ADD_PD(x, m2, x, pi_2_lo);
+
+        // Kann kein fehler haben da nur exponent geaendert wird
         x = MASK_MUL_PD(x, m2, x, half);
-
-        // mit der aktion haut auch q2 hin
-        x = MASK_ADD_PD(x, m2, x, q2_bitshift_rr1);
-
-        __mmask8 mx_lt_quarter = _mm512_cmp_pd_mask(x, zero_two_five, _CMP_LT_OQ);
-        __mmask8 m2_and_x_lt_quarter = _kand_mask8(m2, mx_lt_quarter);
-
-        x = MASK_ADD_PD(x, m2_and_x_lt_quarter, x, q2_bitshift_rr2);
 
         // mit dem ding ist auch q3 exakt
         x = MASK_SUB_PD(x, m3, pi_2_hi, x);

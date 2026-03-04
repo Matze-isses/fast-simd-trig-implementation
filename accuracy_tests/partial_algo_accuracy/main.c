@@ -111,7 +111,7 @@ int main(int argc, char *argv[]) {
     int cum_ulp_error = 0;
 
     for (int i = 0; i < n; i++) {
-        printf("Res: %.17g\n", res[i]);
+        // printf("Res: %.17g\n", res[i]);
         cum_ulp_error += abs((int)ulp_error[i]);
     }
 
