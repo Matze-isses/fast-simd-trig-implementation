@@ -87,10 +87,8 @@ int main(int argc, char *argv[]) {
     double *res = (double*)malloc((size_t)n * sizeof(double));
     int64_t *ulp_error = (int64_t*)malloc((size_t)n * sizeof(int64_t));
 
-    int *lsb = (int*)malloc((size_t)n * sizeof(int));
 
-
-    const double a = M_PI_4;
+    const double a = 0.0;
     const double b = M_PI_2;
 
     // const double a = 3 * M_PI / 8.0;
@@ -104,14 +102,18 @@ int main(int argc, char *argv[]) {
     }
 
 
-    vfast_tan(x, res, lsb, n);
-    compare_results_tan_ulp_err_signed(x, res, ulp_error, n);
+    vfast_tan(x, res, n);
 
+    for (int i = 0; i < n; i++) {
+        double old_res = res[i];
+        // res[i] = tweak_lsb(old_res, 1);
+    }
+
+    compare_results_tan_ulp_err_signed(x, res, ulp_error, n);
 
     int cum_ulp_error = 0;
 
     for (int i = 0; i < n; i++) {
-        printf("Res: %.17g\n", res[i]);
         cum_ulp_error += abs((int)ulp_error[i]);
     }
 

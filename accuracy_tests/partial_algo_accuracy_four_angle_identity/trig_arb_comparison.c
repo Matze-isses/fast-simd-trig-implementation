@@ -219,7 +219,7 @@ double reference_calculation(double x)
 
     // double res = arf_get_d(arb_midref(true_result), ARF_RND_NEAR);
 
-    arb_tan(true_result_tan, true_result, PRECISION);
+    arb_tan(true_result_tan, arb_x, PRECISION);
     double res = arf_get_d(arb_midref(true_result_tan), ARF_RND_NEAR);
 
 

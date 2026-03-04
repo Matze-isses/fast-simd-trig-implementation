@@ -12,19 +12,19 @@
 
 
 // Taylor Polynomaial Coefficiants
-#define tan_tp1 (0.3333333333333333)
-#define tan_tp2 (0.13333333333333333)
-#define tan_tp3 (0.05396825396825397)
-#define tan_tp4 (0.021869488536155203)
-#define tan_tp5 (0.008863235529902197)
-#define tan_tp6 (0.003592128036572481)
-#define tan_tp7 (0.0014558343870513183)
-#define tan_tp8 (0.000590027440945586)
-#define tan_tp9 (0.00023912911424355248)
-#define tan_tp10 (9.691537956929451e-05)
-#define tan_tp11 (3.927832388331683e-05)
-#define tan_tp12 (1.5918905069328964e-05)
-#define tan_tp13 (6.451689215655431e-06)
+#define tan_tp1 (0x1.5555555555555p-2)
+#define tan_tp2 (0x1.1111111111111p-3)
+#define tan_tp3 (0x1.ba1ba1ba1ba1cp-5)
+#define tan_tp4 (0x1.664f4882c10fap-6)
+#define tan_tp5 (0x1.226e355e6c23dp-7)
+#define tan_tp6 (0x1.d6d3d0e157dep-9)
+#define tan_tp7 (0x1.7da36452b75e3p-10)
+#define tan_tp8 (0x1.3558248036744p-11)
+#define tan_tp9 (0x1.f57d7734d1664p-13)
+#define tan_tp10 (0x1.967e18afcafadp-14)
+#define tan_tp11 (0x1.497d8eea25259p-15)
+#define tan_tp12 (0x1.0b132d39a605p-16)
+#define tan_tp13 (0x1.b0f72d3ee24e9p-18)
 
 
 #define sin_tp0 (1.0)

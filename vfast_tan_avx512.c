@@ -137,7 +137,7 @@ void vfast_tan(double *input, double *res, size_t n) {
 
     /* ---- Readjusting for the second range ---- */
     const SDOUBLE nominator = MUL_DOUBLE_S(two, result_q0);
-    const SDOUBLE result_q0_square = MUL_DOUBLE_S(result  _q0, result_q0);
+    const SDOUBLE result_q0_square = MUL_DOUBLE_S(result_q0, result_q0);
     const SDOUBLE denominator = SUB_DOUBLE_S(one, result_q0_square);
 
     /* Obtaining the interval results */

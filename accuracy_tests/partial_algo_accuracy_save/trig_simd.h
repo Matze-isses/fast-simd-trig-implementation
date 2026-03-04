@@ -152,5 +152,5 @@
 
 #endif
 
-void vfast_tan(double *input, double *res, int *lsb, size_t n);
+void vfast_tan(double *input, double *res, size_t n);
 #endif

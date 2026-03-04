@@ -35,6 +35,8 @@ void vfast_tan(double *input, double *res, int *lsb, size_t n) {
     const SDOUBLE one = LOAD_DOUBLE(1.0);
     const SDOUBLE two = LOAD_DOUBLE(2.0);
     const SDOUBLE three = LOAD_DOUBLE(3.0);
+    const SDOUBLE four = LOAD_DOUBLE(4.0);
+    const SDOUBLE six = LOAD_DOUBLE(6.0);
 
     const SDOUBLE taylor_coeff1  = LOAD_DOUBLE(tan_tp1);
     const SDOUBLE taylor_coeff2  = LOAD_DOUBLE(tan_tp2);
@@ -53,32 +55,7 @@ void vfast_tan(double *input, double *res, int *lsb, size_t n) {
     for (int i = 0; i < (int) n; i += SIMD_DOUBLES) {
         SDOUBLE x   = LOAD_DOUBLE_VEC(&input[i]);
 
-        const SDOUBLE from_behind = SUB_DOUBLE_S(pi_2_hi, x);
-        const SDOUBLE not_floored = MUL_DOUBLE_S(x, one_over_pi_8);
-        const SDOUBLE quadrant = FLOOR_DOUBLE_S(not_floored);
-
-        /* obtaining bool vectors for the each quadrant */
-        MASK8 m0 = CMP_MASK(quadrant, zero,  _CMP_EQ_OQ);
-        MASK8 m1 = CMP_MASK(quadrant, one,   _CMP_EQ_OQ);
-        MASK8 m2 = CMP_MASK(quadrant, two,   _CMP_EQ_OQ);
-        MASK8 m3 = CMP_MASK(quadrant, three, _CMP_EQ_OQ);
-
-        x = MASK_MUL_PD(x, m1, x, half); // Without loss
-
-        x = MASK_SUB_PD(x, m2, pi_2_hi, x);
-        x = MASK_MUL_PD(x, m2, x, half);
-
-        // mit der aktion haut auch q2 hin
-        x = MASK_ADD_PD(x, m2, x, q2_bitshift_rr1);
-
-        __mmask8 mx_lt_quarter = _mm512_cmp_pd_mask(x, zero_two_five, _CMP_LT_OQ);
-        __mmask8 m2_and_x_lt_quarter = _kand_mask8(m2, mx_lt_quarter);
-
-        x = MASK_ADD_PD(x, m2_and_x_lt_quarter, x, q2_bitshift_rr2);
-
-        // mit dem ding ist auch q3 exakt
-        x = MASK_SUB_PD(x, m3, pi_2_hi, x);
-        x = MASK_ADD_PD(x, m3, x, pi_2_lo);
+        x = MUL_DOUBLE_S(x, zero_two_five);
 
         /* ---- Taylor Loop ---- */
         const SDOUBLE x_square = MUL_DOUBLE_S(x, x);
@@ -97,9 +74,22 @@ void vfast_tan(double *input, double *res, int *lsb, size_t n) {
         const SDOUBLE result_q0_t12 = FMADD_PD(result_q0_t11, x_square, taylor_coeff1);
         const SDOUBLE result_q0_1 = FMADD_PD(result_q0_t12, x_square, one);
 
-        const SDOUBLE result_q0 = MUL_DOUBLE_S(result_q0_1, x);
+        const SDOUBLE tan1 = MUL_DOUBLE_S(result_q0_1, x);
+        const SDOUBLE tan2 = MUL_DOUBLE_S(tan1, tan1);
+        const SDOUBLE tan3 = MUL_DOUBLE_S(tan2, tan1);
+        const SDOUBLE tan4 = MUL_DOUBLE_S(tan2, tan2);
+        
+        SDOUBLE nominator0 = MUL_DOUBLE_S(four, tan1);
+        SDOUBLE nominator1 = MUL_DOUBLE_S(four, tan3);
+        SDOUBLE nominator = SUB_DOUBLE_S(nominator0, nominator1);
 
-        SIMD_TO_DOUBLE_VEC(&res[i], result_q0);
+        SDOUBLE denominator1 = MUL_DOUBLE_S(six, tan2);
+        SDOUBLE denominator = SUB_DOUBLE_S(one, denominator1);
+        denominator = ADD_DOUBLE_S(denominator, tan4);
+
+        SDOUBLE result = DIV_DOUBLE_S(nominator, denominator);
+
+        SIMD_TO_DOUBLE_VEC(&res[i], result);
     }
 
     /* Treatment of the left overs with glibc */

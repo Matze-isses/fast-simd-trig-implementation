@@ -107,11 +107,29 @@ int main(int argc, char *argv[]) {
     vfast_tan(x, res, lsb, n);
     compare_results_tan_ulp_err_signed(x, res, ulp_error, n);
 
+    FILE *f = fopen("corr_test.json", "w");
+    if (!f) {
+        perror("fopen corr_test.json");
+        return 1;
+    }
+
+    fprintf(f, "[\n");
+    for (int i = 0; i < n; i++) {
+        fprintf(f, "  [%.17g, %d, %d]%s\n",
+                x[i], (int)ulp_error[i], lsb[i],
+                (i + 1 < n) ? "," : "");
+    }
+    fprintf(f, "]\n");
+
+    if (fclose(f) != 0) {
+        perror("fclose corr_test.json");
+        return 1;
+    }
+
 
     int cum_ulp_error = 0;
 
     for (int i = 0; i < n; i++) {
-        printf("Res: %.17g\n", res[i]);
         cum_ulp_error += abs((int)ulp_error[i]);
     }
 

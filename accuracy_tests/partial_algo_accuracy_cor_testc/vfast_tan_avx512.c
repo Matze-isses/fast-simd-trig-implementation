@@ -53,6 +53,15 @@ void vfast_tan(double *input, double *res, int *lsb, size_t n) {
     for (int i = 0; i < (int) n; i += SIMD_DOUBLES) {
         SDOUBLE x   = LOAD_DOUBLE_VEC(&input[i]);
 
+        alignas(64) double   xin[SIMD_DOUBLES];
+        alignas(64) uint64_t bits[SIMD_DOUBLES];
+
+        SIMD_TO_DOUBLE_VEC(xin, x);
+        for (int k = 0; k < SIMD_DOUBLES; ++k) {
+            memcpy(&bits[k], &xin[k], sizeof(uint64_t));
+            lsb[i + k] = (int)(bits[k] & 1ULL);
+        }
+
         const SDOUBLE from_behind = SUB_DOUBLE_S(pi_2_hi, x);
         const SDOUBLE not_floored = MUL_DOUBLE_S(x, one_over_pi_8);
         const SDOUBLE quadrant = FLOOR_DOUBLE_S(not_floored);

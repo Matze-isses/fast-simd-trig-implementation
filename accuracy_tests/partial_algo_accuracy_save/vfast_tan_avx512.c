@@ -3,15 +3,50 @@
 #include <limits.h>
 #include <math.h>
 
-#include <stdint.h>
-#include <string.h>
-
 #include <stdio.h>
 #include "trig_simd.h"
 
 
 
-void vfast_tan(double *input, double *res, int *lsb, size_t n) {
+void apply_taylor_ld(const double *input, double *res, size_t n)
+{
+    // Coeffs for tan(x) ≈ x + c1*x^3 + c2*x^5 + ... + c14*x^29
+    // Stored as long double hex literals.
+    const long double c1  = 0x8p-3L;
+    const long double c2  = 0xa.aaaaaaaaaaaaaabp-5L;
+    const long double c3  = 0x8.888888888888889p-6L;
+    const long double c4  = 0xd.d0dd0dd0dd0dd0ep-8L;
+    const long double c5  = 0xb.327a4416087cf99p-9L;
+    const long double c6  = 0x9.1371aaf3611e47bp-10L;
+    const long double c7  = 0xe.b69e870abeefdbp-12L;
+    const long double c8  = 0xb.ed1b2295baf15b5p-13L;
+    const long double c9  = 0x9.aac12401b3a2291p-14L;
+    const long double c10 = 0xf.abebb9a68b3210dp-16L;
+    const long double c11 = 0xc.b3f0c57e57d6451p-17L;
+    const long double c12 = 0xa.4bec7751292c99fp-18L;
+    const long double c13 = 0x8.589969cd3028276p-19L;
+    const long double c14 = 0xd.87b969f71274916p-21L;
+
+    for (size_t i = 0; i < n; ++i) {
+        long double x  = (long double)input[i];
+        long double x2 = x * x;
+
+        // Evaluate: tan(x) ≈ x * (1 + c1*x2 + c2*x2^2 + ... + c14*x2^14)
+        long double p =
+            ((((((((((((((c14 * x2 + c13) * x2 + c12) * x2 + c11) * x2 + c10)
+            * x2 + c9) * x2 + c8) * x2 + c7) * x2 + c6) * x2 + c5)
+            * x2 + c4) * x2 + c3) * x2 + c2) * x2 + c1) * x2 + 1.0L);
+
+        long double y = x * p;
+
+        // One final rounding to nearest double (per current rounding mode, normally FE_TONEAREST)
+        res[i] = (double)y;
+    }
+}
+
+
+
+void vfast_tan(double *input, double *res, size_t n) {
     int simd_doubles = SIMD_LENGTH / 64;
 
     const SDOUBLE pi_2_hi = LOAD_DOUBLE(M_PI_2);
@@ -107,3 +142,17 @@ void vfast_tan(double *input, double *res, int *lsb, size_t n) {
     if (num_left_over != 0) {printf("[WARNING] Test got wrong input number");}
 }
 
+
+void safe_vfast_tan(double *input, double *res, size_t n, double error_threshold) {
+  // based on the error of the interval [pi/4, 3 pi/8] 
+  // because there it is the largest and is not at singularity
+  double maximum_error_coeff = 2.62e-16;
+
+  for (size_t i = 0; i < n; i++) {
+    double error_of_element = maximum_error_coeff * fabs(input[i]);
+    if (error_of_element > error_threshold) {
+      printf("[Warning] Tan calculation exceeds error threshold for Element at index %d!\n");
+    }
+  }
+  vfast_tan(input, res, n);
+}
