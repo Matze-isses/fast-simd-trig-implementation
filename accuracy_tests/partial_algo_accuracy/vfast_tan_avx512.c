@@ -15,21 +15,15 @@ void vfast_tan(double *input, double *res, int *lsb, size_t n) {
     int simd_doubles = SIMD_LENGTH / 64;
 
     const SDOUBLE pi_2_hi = LOAD_DOUBLE(M_PI_2);
+
+    // ist richtig
     const SDOUBLE pi_2_lo = LOAD_DOUBLE(0x1.1a62633145c07p-54);
 
-    const SDOUBLE pi_4 = LOAD_DOUBLE(M_PI_4);
     const SDOUBLE one_over_pi_8 = LOAD_DOUBLE(1/M_PI_8);
 
-    const SDOUBLE q2_bitshift_rr1 = LOAD_DOUBLE(pow(2, -54));
-    const SDOUBLE q2_bitshift_rr2 = LOAD_DOUBLE(-pow(2, -55));
 
-
-
-    const SDOUBLE neg_one = LOAD_DOUBLE(-1.0);
-    const SDOUBLE neg_half = LOAD_DOUBLE(-0.5);
 
     const SDOUBLE zero = _mm512_setzero_pd();
-    const SDOUBLE zero_two_five = LOAD_DOUBLE(0.25);
 
     const SDOUBLE half = LOAD_DOUBLE(0.5);
     const SDOUBLE one = LOAD_DOUBLE(1.0);
@@ -73,13 +67,14 @@ void vfast_tan(double *input, double *res, int *lsb, size_t n) {
         //
         // a = pi/2; b = x
         //
+        // Pi ist als solches korrekt, weil (pi_hi + pi_lo) = pi
         x = MASK_SUB_PD(x, m2, pi_2_hi, x);
         x = MASK_ADD_PD(x, m2, x, pi_2_lo);
 
         // Kann kein fehler haben da nur exponent geaendert wird
         x = MASK_MUL_PD(x, m2, x, half);
 
-        // mit dem ding ist auch q3 exakt
+        // analog zu davor bei m2
         x = MASK_SUB_PD(x, m3, pi_2_hi, x);
         x = MASK_ADD_PD(x, m3, x, pi_2_lo);
 
@@ -105,8 +100,6 @@ void vfast_tan(double *input, double *res, int *lsb, size_t n) {
         SIMD_TO_DOUBLE_VEC(&res[i], result_q0);
     }
 
-    /* Treatment of the left overs with glibc */
     int num_left_over = (n % simd_doubles);
     if (num_left_over != 0) {printf("[WARNING] Test got wrong input number");}
 }
-

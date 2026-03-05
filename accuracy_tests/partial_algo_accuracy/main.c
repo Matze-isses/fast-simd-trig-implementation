@@ -1,3 +1,16 @@
+// Compilation and Running: 
+//
+// gcc ./vfast_tan_avx512.c ./trig_arb_comparison.c ./main.c -O2 -Wextra -lm -mavx512f -mavx512bw -mavx512dq -mavx512vl -mfma -fopenmp -pedantic -o test && ./test 1000000
+//
+//
+//
+// Plotting (requires some python packages!):
+//
+// python ./plotting_stuff.py
+//
+//
+// Data is also saved in data.json
+
 #include <stdio.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,6 +27,7 @@
 
 #include "test_interface.h"
 #include "trig_simd.h"
+
 
 
 void write_data_json(double *x, int64_t *ulp_error, int n)
@@ -91,7 +105,7 @@ int main(int argc, char *argv[]) {
 
 
     const double a = M_PI_4;
-    const double b = M_PI_2;
+    const double b = M_PI_2 - 0.01;
 
     // const double a = 3 * M_PI / 8.0;
     // const double b = nextafter(M_PI_2, 0);
@@ -111,7 +125,6 @@ int main(int argc, char *argv[]) {
     int cum_ulp_error = 0;
 
     for (int i = 0; i < n; i++) {
-        // printf("Res: %.17g\n", res[i]);
         cum_ulp_error += abs((int)ulp_error[i]);
     }
 

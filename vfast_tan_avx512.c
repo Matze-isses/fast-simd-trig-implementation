@@ -15,8 +15,11 @@ void vfast_tan(double *input, double *res, size_t n) {
   const SDOUBLE one_over_pi_8 = LOAD_DOUBLE(1/M_PI_8);
   const SDOUBLE one_over_pi_2 = LOAD_DOUBLE(1/M_PI_2);
 
-  const SDOUBLE q2_bitshift = LOAD_DOUBLE(-pow(2, -52));
+  const SDOUBLE q2_bitshift = LOAD_DOUBLE(0.0);
   const SDOUBLE b_correction = LOAD_DOUBLE(MIN_POSITIVE_COS_VALUE);
+
+    const SDOUBLE pi_2_hi = LOAD_DOUBLE(M_PI_2);
+    const SDOUBLE pi_2_lo = LOAD_DOUBLE(0x1.1a62633145c07p-54);
 
   const SDOUBLE neg_one = LOAD_DOUBLE(-1.0);
   const SDOUBLE neg_half = LOAD_DOUBLE(-0.5);
@@ -89,17 +92,31 @@ void vfast_tan(double *input, double *res, size_t n) {
     const SDOUBLE not_floored = MUL_DOUBLE_S(x, one_over_pi_8);
     const SDOUBLE quadrant = FLOOR_DOUBLE_S(not_floored);
 
-    /* obtaining bool vectors for the each quadrant */
-    MASK8 m0 = CMP_MASK(quadrant, zero,  _CMP_EQ_OQ);
-    MASK8 m1 = CMP_MASK(quadrant, one,   _CMP_EQ_OQ);
-    MASK8 m2 = CMP_MASK(quadrant, two,   _CMP_EQ_OQ);
-    MASK8 m3 = CMP_MASK(quadrant, three, _CMP_EQ_OQ);
+        // Masken haben keinen Fehler
+        MASK8 m0 = CMP_MASK(quadrant, zero,  _CMP_EQ_OQ);
+        MASK8 m1 = CMP_MASK(quadrant, one,   _CMP_EQ_OQ);
+        MASK8 m2 = CMP_MASK(quadrant, two,   _CMP_EQ_OQ);
+        MASK8 m3 = CMP_MASK(quadrant, three, _CMP_EQ_OQ);
 
-    x = MASK_MUL_PD(x, m1, x, half);
-    x = MASK_SUB_PD(x, m3, pi_2, x);
+        // Kann kein fehler haben da nur exponent geaendert wird
+        x = MASK_MUL_PD(x, m1, x, half);
 
-    x = MASK_MUL_PD(x, m2, x, half);
-    x = MASK_SUB_PD(x, m2, pi_4, x);
+        // Die subtraction als solche is korrekt, da 
+        // 
+        // 1/2 a < b < 2 * a (Sterbenz)
+        //
+        // a = pi/2; b = x
+        //
+        // Pi ist als solches korrekt, weil (pi_hi + pi_lo) = pi
+        x = MASK_SUB_PD(x, m2, pi_2_hi, x);
+        x = MASK_ADD_PD(x, m2, x, pi_2_lo);
+
+        // Kann kein fehler haben da nur exponent geaendert wird
+        x = MASK_MUL_PD(x, m2, x, half);
+
+        // analog zu davor bei m2
+        x = MASK_SUB_PD(x, m3, pi_2_hi, x);
+        x = MASK_ADD_PD(x, m3, x, pi_2_lo);
 
 
     const SDOUBLE x_square = MUL_DOUBLE_S(x, x);
@@ -118,20 +135,7 @@ void vfast_tan(double *input, double *res, size_t n) {
     const SDOUBLE result_q0_t10 = FMADD_PD(result_q0_t9, x_square, taylor_coeff3);
     const SDOUBLE result_q0_t11 = FMADD_PD(result_q0_t10, x_square, taylor_coeff2);
     const SDOUBLE result_q0_t12 = FMADD_PD(result_q0_t11, x_square, taylor_coeff1);
-
-
-    /* ---- Correction Calculation ---- */
-    const SDOUBLE one_over_from_behind = DIV_DOUBLE_S(one, from_behind);
-
-    const SDOUBLE correction_sign_1 = SUB_DOUBLE_S(in_even_range, in_odd_range);
-    const SDOUBLE correction_sign  = MUL_DOUBLE_S(correction_sign_1, x_negative);
-
-    const SDOUBLE correction_term_1 = MUL_DOUBLE_S(b_correction, constants_away);
-    const SDOUBLE correction_term_2 = MUL_DOUBLE_S(correction_term_1, correction_sign);
-    const SDOUBLE correction_term = MUL_DOUBLE_S(correction_term_2, one_over_from_behind);
-
-    const SDOUBLE coeff0 = MASK_ADD_PD(one, m3, correction_term, one);
-    const SDOUBLE result_q0_1 = FMADD_PD(result_q0_t12, x_square, coeff0);
+    const SDOUBLE result_q0_1 = FMADD_PD(result_q0_t12, x_square, one);
 
     const SDOUBLE result_q0 = MUL_DOUBLE_S(result_q0_1, x);
 

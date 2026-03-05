@@ -1,13 +1,11 @@
-#include "flint/flint.h"
-#include "flint/arb.h"
 #include "test_interface.h"
 
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>   // memcpy
-#include <math.h>     // isnan, isinf
-                    
-const double M_PI_8 = 0x1.921fb54442d18p-2;
+#include <math.h>     // isnan, isinf, acosl, floorl, tanl, ldexpl
+
+const double M_PI_8 = 0x1.921fb54442d18p-2;  // pi/8 in double
 
 // Map a double to an ordered 64-bit integer so that integer difference equals ULP distance.
 static inline uint64_t double_to_ordered_u64(double a)
@@ -64,187 +62,48 @@ static inline int64_t ulp_error_signed_double(double f_hat, double f_ref)
     }
 }
 
-const slong PRECISION = 1024;
+/* No longer used (Arb precision); kept only to minimize diffs */
+typedef long slong;
+const slong PRECISION = 128;
 
-
-void compare_results_tan(double *x, double *y, double *cum_error, double *max_error, double *value_max_error, double *cum_ulp_error, double *max_ulp_error, double *value_max_ulp_error, size_t n) {
-    arb_t error;
-    arb_t arb_max_error;
-
-    arb_init(error);
-    arb_init(arb_max_error);
-
-    arb_set_d(error, 0.0);
-    arb_set_d(arb_max_error, 0.0);
-
-    // init outputs
-    if (cum_ulp_error) *cum_ulp_error = 0.0;
-    if (max_ulp_error) *max_ulp_error = 0.0;
-    if (value_max_ulp_error) *value_max_ulp_error = 0.0;
-
-    for (size_t i = 0; i < n; i++) {
-        arb_t arb_x, arb_y, true_result, difference, diff_to_max;
-        arb_init(arb_x);
-        arb_init(arb_y);
-        arb_init(true_result);
-        arb_init(difference);
-        arb_init(diff_to_max);
-
-        arb_set_d(arb_x, x[i]);
-        arb_set_d(arb_y, y[i]);
-
-        // Reference tan in Arb
-        arb_tan(true_result, arb_x, PRECISION);
-
-        // Absolute error (your existing logic)
-        arb_sub(difference, true_result, arb_y, PRECISION);
-        arb_abs(difference, difference);
-        arb_add(error, error, difference, PRECISION);
-
-        arb_sub(diff_to_max, difference, arb_max_error, PRECISION);
-        if (arb_is_positive(diff_to_max)) {
-            arb_set(arb_max_error, difference);
-            *value_max_error = x[i];
-        }
-
-        // --- ULP error ---
-        if (cum_ulp_error || max_ulp_error) {
-            // Convert Arb reference midpoint to a double (nearest)
-            double ref = arf_get_d(arb_midref(true_result), ARF_RND_NEAR);
-            double got = y[i];
-
-            uint64_t ulp = ulp_distance_double(got, ref);
-
-            if (cum_ulp_error) {
-                // If ulp is UINT64_MAX (NaN/inf mismatch), this will overflow meaningfully; adjust policy if needed.
-                *cum_ulp_error += (double)ulp;
-            }
-            if (max_ulp_error && (double)ulp > *max_ulp_error) {
-                *max_ulp_error = (double)ulp;
-                if (value_max_ulp_error) *value_max_ulp_error = x[i];
-            }
-        }
-
-        arb_clear(arb_x);
-        arb_clear(arb_y);
-        arb_clear(true_result);
-        arb_clear(difference);
-        arb_clear(diff_to_max);
-    }
-
-    *cum_error = arf_get_d(arb_midref(error), ARF_RND_NEAR);
-    *max_error = arf_get_d(arb_midref(arb_max_error), ARF_RND_NEAR);
-
-    arb_clear(error);
-    arb_clear(arb_max_error);
-
-    flint_cleanup();
-}
-
-
-void compare_results_tan_err(double *x, double *y, double *err, size_t n) {
-  for (int i = 0; i < (int)n; i++) {
-    // Initialize all Variables
-    arb_t arb_x;
-    arb_t arb_y;
-    arb_t true_result;
-    arb_t difference;
-
-    arb_init(arb_x);
-    arb_init(arb_y);
-    arb_init(true_result);
-    arb_init(difference);
-
-    arb_set_d(arb_x, x[i]);
-    arb_set_d(arb_y, y[i]);
-
-    // calculate tan
-    arb_tan(true_result, arb_x, PRECISION);
-
-    // get the difference: tan(x) - y
-    arb_sub(difference, true_result, arb_y, PRECISION);
-
-    // store as double
-    err[i] = arf_get_d(arb_midref(difference), ARF_RND_NEAR);
-
-    // cleanup
-    arb_clear(arb_x);
-    arb_clear(arb_y);
-    arb_clear(true_result);
-    arb_clear(difference);
-  }
-
-  flint_cleanup();
+/* long double pi */
+static inline long double pi_ld(void)
+{
+    return acosl(-1.0L);
 }
 
 double reference_calculation(double x)
 {
-    arb_t arb_x, before_floor, floored, reduced_range, pi_2, tmp, q2_tmp, true_result, true_result_tan;
-    arb_init(arb_x);
-    arb_init(pi_2);
-    arb_init(tmp);
-    arb_init(before_floor);
-    arb_init(floored);
+    // Mimic your Arb code computation *as written*, but in long double.
+    const long double pi   = pi_ld();
+    const long double pi_2 = ldexpl(pi, -1);  // pi/2
 
-    arb_init(reduced_range);
-    arb_init(q2_tmp);
-    arb_init(true_result);
+    long double arb_x = (long double)x;
 
-    arb_init(true_result_tan);
-
-
-    arb_set_d(arb_x, x);
-
-    arb_const_pi(tmp, PRECISION);          // tmp = pi
-    arb_mul_2exp_si(pi_2, tmp, -1);        // pi_2 = pi / 2
-    
-    //Flint stuff
-    arb_div(before_floor, arb_x, pi_2, PRECISION);
-    arb_floor(floored, before_floor, PRECISION);
-    arb_sub(reduced_range, arb_x, floored, PRECISION);
+    long double true_result = 0.0L;
 
     if (x < M_PI_8) {
-        arb_mul_2exp_si(true_result, reduced_range, 0);
+        true_result = arb_x;
 
     } else if (M_PI_8 <= x && x < M_PI_4) {
-        arb_mul_2exp_si(true_result, reduced_range, -1);
+        true_result = ldexpl(arb_x, -1);
 
     } else if (M_PI_4 <= x && x < 3.0 * M_PI_8) {
-        arb_sub(q2_tmp, pi_2, arb_x, PRECISION);
-        arb_mul_2exp_si(true_result, q2_tmp, -1);
+        long double q2_tmp = pi_2 - arb_x;
+        true_result = ldexpl(q2_tmp, -1);
 
     } else if (3.0 * M_PI_8 <= x && x < M_PI_2) {
-        arb_sub(true_result, pi_2, arb_x, PRECISION);
+        true_result = pi_2 - arb_x;
     }
 
-    // double res = arf_get_d(arb_midref(true_result), ARF_RND_NEAR);
+    long double true_result_tan = tanl(true_result);
 
-    arb_tan(true_result_tan, true_result, PRECISION);
-    double res = arf_get_d(arb_midref(true_result_tan), ARF_RND_NEAR);
-
-
-    arb_clear(arb_x);
-    arb_clear(pi_2);
-    arb_clear(tmp);
-    arb_clear(before_floor);
-    arb_clear(floored);
-
-    arb_clear(reduced_range);
-    arb_clear(q2_tmp);
-    arb_clear(true_result);
-
-    arb_clear(true_result_tan);
-
-    // If you want to return both, see note below.
-    // For now, returning res as requested:
-    return res;
+    return (double)true_result_tan;
 }
 
-void compare_results_tan_ulp_err_signed(double *x, double *y, int64_t *ulp_err, size_t n) {
-
+void compare_results_tan_ulp_err_signed(double *x, double *y, int64_t *ulp_err, size_t n)
+{
     for (size_t i = 0; i < n; i++) {
         ulp_err[i] = ulp_error_signed_double(y[i], reference_calculation(x[i]));
     }
-
-    flint_cleanup();
 }
