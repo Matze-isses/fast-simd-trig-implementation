@@ -49,6 +49,8 @@
 #define sin_tp19 (-4.9024697565135435e-47)
 #define sin_tp20 (2.9893108271424046e-50)
 
+#define __AVX512F__ 1
+
 #if defined(__AVX512F__)
 
 #define USE_AVX512 (true)
@@ -68,6 +70,19 @@
 #define MASK_ADD_PD _mm512_mask_add_pd
 #define MASK_SUB_PD _mm512_mask_sub_pd
 #define MASK_MUL_PD _mm512_mask_mul_pd
+
+#define MASKZ_MOV_PD(dst, mask, vec) \
+    const SDOUBLE (dst) = _mm512_maskz_mov_pd((mask), (vec))
+
+#define FLIP_SIGN_IF_MASK_PD(name, mask, vec)         \
+    SDOUBLE name = _mm512_castsi512_pd(               \
+        _mm512_mask_xor_epi64(                        \
+            _mm512_castpd_si512((vec)),               \
+            (mask),                                   \
+            _mm512_castpd_si512((vec)),               \
+            _mm512_set1_epi64(0x8000000000000000ULL)  \
+        )                                             \
+    )
 
 // Double Operations
 #define MUL_DOUBLE_S _mm512_mul_pd

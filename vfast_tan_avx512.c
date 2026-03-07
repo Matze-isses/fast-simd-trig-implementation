@@ -57,44 +57,23 @@ void vfast_tan(double *input, double *res, size_t n) {
   for (int i = 0; i < (int) n; i += SIMD_DOUBLES) {
     SDOUBLE x   = LOAD_DOUBLE_VEC(&input[i]);
 
-    MASK8 m_pos = CMP_MASK(x, zero, _CMP_GT_OQ);
-    MASK8 m_neg = CMP_MASK(x, zero, _CMP_LT_OQ);
-
-    SDOUBLE x_negative   = _mm512_mask_mov_pd(neg_one, m_pos, one);
-    SDOUBLE x_negative01 = _mm512_maskz_mov_pd(m_neg, one);
-
+    /* Range Reduction */
     const SDOUBLE ranges_away = MUL_DOUBLE_S(x, one_over_pi_2);
     const SDOUBLE num_ranges_away = FLOOR_DOUBLE_S(ranges_away);
     const SDOUBLE range_multiple = MUL_DOUBLE_S(num_ranges_away, pi_2);
 
     x = SUB_DOUBLE_S(x, range_multiple);
 
-    // here problems occure because negative singularities need a ceil not a floor
-    const SDOUBLE singularities_away0 = ADD_DOUBLE_S(num_ranges_away, x_negative01);
-    const SDOUBLE singularities_away1 = ABS_PD(singularities_away0);
-    const SDOUBLE singularities_away = MUL_DOUBLE_S(singularities_away1, half);
-    const SDOUBLE num_singularities_away = FLOOR_DOUBLE_S(singularities_away);
-
-    const SDOUBLE constants_away0 = MUL_DOUBLE_S(num_singularities_away, two);
-    const SDOUBLE constants_away = ADD_DOUBLE_S(constants_away0, one);
-
-    const SDOUBLE sign_adjust_0 = MUL_DOUBLE_S(num_ranges_away, half);
-    const SDOUBLE sign_adjust_1 = FLOOR_DOUBLE_S(sign_adjust_0);
-    const SDOUBLE sign_adjust_2 = MUL_DOUBLE_S(sign_adjust_1, two);
-
-    const SDOUBLE in_odd_range  = SUB_DOUBLE_S(num_ranges_away, sign_adjust_2); // 1 if in odd range, else 0
-    const SDOUBLE in_even_range = SUB_DOUBLE_S(one, in_odd_range);              // 1 if in even range, else 0
-
-    const SDOUBLE sign_adjust_3 = MUL_DOUBLE_S(in_odd_range, two);
-    const SDOUBLE sign_adjust   = SUB_DOUBLE_S(one, sign_adjust_3);
+    __m512i n = _mm512_cvttpd_epi64(num_ranges_away);
+    __mmask8 odd_mask = _mm512_test_epi64_mask(n, _mm512_set1_epi64(1));
 
     const SDOUBLE uneval_from_behind       = SUB_DOUBLE_S(pi_2, x);
 
-    const SDOUBLE in_odd_range_reduction_1 = MUL_DOUBLE_S(uneval_from_behind, in_odd_range);
-    const SDOUBLE in_odd_range_reduction   = SUB_DOUBLE_S(in_odd_range_reduction_1, x);
+    MASKZ_MOV_PD(in_odd_range_reduction_1, odd_mask, uneval_from_behind);
 
-    x = FMADD_PD(in_odd_range_reduction, in_odd_range, x);
-    const SDOUBLE from_behind = SUB_DOUBLE_S(pi_2, x);
+    const SDOUBLE in_odd_range_reduction   = SUB_DOUBLE_S(in_odd_range_reduction_1, x);
+    x = MASK_ADD_PD(x, odd_mask, in_odd_range_reduction, x);
+
 
     const SDOUBLE not_floored = MUL_DOUBLE_S(x, one_over_pi_8);
     const SDOUBLE quadrant = FLOOR_DOUBLE_S(not_floored);
@@ -148,13 +127,12 @@ void vfast_tan(double *input, double *res, size_t n) {
     const SDOUBLE result_q3 = DIV_DOUBLE_S(one, result_q0);
 
     /* Add quadrant results together */
-    const SDOUBLE partial_result_0  = MASK_ADD_PD(zero, m0, result_q0, zero);
+    MASKZ_MOV_PD(partial_result_0, m0, result_q0);
     const SDOUBLE partial_result_1  = MASK_ADD_PD(partial_result_0, m1, result_q1, partial_result_0);
     const SDOUBLE partial_result_2  = MASK_ADD_PD(partial_result_1, m2, result_q2, partial_result_1);
     const SDOUBLE partial_result_3  = MASK_ADD_PD(partial_result_2, m3, result_q3, partial_result_2);
 
-    const SDOUBLE result = MUL_DOUBLE_S(sign_adjust, partial_result_3);
-
+    FLIP_SIGN_IF_MASK_PD(result, odd_mask, partial_result_3);
     SIMD_TO_DOUBLE_VEC(&res[i], result);
   }
 
