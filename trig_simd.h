@@ -62,13 +62,13 @@
 #define MASK8 __mmask8
 #define SDOUBLE __m512d
 
-#define SET1_PD _mm512_set1_pd
+#define SET1_PD(dst, a)\
+    const SDOUBLE (dst) = _mm512_set1_pd(a)
+
+#define SIMD_TO_DOUBLE_VEC _mm512_storeu_pd
 
 #define LOAD_DOUBLE_VEC(dst, src)\ 
     const SDOUBLE (dst) = _mm512_loadu_pd(src)
-
-
-#define SIMD_TO_DOUBLE_VEC _mm512_storeu_pd
 
 
 #define ADD_DOUBLE_S(dst, a, b)\
@@ -144,21 +144,6 @@
 #define FLOOR_DOUBLE_S(dst, a)\
     const SDOUBLE (dst) = _mm512_roundscale_pd((a), _MM_FROUND_TO_NEG_INF)
 
-#define CMP_PD _mm512_cmp_pd_mask
-
-#define ABS_PD(a) _mm512_abs_pd((a))
-
-// Replace +/-inf (by absolute value) with 0.0
-#define REMOVE_INF(a) \
-    _mm512_mask_mov_pd( \
-        (a), \
-        _mm512_cmp_pd_mask( \
-            _mm512_andnot_pd(_mm512_set1_pd(-0.0), (a)), \
-            _mm512_set1_pd(INFINITY), \
-            _CMP_EQ_OQ \
-        ), \
-        _mm512_setzero_pd() \
-    )
 
 #elif defined(__AVX2__)
 
