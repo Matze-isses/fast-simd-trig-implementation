@@ -63,7 +63,11 @@
 #define SDOUBLE __m512d
 
 #define SET1_PD _mm512_set1_pd
-#define LOAD_DOUBLE_VEC _mm512_loadu_pd
+
+#define LOAD_DOUBLE_VEC(dst, src)\ 
+    const SDOUBLE (dst) = _mm512_loadu_pd(src)
+
+
 #define SIMD_TO_DOUBLE_VEC _mm512_storeu_pd
 
 

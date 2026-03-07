@@ -34,7 +34,7 @@ void vfast_tan(double *input, double *res, size_t n) {
 
   
   for (int i = 0; i < (int) n; i += SIMD_DOUBLES) {
-    const SDOUBLE x_in   = LOAD_DOUBLE_VEC(&input[i]);
+    LOAD_DOUBLE_VEC(x_in, &input[i]);
 
     /* Range Reduction */
     MUL_DOUBLE_S(ranges_away, x_in, one_over_pi_2);
