@@ -8,7 +8,8 @@
 
 #define M_PI_8 (M_PI / 8)
 #define RANG_REDUCTION_CORRECTION (3.8981718325193755e-17)
-#define MIN_POSITIVE_COS_VALUE (0.00000000000000006123233995736766)
+#define PI_LO (0x1.1a62633145c07p-54)
+#define COR_COEFF (0x1.1a62633145c07p-55)
 
 
 // Taylor Polynomaial Coefficiants
@@ -91,6 +92,22 @@
             _mm512_castpd_si512((vec)),               \
             _mm512_set1_epi64(0x8000000000000000ULL)  \
         )                                             \
+    )
+
+#define HALF_PD_FAST(dst, vec)                                                \
+    dst = _mm512_castsi512_pd(                                        \
+        _mm512_sub_epi64(                                                      \
+            _mm512_castpd_si512((vec)),                                        \
+            _mm512_set1_epi64(0x0010000000000000ULL)                           \
+        )                                                                      \
+    )
+
+#define DOUBLE_PD_FAST(dst, vec)                                              \
+    SDOUBLE dst = _mm512_castsi512_pd(                                        \
+        _mm512_add_epi64(                                                      \
+            _mm512_castpd_si512((vec)),                                        \
+            _mm512_set1_epi64(0x0010000000000000ULL)                           \
+        )                                                                      \
     )
 
 // Double Operations
