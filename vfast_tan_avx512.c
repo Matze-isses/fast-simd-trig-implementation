@@ -61,23 +61,17 @@ void vfast_tan(double *input, double *res, size_t n) {
     const SDOUBLE ranges_away = MUL_DOUBLE_S(x, one_over_pi_2);
     const SDOUBLE num_ranges_away = FLOOR_DOUBLE_S(ranges_away);
     const SDOUBLE range_multiple = MUL_DOUBLE_S(num_ranges_away, pi_2);
-
     x = SUB_DOUBLE_S(x, range_multiple);
 
-    __m512i n = _mm512_cvttpd_epi64(num_ranges_away);
-    __mmask8 odd_mask = _mm512_test_epi64_mask(n, _mm512_set1_epi64(1));
+    /* treatment of cotan ranges */
+    GEN_MASK_IF_ODD(odd_mask, num_ranges_away);
+    x = MASK_SUB_PD(x, odd_mask, pi_2, x);
 
-    const SDOUBLE uneval_from_behind       = SUB_DOUBLE_S(pi_2, x);
-
-    MASKZ_MOV_PD(in_odd_range_reduction_1, odd_mask, uneval_from_behind);
-
-    const SDOUBLE in_odd_range_reduction   = SUB_DOUBLE_S(in_odd_range_reduction_1, x);
-    x = MASK_ADD_PD(x, odd_mask, in_odd_range_reduction, x);
-
-
+    /* Get Quadrant */
     const SDOUBLE not_floored = MUL_DOUBLE_S(x, one_over_pi_8);
     const SDOUBLE quadrant = FLOOR_DOUBLE_S(not_floored);
 
+    /* Generate Masks */
     MASK8 m0 = CMP_MASK(quadrant, zero,  _CMP_EQ_OQ);
     MASK8 m1 = CMP_MASK(quadrant, one,   _CMP_EQ_OQ);
     MASK8 m2 = CMP_MASK(quadrant, two,   _CMP_EQ_OQ);

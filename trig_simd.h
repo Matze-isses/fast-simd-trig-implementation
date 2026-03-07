@@ -74,8 +74,14 @@
 #define MASKZ_MOV_PD(dst, mask, vec) \
     const SDOUBLE (dst) = _mm512_maskz_mov_pd((mask), (vec))
 
-#define FLIP_SIGN_IF_MASK_PD(name, mask, vec)         \
-    SDOUBLE name = _mm512_castsi512_pd(               \
+#define GEN_MASK_IF_ODD(dst, vec)                    \
+    MASK8 dst = _mm512_test_epi64_mask(              \
+        _mm512_cvttpd_epi64((vec)),                   \
+        _mm512_set1_epi64(1)                          \
+    )
+
+#define FLIP_SIGN_IF_MASK_PD(dst, mask, vec)         \
+    SDOUBLE dst = _mm512_castsi512_pd(               \
         _mm512_mask_xor_epi64(                        \
             _mm512_castpd_si512((vec)),               \
             (mask),                                   \
