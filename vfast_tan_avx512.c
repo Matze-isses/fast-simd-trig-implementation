@@ -71,19 +71,12 @@ void vfast_tan(double *input, double *res, size_t n) {
     const SDOUBLE not_floored = MUL_DOUBLE_S(x, one_over_pi_8);
     const SDOUBLE quadrant = FLOOR_DOUBLE_S(not_floored);
 
-    /* Generate Masks */
-    MASK8 m0 = CMP_MASK(quadrant, zero,  _CMP_EQ_OQ);
-    MASK8 m1 = CMP_MASK(quadrant, one,   _CMP_EQ_OQ);
-    MASK8 m2 = CMP_MASK(quadrant, two,   _CMP_EQ_OQ);
-    MASK8 m3 = CMP_MASK(quadrant, three, _CMP_EQ_OQ);
-
-    MASK8 m2o3 = m2 | m3;
+    /* Generate Mask */
+    MASK8 m2 = CMP_MASK(quadrant, two, _CMP_GE_OQ);
 
     // Kann kein fehler haben da nur exponent geaendert wird
-    x = MASK_MUL_PD(x, m1, x, half);
-
-    x = MASK_SUB_PD(x, m2o3, pi_2_hi, x);
-    x = MASK_MUL_PD(x, m2, x, half);
+    x = MASK_SUB_PD(x, m2, pi_2_hi, x);
+    x = MUL_DOUBLE_S(x, half);
 
     /* ---- Taylor Loop ---- */
     const SDOUBLE x_square = MUL_DOUBLE_S(x, x);
@@ -105,28 +98,21 @@ void vfast_tan(double *input, double *res, size_t n) {
     SDOUBLE result_q0 = MUL_DOUBLE_S(result_q0_1, x);
 
     SDOUBLE inner = FMADD_PD(x_square, pi_lo_corr_without_x_sq, pi_2_lo_2);
-    inner = MASK_MUL_PD(inner, m3, inner, two);
-
-    result_q0 = MASK_ADD_PD(result_q0, m2o3, result_q0, inner);
+    result_q0 = MASK_ADD_PD(result_q0, m2, result_q0, inner);
     result_q0 = ADD_DOUBLE_S(result_q0, x);
 
-    /* ---- Readjusting for the second range ---- */
-    const SDOUBLE nominator = MUL_DOUBLE_S(two, result_q0);
+    /* Getting Values for Double Angle */
+    const SDOUBLE nominator        = MUL_DOUBLE_S(two, result_q0);
     const SDOUBLE result_q0_square = MUL_DOUBLE_S(result_q0, result_q0);
-    const SDOUBLE denominator = SUB_DOUBLE_S(one, result_q0_square);
+    const SDOUBLE denominator      = SUB_DOUBLE_S(one, result_q0_square);
 
     /* Obtaining the interval results */
-    const SDOUBLE result_q1 = DIV_DOUBLE_S(nominator, denominator);
-    const SDOUBLE result_q2 = DIV_DOUBLE_S(denominator, nominator);
-    const SDOUBLE result_q3 = DIV_DOUBLE_S(one, result_q0);
+    const SDOUBLE result_q01 = DIV_DOUBLE_S(nominator, denominator);
+    const SDOUBLE result_q23 = DIV_DOUBLE_S(denominator, nominator);
 
-    /* Add quadrant results together */
-    MASKZ_MOV_PD(partial_result_0, m0, result_q0);
-    const SDOUBLE partial_result_1  = MASK_ADD_PD(partial_result_0, m1, result_q1, partial_result_0);
-    const SDOUBLE partial_result_2  = MASK_ADD_PD(partial_result_1, m2, result_q2, partial_result_1);
-    const SDOUBLE partial_result_3  = MASK_ADD_PD(partial_result_2, m3, result_q3, partial_result_2);
+    MASK_MOV_PD(partial_result, m2, result_q01, result_q23);
 
-    FLIP_SIGN_IF_MASK_PD(result, odd_mask, partial_result_3);
+    FLIP_SIGN_IF_MASK_PD(result, odd_mask, partial_result);
     SIMD_TO_DOUBLE_VEC(&res[i], result);
   }
 

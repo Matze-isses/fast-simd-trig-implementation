@@ -71,6 +71,9 @@
 #define MASK_SUB_PD _mm512_mask_sub_pd
 #define MASK_MUL_PD _mm512_mask_mul_pd
 
+#define MASK_MOV_PD(dst, mask, src_false, src_true) \
+    SDOUBLE dst = _mm512_mask_mov_pd((src_false), (mask), (src_true))
+
 #define MASKZ_MOV_PD(dst, mask, vec) \
     const SDOUBLE (dst) = _mm512_maskz_mov_pd((mask), (vec))
 
