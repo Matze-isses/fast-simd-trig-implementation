@@ -104,8 +104,11 @@ int main(int argc, char *argv[]) {
     int *lsb = (int*)malloc((size_t)n * sizeof(int));
 
 
-    const double a = M_PI_4;
-    const double b = M_PI_2 - 0.01;
+    // const double a = M_PI_4;
+    // const double b = 3 * M_PI_8;
+    
+    const double a = 0;
+    const double b = M_PI_2-0.1;
 
     // const double a = 3 * M_PI / 8.0;
     // const double b = nextafter(M_PI_2, 0);

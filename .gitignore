@@ -2,7 +2,8 @@
 build/
 *.tsv
 *.png
-
+*.json
+*.out
 
 # Final executables
 trig_simd_avx2

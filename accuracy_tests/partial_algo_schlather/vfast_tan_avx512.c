@@ -73,10 +73,7 @@ void vfast_tan(double *input, double *res, int *lsb, size_t n) {
 
 #define F 0x1p+54
 #define MF 0x1p-54
-	SDOUBLE delta = x - TRUNC((DDOUBLE) x * F) * MF;
-	// printf("%e %e %1.30f %e %e\n", (double) x, (double) TRUNC((DDOUBLE) x * F) * MF, (double) delta, (double) F, (double) MF);
 
-	
         /* ---- Taylor Loop ---- */
         const SDOUBLE x_square = MUL_DOUBLE_S(x, x);
 
@@ -95,13 +92,7 @@ void vfast_tan(double *input, double *res, int *lsb, size_t n) {
 
         // const DDOUBLE result_q0_1   = FMADD_PD(result_q0_t12, xsq_dd, one);
         // ab hier muss ddouble stehen
-        SDOUBLE result_q0_11 = result_q0_t12 * x_square;
-        SDOUBLE result_q0_1 = (DDOUBLE) result_q0_11;
-        // Ist zwischen 5.4*10^{-2} und 1.3*10^{-2}
-        
-
-        // AB HIER NICHT ZU SDOUBLE MOEGLICH
-
+        SDOUBLE result_q0_1 = result_q0_t12 * x_square;
         SDOUBLE result_q0 = MUL_DOUBLE_S(result_q0_1, x);
 
         // (r1 + 1) * x

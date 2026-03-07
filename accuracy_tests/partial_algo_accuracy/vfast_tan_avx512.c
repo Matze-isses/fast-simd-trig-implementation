@@ -15,9 +15,9 @@ void vfast_tan(double *input, double *res, int *lsb, size_t n) {
     int simd_doubles = SIMD_LENGTH / 64;
 
     const SDOUBLE pi_2_hi = LOAD_DOUBLE(M_PI_2);
-
-    // ist richtig
     const SDOUBLE pi_2_lo = LOAD_DOUBLE(0x1.1a62633145c07p-54);
+    const SDOUBLE pi_2_lo_2 = LOAD_DOUBLE(0.5 * 0x1.1a62633145c07p-54);
+    const SDOUBLE three_pi_2_lo_2 = LOAD_DOUBLE(1.5 * 0x1.1a62633145c07p-54);
 
     const SDOUBLE one_over_pi_8 = LOAD_DOUBLE(1/M_PI_8);
 
@@ -58,25 +58,14 @@ void vfast_tan(double *input, double *res, int *lsb, size_t n) {
         MASK8 m2 = CMP_MASK(quadrant, two,   _CMP_EQ_OQ);
         MASK8 m3 = CMP_MASK(quadrant, three, _CMP_EQ_OQ);
 
+        MASK8 m2o3 = m2 | m3;
+
         // Kann kein fehler haben da nur exponent geaendert wird
         x = MASK_MUL_PD(x, m1, x, half);
 
-        // Die subtraction als solche is korrekt, da 
-        // 
-        // 1/2 a < b < 2 * a (Sterbenz)
-        //
-        // a = pi/2; b = x
-        //
-        // Pi ist als solches korrekt, weil (pi_hi + pi_lo) = pi
-        x = MASK_SUB_PD(x, m2, pi_2_hi, x);
-        x = MASK_ADD_PD(x, m2, x, pi_2_lo);
-
-        // Kann kein fehler haben da nur exponent geaendert wird
+        x = MASK_SUB_PD(x, m2o3, pi_2_hi, x);
         x = MASK_MUL_PD(x, m2, x, half);
 
-        // analog zu davor bei m2
-        x = MASK_SUB_PD(x, m3, pi_2_hi, x);
-        x = MASK_ADD_PD(x, m3, x, pi_2_lo);
 
         /* ---- Taylor Loop ---- */
         const SDOUBLE x_square = MUL_DOUBLE_S(x, x);
@@ -93,9 +82,18 @@ void vfast_tan(double *input, double *res, int *lsb, size_t n) {
         const SDOUBLE result_q0_t10 = FMADD_PD(result_q0_t9, x_square, taylor_coeff3);
         const SDOUBLE result_q0_t11 = FMADD_PD(result_q0_t10, x_square, taylor_coeff2);
         const SDOUBLE result_q0_t12 = FMADD_PD(result_q0_t11, x_square, taylor_coeff1);
-        const SDOUBLE result_q0_1 = FMADD_PD(result_q0_t12, x_square, one);
 
-        const SDOUBLE result_q0 = MUL_DOUBLE_S(result_q0_1, x);
+        const SDOUBLE result_q0_1 = MUL_DOUBLE_S(result_q0_t12, x_square);
+        SDOUBLE result_q0 = MUL_DOUBLE_S(result_q0_1, x);
+
+        SDOUBLE inner = MUL_DOUBLE_S(taylor_coeff1, x_square);
+        inner = FMADD_PD(inner, three_pi_2_lo_2, pi_2_lo_2);
+
+        inner = MASK_MUL_PD(inner, m3, inner, two);
+
+
+        result_q0 = MASK_ADD_PD(result_q0, m2o3, result_q0, inner);
+        result_q0 = ADD_DOUBLE_S(result_q0, x);
 
         SIMD_TO_DOUBLE_VEC(&res[i], result_q0);
     }
