@@ -41,18 +41,19 @@ void vfast_tan(double *input, double *res, size_t n) {
 
     /* Range Reduction */
     MUL_DOUBLE_S(ranges_away_l0, x_in_l0, one_over_pi_2);
-    MUL_DOUBLE_S(ranges_away_l1, x_in_l1, one_over_pi_2);
-    MUL_DOUBLE_S(ranges_away_l2, x_in_l2, one_over_pi_2);
-    MUL_DOUBLE_S(ranges_away_l3, x_in_l3, one_over_pi_2);
-
     FLOOR_DOUBLE_S(num_ranges_away_l0, ranges_away_l0);
-    FLOOR_DOUBLE_S(num_ranges_away_l1, ranges_away_l1);
-    FLOOR_DOUBLE_S(num_ranges_away_l2, ranges_away_l2);
-    FLOOR_DOUBLE_S(num_ranges_away_l3, ranges_away_l3);
-
     MUL_DOUBLE_S(range_multiple_l0, num_ranges_away_l0, pi_2);
+
+    MUL_DOUBLE_S(ranges_away_l1, x_in_l1, one_over_pi_2);
+    FLOOR_DOUBLE_S(num_ranges_away_l1, ranges_away_l1);
     MUL_DOUBLE_S(range_multiple_l1, num_ranges_away_l1, pi_2);
+
+    MUL_DOUBLE_S(ranges_away_l2, x_in_l2, one_over_pi_2);
+    FLOOR_DOUBLE_S(num_ranges_away_l2, ranges_away_l2);
     MUL_DOUBLE_S(range_multiple_l2, num_ranges_away_l2, pi_2);
+
+    MUL_DOUBLE_S(ranges_away_l3, x_in_l3, one_over_pi_2);
+    FLOOR_DOUBLE_S(num_ranges_away_l3, ranges_away_l3);
     MUL_DOUBLE_S(range_multiple_l3, num_ranges_away_l3, pi_2);
 
     SUB_DOUBLE_S(x_reduced_range_l0, x_in_l0, range_multiple_l0);
@@ -70,7 +71,6 @@ void vfast_tan(double *input, double *res, size_t n) {
     MASK_SUB_PD(x_cotan_adjust_l1, x_reduced_range_l1, odd_mask_l1, pi_2, x_reduced_range_l1);
     MASK_SUB_PD(x_cotan_adjust_l2, x_reduced_range_l2, odd_mask_l2, pi_2, x_reduced_range_l2);
     MASK_SUB_PD(x_cotan_adjust_l3, x_reduced_range_l3, odd_mask_l3, pi_2, x_reduced_range_l3);
-
 
     /* Get Quadrant */
     MUL_DOUBLE_S(not_floored_l0, x_cotan_adjust_l0, one_over_pi_8);
@@ -105,63 +105,68 @@ void vfast_tan(double *input, double *res, size_t n) {
     MUL_DOUBLE_S(x_square_l1, x_half_l1, x_half_l1);
     MUL_DOUBLE_S(x_square_l2, x_half_l2, x_half_l2);
     MUL_DOUBLE_S(x_square_l3, x_half_l3, x_half_l3);
-
+    
+    // Sortierung überarbeiten!!!
     FMADD_PD(result_q0_t1_l0, taylor_coeff13, x_square_l0, taylor_coeff12);
+    FMADD_PD(result_q0_t2_l0, result_q0_t1_l0, x_square_l0, taylor_coeff11);
     FMADD_PD(result_q0_t1_l1, taylor_coeff13, x_square_l1, taylor_coeff12);
+
+    FMADD_PD(result_q0_t2_l1, result_q0_t1_l1, x_square_l1, taylor_coeff11);
+    FMADD_PD(result_q0_t3_l0, result_q0_t2_l0, x_square_l0, taylor_coeff10);
     FMADD_PD(result_q0_t1_l2, taylor_coeff13, x_square_l2, taylor_coeff12);
+
+    FMADD_PD(result_q0_t2_l2, result_q0_t1_l2, x_square_l2, taylor_coeff11);
+    FMADD_PD(result_q0_t3_l1, result_q0_t2_l1, x_square_l1, taylor_coeff10);
     FMADD_PD(result_q0_t1_l3, taylor_coeff13, x_square_l3, taylor_coeff12);
 
-    FMADD_PD(result_q0_t2_l0, result_q0_t1_l0, x_square_l0, taylor_coeff11);
-    FMADD_PD(result_q0_t2_l1, result_q0_t1_l1, x_square_l1, taylor_coeff11);
-    FMADD_PD(result_q0_t2_l2, result_q0_t1_l2, x_square_l2, taylor_coeff11);
+    FMADD_PD(result_q0_t4_l0, result_q0_t3_l0, x_square_l0, taylor_coeff9);
+    FMADD_PD(result_q0_t3_l2, result_q0_t2_l2, x_square_l2, taylor_coeff10);
     FMADD_PD(result_q0_t2_l3, result_q0_t1_l3, x_square_l3, taylor_coeff11);
 
-    FMADD_PD(result_q0_t3_l0, result_q0_t2_l0, x_square_l0, taylor_coeff10);
-    FMADD_PD(result_q0_t3_l1, result_q0_t2_l1, x_square_l1, taylor_coeff10);
-    FMADD_PD(result_q0_t3_l2, result_q0_t2_l2, x_square_l2, taylor_coeff10);
+    FMADD_PD(result_q0_t5_l0, result_q0_t4_l0, x_square_l0, taylor_coeff8);
+    FMADD_PD(result_q0_t4_l1, result_q0_t3_l1, x_square_l1, taylor_coeff9);
     FMADD_PD(result_q0_t3_l3, result_q0_t2_l3, x_square_l3, taylor_coeff10);
 
-    FMADD_PD(result_q0_t4_l0, result_q0_t3_l0, x_square_l0, taylor_coeff9);
-    FMADD_PD(result_q0_t4_l1, result_q0_t3_l1, x_square_l1, taylor_coeff9);
-    FMADD_PD(result_q0_t4_l2, result_q0_t3_l2, x_square_l2, taylor_coeff9);
-    FMADD_PD(result_q0_t4_l3, result_q0_t3_l3, x_square_l3, taylor_coeff9);
-
-    FMADD_PD(result_q0_t5_l0, result_q0_t4_l0, x_square_l0, taylor_coeff8);
-    FMADD_PD(result_q0_t5_l1, result_q0_t4_l1, x_square_l1, taylor_coeff8);
-    FMADD_PD(result_q0_t5_l2, result_q0_t4_l2, x_square_l2, taylor_coeff8);
-    FMADD_PD(result_q0_t5_l3, result_q0_t4_l3, x_square_l3, taylor_coeff8);
-
     FMADD_PD(result_q0_t6_l0, result_q0_t5_l0, x_square_l0, taylor_coeff7);
-    FMADD_PD(result_q0_t6_l1, result_q0_t5_l1, x_square_l1, taylor_coeff7);
-    FMADD_PD(result_q0_t6_l2, result_q0_t5_l2, x_square_l2, taylor_coeff7);
-    FMADD_PD(result_q0_t6_l3, result_q0_t5_l3, x_square_l3, taylor_coeff7);
+    FMADD_PD(result_q0_t5_l1, result_q0_t4_l1, x_square_l1, taylor_coeff8);
+    FMADD_PD(result_q0_t4_l2, result_q0_t3_l2, x_square_l2, taylor_coeff9);
 
     FMADD_PD(result_q0_t7_l0, result_q0_t6_l0, x_square_l0, taylor_coeff6);
+    FMADD_PD(result_q0_t5_l2, result_q0_t4_l2, x_square_l2, taylor_coeff8);
+    FMADD_PD(result_q0_t6_l1, result_q0_t5_l1, x_square_l1, taylor_coeff7);
+
+    FMADD_PD(result_q0_t4_l3, result_q0_t3_l3, x_square_l3, taylor_coeff9);
+    FMADD_PD(result_q0_t6_l2, result_q0_t5_l2, x_square_l2, taylor_coeff7);
     FMADD_PD(result_q0_t7_l1, result_q0_t6_l1, x_square_l1, taylor_coeff6);
-    FMADD_PD(result_q0_t7_l2, result_q0_t6_l2, x_square_l2, taylor_coeff6);
-    FMADD_PD(result_q0_t7_l3, result_q0_t6_l3, x_square_l3, taylor_coeff6);
 
     FMADD_PD(result_q0_t8_l0, result_q0_t7_l0, x_square_l0, taylor_coeff5);
+    FMADD_PD(result_q0_t5_l3, result_q0_t4_l3, x_square_l3, taylor_coeff8);
+    FMADD_PD(result_q0_t7_l2, result_q0_t6_l2, x_square_l2, taylor_coeff6);
+
+    FMADD_PD(result_q0_t6_l3, result_q0_t5_l3, x_square_l3, taylor_coeff7);
     FMADD_PD(result_q0_t8_l1, result_q0_t7_l1, x_square_l1, taylor_coeff5);
-    FMADD_PD(result_q0_t8_l2, result_q0_t7_l2, x_square_l2, taylor_coeff5);
-    FMADD_PD(result_q0_t8_l3, result_q0_t7_l3, x_square_l3, taylor_coeff5);
-
     FMADD_PD(result_q0_t9_l0, result_q0_t8_l0, x_square_l0, taylor_coeff4);
-    FMADD_PD(result_q0_t9_l1, result_q0_t8_l1, x_square_l1, taylor_coeff4);
-    FMADD_PD(result_q0_t9_l2, result_q0_t8_l2, x_square_l2, taylor_coeff4);
-    FMADD_PD(result_q0_t9_l3, result_q0_t8_l3, x_square_l3, taylor_coeff4);
 
+    FMADD_PD(result_q0_t7_l3, result_q0_t6_l3, x_square_l3, taylor_coeff6);
+    FMADD_PD(result_q0_t8_l2, result_q0_t7_l2, x_square_l2, taylor_coeff5);
+    FMADD_PD(result_q0_t9_l1, result_q0_t8_l1, x_square_l1, taylor_coeff4);
+
+    FMADD_PD(result_q0_t8_l3, result_q0_t7_l3, x_square_l3, taylor_coeff5);
+    FMADD_PD(result_q0_t9_l2, result_q0_t8_l2, x_square_l2, taylor_coeff4);
     FMADD_PD(result_q0_t10_l0, result_q0_t9_l0, x_square_l0, taylor_coeff3);
+
+    FMADD_PD(result_q0_t9_l3, result_q0_t8_l3, x_square_l3, taylor_coeff4);
     FMADD_PD(result_q0_t10_l1, result_q0_t9_l1, x_square_l1, taylor_coeff3);
+    FMADD_PD(result_q0_t11_l0, result_q0_t10_l0, x_square_l0, taylor_coeff2);
+
     FMADD_PD(result_q0_t10_l2, result_q0_t9_l2, x_square_l2, taylor_coeff3);
+    FMADD_PD(result_q0_t11_l1, result_q0_t10_l1, x_square_l1, taylor_coeff2);
     FMADD_PD(result_q0_t10_l3, result_q0_t9_l3, x_square_l3, taylor_coeff3);
 
-    FMADD_PD(result_q0_t11_l0, result_q0_t10_l0, x_square_l0, taylor_coeff2);
-    FMADD_PD(result_q0_t11_l1, result_q0_t10_l1, x_square_l1, taylor_coeff2);
     FMADD_PD(result_q0_t11_l2, result_q0_t10_l2, x_square_l2, taylor_coeff2);
     FMADD_PD(result_q0_t11_l3, result_q0_t10_l3, x_square_l3, taylor_coeff2);
-
     FMADD_PD(result_q0_t12_l0, result_q0_t11_l0, x_square_l0, taylor_coeff1);
+
     FMADD_PD(result_q0_t12_l1, result_q0_t11_l1, x_square_l1, taylor_coeff1);
     FMADD_PD(result_q0_t12_l2, result_q0_t11_l2, x_square_l2, taylor_coeff1);
     FMADD_PD(result_q0_t12_l3, result_q0_t11_l3, x_square_l3, taylor_coeff1);
