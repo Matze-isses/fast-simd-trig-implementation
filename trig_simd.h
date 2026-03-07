@@ -59,33 +59,58 @@
 #define SIMD_DOUBLES (8)
 
 // Double I/O
+#define MASK8 __mmask8
 #define SDOUBLE __m512d
-#define LOAD_DOUBLE _mm512_set1_pd
+
+#define SET1_PD _mm512_set1_pd
 #define LOAD_DOUBLE_VEC _mm512_loadu_pd
 #define SIMD_TO_DOUBLE_VEC _mm512_storeu_pd
 
-#define SET_ZERO _mm512_setzero_pd
 
-#define MASK8 __mmask8
-#define CMP_MASK _mm512_cmp_pd_mask
-#define MASK_ADD_PD _mm512_mask_add_pd
-#define MASK_SUB_PD _mm512_mask_sub_pd
-#define MASK_MUL_PD _mm512_mask_mul_pd
+#define ADD_DOUBLE_S(dst, a, b)\
+    const SDOUBLE (dst) = _mm512_add_pd(a, b)
+
+#define SUB_DOUBLE_S(dst, a, b)\
+    const SDOUBLE (dst) = _mm512_sub_pd(a, b)
+
+// Double Operations
+#define MUL_DOUBLE_S(dst, a, b)\
+    const SDOUBLE (dst) = _mm512_mul_pd(a, b)
+
+#define DIV_DOUBLE_S(dst, a, b)\
+    const SDOUBLE (dst) = _mm512_div_pd(a, b)
+
+
+#define FMADD_PD(dst, a, b, c)\
+    const SDOUBLE (dst) = _mm512_fmadd_pd(a, b, c)
+
+
+#define CMP_MASK(dst, vec, a, qualifier) \
+    const MASK8 (dst) = _mm512_cmp_pd_mask(vec, a, qualifier)
+
+#define MASK_ADD_PD(dst, src, mask, a, b) \
+    const SDOUBLE (dst) = _mm512_mask_add_pd(src, mask, a, b)
+
+#define MASK_SUB_PD(dst, src, mask, a, b) \
+    const SDOUBLE (dst) = _mm512_mask_sub_pd(src, mask, a, b)
+
+#define MASK_MUL_PD(dst, src, mask, a, b) \
+    const SDOUBLE (dst) = _mm512_mask_mul_pd(src, mask, a, b)
 
 #define MASK_MOV_PD(dst, mask, src_false, src_true) \
-    SDOUBLE dst = _mm512_mask_mov_pd((src_false), (mask), (src_true))
+    const SDOUBLE (dst) = _mm512_mask_mov_pd((src_false), (mask), (src_true))
 
 #define MASKZ_MOV_PD(dst, mask, vec) \
     const SDOUBLE (dst) = _mm512_maskz_mov_pd((mask), (vec))
 
 #define GEN_MASK_IF_ODD(dst, vec)                    \
-    MASK8 dst = _mm512_test_epi64_mask(              \
+    const MASK8 dst = _mm512_test_epi64_mask(              \
         _mm512_cvttpd_epi64((vec)),                   \
         _mm512_set1_epi64(1)                          \
     )
 
 #define FLIP_SIGN_IF_MASK_PD(dst, mask, vec)         \
-    SDOUBLE dst = _mm512_castsi512_pd(               \
+    const SDOUBLE (dst) = _mm512_castsi512_pd(               \
         _mm512_mask_xor_epi64(                        \
             _mm512_castpd_si512((vec)),               \
             (mask),                                   \
@@ -95,7 +120,7 @@
     )
 
 #define HALF_PD_FAST(dst, vec)                                                \
-    dst = _mm512_castsi512_pd(                                        \
+    const SDOUBLE (dst) = _mm512_castsi512_pd(                                        \
         _mm512_sub_epi64(                                                      \
             _mm512_castpd_si512((vec)),                                        \
             _mm512_set1_epi64(0x0010000000000000ULL)                           \
@@ -103,24 +128,18 @@
     )
 
 #define DOUBLE_PD_FAST(dst, vec)                                              \
-    SDOUBLE dst = _mm512_castsi512_pd(                                        \
+    const SDOUBLE dst = _mm512_castsi512_pd(                                        \
         _mm512_add_epi64(                                                      \
             _mm512_castpd_si512((vec)),                                        \
             _mm512_set1_epi64(0x0010000000000000ULL)                           \
         )                                                                      \
     )
 
-// Double Operations
-#define MUL_DOUBLE_S _mm512_mul_pd
-#define DIV_DOUBLE_S _mm512_div_pd
-
-#define ADD_DOUBLE_S _mm512_add_pd
-#define SUB_DOUBLE_S _mm512_sub_pd
 
 // floor(a)
-#define FLOOR_DOUBLE_S(a) _mm512_roundscale_pd((a), _MM_FROUND_TO_NEG_INF)
+#define FLOOR_DOUBLE_S(dst, a)\
+    const SDOUBLE (dst) = _mm512_roundscale_pd((a), _MM_FROUND_TO_NEG_INF)
 
-#define FMADD_PD _mm512_fmadd_pd
 #define CMP_PD _mm512_cmp_pd_mask
 
 #define ABS_PD(a) _mm512_abs_pd((a))
