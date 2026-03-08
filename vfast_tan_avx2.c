@@ -13,172 +13,96 @@
 
 
 void vfast_tan(double *input, double *res, size_t n) {
-  int simd_doubles = SIMD_LENGTH / 64;
+    int simd_doubles = SIMD_LENGTH / 64;
 
-  const SDOUBLE pi_2 = LOAD_DOUBLE(M_PI_2);
-  const SDOUBLE one_over_pi_8 = LOAD_DOUBLE(1/M_PI_8);
-  const SDOUBLE one_over_pi_2 = LOAD_DOUBLE(1/M_PI_2);
+    SET1_PD(pi_2, M_PI_2);
+    SET1_PD(one_over_pi_8, 1/M_PI_8);
+    SET1_PD(one_over_pi_2, 1/M_PI_2);
 
-  const SDOUBLE q2_bitshift = LOAD_DOUBLE(-pow(2, -52));
-  const SDOUBLE min_positive_cos_value = LOAD_DOUBLE(MIN_POSITIVE_COS_VALUE);
+    SET1_PD(pi_2_hi, M_PI_2);
+    SET1_PD(cor_coeff, COR_COEFF);
+    SET1_PD(one, 1.0);
 
-  const SDOUBLE neg_one = LOAD_DOUBLE(-1.0);
-  const SDOUBLE neg_half = LOAD_DOUBLE(-0.5);
-  const SDOUBLE half = LOAD_DOUBLE(0.5);
-  const SDOUBLE one = LOAD_DOUBLE(1.0);
-  const SDOUBLE two = LOAD_DOUBLE(2.0);
+    SET1_PD(taylor_coeff1, tan_tp1);
+    SET1_PD(taylor_coeff2, tan_tp2);
+    SET1_PD(taylor_coeff3, tan_tp3);
+    SET1_PD(taylor_coeff4, tan_tp4);
+    SET1_PD(taylor_coeff5, tan_tp5);
+    SET1_PD(taylor_coeff6, tan_tp6);
+    SET1_PD(taylor_coeff7, tan_tp7);
+    SET1_PD(taylor_coeff8, tan_tp8);
+    SET1_PD(taylor_coeff9, tan_tp9);
+    SET1_PD(taylor_coeff10, tan_tp10);
+    SET1_PD(taylor_coeff11, tan_tp11);
+    SET1_PD(taylor_coeff12, tan_tp12);
+    SET1_PD(taylor_coeff13, tan_tp13);
 
-  const SDOUBLE taylor_coeff1  = LOAD_DOUBLE(tan_tp1);
-  const SDOUBLE taylor_coeff2  = LOAD_DOUBLE(tan_tp2);
-  const SDOUBLE taylor_coeff3  = LOAD_DOUBLE(tan_tp3);
-  const SDOUBLE taylor_coeff4  = LOAD_DOUBLE(tan_tp4);
-  const SDOUBLE taylor_coeff5  = LOAD_DOUBLE(tan_tp5);
-  const SDOUBLE taylor_coeff6  = LOAD_DOUBLE(tan_tp6);
-  const SDOUBLE taylor_coeff7  = LOAD_DOUBLE(tan_tp7);
-  const SDOUBLE taylor_coeff8  = LOAD_DOUBLE(tan_tp8);
-  const SDOUBLE taylor_coeff9  = LOAD_DOUBLE(tan_tp9);
-  const SDOUBLE taylor_coeff10 = LOAD_DOUBLE(tan_tp10);
-  const SDOUBLE taylor_coeff11 = LOAD_DOUBLE(tan_tp11);
-  const SDOUBLE taylor_coeff12 = LOAD_DOUBLE(tan_tp12);
-  const SDOUBLE taylor_coeff13 = LOAD_DOUBLE(tan_tp13);
-  
   for (int i = 0; i < (int) n; i += SIMD_DOUBLES) {
-    SDOUBLE x   = LOAD_DOUBLE_VEC(&input[i]);
+    LOAD_DOUBLE_VEC(x_in, &input[i]);
 
-    const SDOUBLE abs_x = ABS_PD(x);
-    const SDOUBLE x_negative = DIV_DOUBLE_S(x, abs_x);
+    /* Range Reduction */
+    MUL_DOUBLE_S(ranges_away, x_in, one_over_pi_2);
+    FLOOR_DOUBLE_S(num_ranges_away, ranges_away);
+    MUL_DOUBLE_S(range_multiple, num_ranges_away, pi_2);
+    SUB_DOUBLE_S(x_reduced_range, x_in, range_multiple);
 
-    const SDOUBLE x_negative01_0 = MUL_DOUBLE_S(x_negative, neg_one);
-    const SDOUBLE x_negative01_1 = ADD_DOUBLE_S(x_negative01_0, one);
-    const SDOUBLE x_negative01 = MUL_DOUBLE_S(x_negative01_1, half);
+    /* treatment of cotan ranges */
+    GEN_MASK_IF_ODD(odd_mask, num_ranges_away);
+    MASK_SUB_PD(x_cotan_adjust, x_reduced_range, odd_mask, pi_2, x_reduced_range);
 
-    const SDOUBLE ranges_away = MUL_DOUBLE_S(x, one_over_pi_2);
-    const SDOUBLE num_ranges_away = FLOOR_DOUBLE_S(ranges_away);
-    const SDOUBLE range_multiple = MUL_DOUBLE_S(num_ranges_away, pi_2);
+    /* Get Quadrant */
+    MUL_DOUBLE_S(not_floored, x_cotan_adjust, one_over_pi_8);
+    FLOOR_DOUBLE_S(quadrant, not_floored);
 
-    x = SUB_DOUBLE_S(x, range_multiple);
+    /* Generate Mask */
+    CMP_MASK(m2, quadrant, one, _CMP_GT_OQ);
 
-    // here problems occure because negative singularities need a ceil not a floor
-    const SDOUBLE singularities_away0 = ADD_DOUBLE_S(num_ranges_away, x_negative01);
-    const SDOUBLE singularities_away1 = ABS_PD(singularities_away0);
-    const SDOUBLE singularities_away = MUL_DOUBLE_S(singularities_away1, half);
-    const SDOUBLE num_singularities_away = FLOOR_DOUBLE_S(singularities_away);
-
-    const SDOUBLE constants_away0 = MUL_DOUBLE_S(num_singularities_away, two);
-    const SDOUBLE constants_away = ADD_DOUBLE_S(constants_away0, one);
-
-    const SDOUBLE sign_adjust_0 = MUL_DOUBLE_S(num_ranges_away, half);
-    const SDOUBLE sign_adjust_1 = FLOOR_DOUBLE_S(sign_adjust_0);
-    const SDOUBLE sign_adjust_2 = MUL_DOUBLE_S(sign_adjust_1, two);
-
-    const SDOUBLE in_odd_range  = SUB_DOUBLE_S(num_ranges_away, sign_adjust_2);
-    const SDOUBLE in_even_range = SUB_DOUBLE_S(one, in_odd_range);
-
-    const SDOUBLE sign_adjust_3 = MUL_DOUBLE_S(in_odd_range, two);
-    const SDOUBLE sign_adjust   = SUB_DOUBLE_S(one, sign_adjust_3);
-
-    const SDOUBLE uneval_from_behind       = SUB_DOUBLE_S(pi_2, x);
-
-    const SDOUBLE in_odd_range_reduction_1 = MUL_DOUBLE_S(uneval_from_behind, in_odd_range);
-    const SDOUBLE in_odd_range_reduction   = SUB_DOUBLE_S(in_odd_range_reduction_1, x);
-
-    x = FMADD_PD(in_odd_range_reduction, in_odd_range, x);
-    const SDOUBLE from_behind = SUB_DOUBLE_S(pi_2, x);
-
-    const SDOUBLE not_floored = MUL_DOUBLE_S(x, one_over_pi_8);
-    const SDOUBLE quadrant = FLOOR_DOUBLE_S(not_floored);
-
-    /* obtaining bool vectors for the each quadrant */
-    const SDOUBLE q_sub_2 = SUB_DOUBLE_S(quadrant, two);
-    const SDOUBLE q_sub_1 = SUB_DOUBLE_S(quadrant, one);
-
-    const SDOUBLE abs_q_sub_2 = ABS_PD(q_sub_2);
-    const SDOUBLE abs_q_sub_1 = ABS_PD(q_sub_1);
-
-    const SDOUBLE in_q0_0 = MUL_DOUBLE_S(abs_q_sub_2, half);
-    const SDOUBLE in_q3_0 = MUL_DOUBLE_S(abs_q_sub_1, half);
-
-    const SDOUBLE in_q1_0 = SUB_DOUBLE_S(abs_q_sub_1, two);
-    const SDOUBLE in_q2_0 = SUB_DOUBLE_S(abs_q_sub_2, two);
-
-    const SDOUBLE in_q0 = FLOOR_DOUBLE_S(in_q0_0);
-    const SDOUBLE in_q3 = FLOOR_DOUBLE_S(in_q3_0);
-
-    const SDOUBLE in_q1_1 = ABS_PD(in_q1_0);
-    const SDOUBLE in_q2_1 = ABS_PD(in_q2_0);
-
-    const SDOUBLE in_q1_2 = MUL_DOUBLE_S(in_q1_1, half);
-    const SDOUBLE in_q2_2 = MUL_DOUBLE_S(in_q2_1, half);
-
-    const SDOUBLE in_q1   = FLOOR_DOUBLE_S(in_q1_2);
-    const SDOUBLE in_q2   = FLOOR_DOUBLE_S(in_q2_2);
-
-    // Mirror it to move it to range 1
-    const SDOUBLE q2_reduction_1 = MUL_DOUBLE_S(from_behind, in_q2);
-    const SDOUBLE q2_reduction = SUB_DOUBLE_S(q2_reduction_1, x);
-    x = FMADD_PD(q2_reduction, in_q2, x);
-    // x = q2_reduction if q2_reduction != 0 else x
-
-    // reduce to move it to range 0
-    const SDOUBLE q1_reduction = MUL_DOUBLE_S(x, neg_half);
-    x = FMADD_PD(q1_reduction, in_q1, x);
-    x = FMADD_PD(q1_reduction, in_q2, x);
-
-    // move q3 in q0
-    const SDOUBLE q3_reduction = SUB_DOUBLE_S(from_behind, x);
-    x = FMADD_PD(q3_reduction, in_q3, x);
-    
-    const SDOUBLE x_square = MUL_DOUBLE_S(x, x);
+    // Kann kein fehler haben da nur exponent geaendert wird
+    MASK_SUB_PD(x_second_adjust, x_cotan_adjust, m2, pi_2_hi, x_cotan_adjust);
+    HALF_PD_FAST(x_half, x_second_adjust);
 
     /* ---- Taylor Loop ---- */
-    const SDOUBLE result_q0_t1 = FMADD_PD(taylor_coeff13, x_square, taylor_coeff12);
-    const SDOUBLE result_q0_t2 = FMADD_PD(result_q0_t1, x_square, taylor_coeff11);
-    const SDOUBLE result_q0_t3 = FMADD_PD(result_q0_t2, x_square, taylor_coeff10);
-    const SDOUBLE result_q0_t4 = FMADD_PD(result_q0_t3, x_square, taylor_coeff9);
-    const SDOUBLE result_q0_t5 = FMADD_PD(result_q0_t4, x_square, taylor_coeff8);
-    const SDOUBLE result_q0_t6 = FMADD_PD(result_q0_t5, x_square, taylor_coeff7);
-    const SDOUBLE result_q0_t7 = FMADD_PD(result_q0_t6, x_square, taylor_coeff6);
-    const SDOUBLE result_q0_t8 = FMADD_PD(result_q0_t7, x_square, taylor_coeff5);
-    const SDOUBLE result_q0_t9 = FMADD_PD(result_q0_t8, x_square, taylor_coeff4);
-    const SDOUBLE result_q0_t10 = FMADD_PD(result_q0_t9, x_square, taylor_coeff3);
-    const SDOUBLE result_q0_t11 = FMADD_PD(result_q0_t10, x_square, taylor_coeff2);
-    const SDOUBLE result_q0_t12 = FMADD_PD(result_q0_t11, x_square, taylor_coeff1);
+    MUL_DOUBLE_S(x_square, x_half, x_half);
 
-    /* ---- Correction Calculation ---- */
-    const SDOUBLE one_over_from_behind = DIV_DOUBLE_S(one, from_behind);
+    FMADD_PD(result_q0_t1, taylor_coeff13, x_square, taylor_coeff12);
+    FMADD_PD(result_q0_t2, result_q0_t1, x_square, taylor_coeff11);
+    FMADD_PD(result_q0_t3, result_q0_t2, x_square, taylor_coeff10);
+    FMADD_PD(result_q0_t4, result_q0_t3, x_square, taylor_coeff9);
+    FMADD_PD(result_q0_t5, result_q0_t4, x_square, taylor_coeff8);
+    FMADD_PD(result_q0_t6, result_q0_t5, x_square, taylor_coeff7);
+    FMADD_PD(result_q0_t7, result_q0_t6, x_square, taylor_coeff6);
+    FMADD_PD(result_q0_t8, result_q0_t7, x_square, taylor_coeff5);
+    FMADD_PD(result_q0_t9, result_q0_t8, x_square, taylor_coeff4);
+    FMADD_PD(result_q0_t10, result_q0_t9, x_square, taylor_coeff3);
+    FMADD_PD(result_q0_t11, result_q0_t10, x_square, taylor_coeff2);
+    FMADD_PD(result_q0_t12, result_q0_t11, x_square, taylor_coeff1);
 
-    const SDOUBLE correction_sign_1 = SUB_DOUBLE_S(in_even_range, in_odd_range);
-    const SDOUBLE correction_sign  = MUL_DOUBLE_S(correction_sign_1, x_negative);
+    MUL_DOUBLE_S(result_q0_t13, result_q0_t12, x_square); // Note that here a one is Missing
+                                                                         
+    /* Calculate Correction */
+    MUL_DOUBLE_S(result_q0_partial, result_q0_t13, x_half);
+    FMADD_PD(correction, x_square, cor_coeff, cor_coeff);
+    MASK_ADD_PD(result_q0_corrected, result_q0_partial, m2, result_q0_partial, correction);
 
-    const SDOUBLE correction_term_1 = MUL_DOUBLE_S(min_positive_cos_value, constants_away);
-    const SDOUBLE correction_term_2 = MUL_DOUBLE_S(correction_term_1, correction_sign);
-    const SDOUBLE correction_term = MUL_DOUBLE_S(correction_term_2, one_over_from_behind);
+    /* Obtain result */
+    ADD_DOUBLE_S(result_q0, result_q0_corrected, x_half); // Here the one is added
 
-    const SDOUBLE coeff0 = FMADD_PD(correction_term, in_q3, one);
-    const SDOUBLE result_q0_1 = FMADD_PD(result_q0_t12, x_square, coeff0);
-
-    const SDOUBLE result_q0 = MUL_DOUBLE_S(result_q0_1, x);
-
-    /* ---- Readjusting for the second range ---- */
-    const SDOUBLE nominator = MUL_DOUBLE_S(two, result_q0);
-    const SDOUBLE result_q0_square = MUL_DOUBLE_S(result_q0, result_q0);
-    const SDOUBLE denominator = SUB_DOUBLE_S(one, result_q0_square);
+    /* Getting Values for Double Angle */
+    DOUBLE_PD_FAST(nominator, result_q0);
+    MUL_DOUBLE_S(result_q0_square, result_q0, result_q0);
+    SUB_DOUBLE_S(denominator, one, result_q0_square);
 
     /* Obtaining the interval results */
-    const SDOUBLE result_q1 = DIV_DOUBLE_S(nominator, denominator);
-    const SDOUBLE result_q2 = DIV_DOUBLE_S(denominator, nominator);
-    const SDOUBLE result_q3 = DIV_DOUBLE_S(one, result_q0);
+    DIV_DOUBLE_S(result_q01, nominator, denominator);
+    DIV_DOUBLE_S(result_q23, denominator, nominator);
 
-    /* Add quadrant results together */
-    const SDOUBLE partial_result_0 = MUL_DOUBLE_S(result_q0, in_q0);
-    const SDOUBLE partial_result_1 = FMADD_PD(result_q1, in_q1, partial_result_0);
-    const SDOUBLE partial_result_2 = FMADD_PD(result_q2, in_q2, partial_result_1);
+    /* Putting together results */
+    MASK_MOV_PD(partial_result, m2, result_q01, result_q23);
 
-    const SDOUBLE partial_result_31 = FMADD_PD(q2_bitshift, in_q2, partial_result_2);
-    const SDOUBLE partial_result_3  = FMADD_PD(result_q3, in_q3, partial_result_31);
+    /* adjust cotan ranges */
+    FLIP_SIGN_IF_MASK_PD(result, odd_mask, partial_result);
 
-    const SDOUBLE result = MUL_DOUBLE_S(sign_adjust, partial_result_3);
-
+    /* save result */
     SIMD_TO_DOUBLE_VEC(&res[i], result);
   }
 

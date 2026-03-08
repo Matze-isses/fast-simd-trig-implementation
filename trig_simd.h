@@ -50,7 +50,7 @@
 #define sin_tp19 (-4.9024697565135435e-47)
 #define sin_tp20 (2.9893108271424046e-50)
 
-#define __AVX512F__ 1
+#define __AVX2__ 1
 
 #if defined(__AVX512F__)
 
@@ -152,44 +152,116 @@
 #define SIMD_DOUBLES (4)
 
 // Double I/O
+#define MASK8   uint8_t
 #define SDOUBLE __m256d
-#define LOAD_DOUBLE _mm256_set1_pd
-#define LOAD_DOUBLE_VEC _mm256_loadu_pd
+#define SINT    __m256i
+
+// ---------- helpers ----------
+static inline __m256d avx2_mask_to_pd(MASK8 mask) {
+    return _mm256_castsi256_pd(_mm256_set_epi64x(
+        (mask & 0x8) ? -1LL : 0LL,
+        (mask & 0x4) ? -1LL : 0LL,
+        (mask & 0x2) ? -1LL : 0LL,
+        (mask & 0x1) ? -1LL : 0LL
+    ));
+}
+
+static inline __m256d avx2_mask_blend_pd(__m256d src_false, MASK8 mask, __m256d src_true) {
+    return _mm256_blendv_pd(src_false, src_true, avx2_mask_to_pd(mask));
+}
+
+static inline MASK8 avx2_cmp_pd_mask(__m256d a, __m256d b, const int imm8) {
+    return (MASK8)_mm256_movemask_pd(_mm256_cmp_pd(a, b, imm8));
+}
+
+static inline MASK8 avx2_gen_mask_if_odd(__m256d vec) {
+    double tmp[4];
+    _mm256_storeu_pd(tmp, vec);
+
+    MASK8 mask = 0;
+    for (int i = 0; i < 4; ++i) {
+        long long v = (long long)tmp[i];   // trunc toward zero
+        if (v & 1LL) mask |= (1u << i);
+    }
+    return mask;
+}
+
+static inline __m256d avx2_flip_sign_if_mask_pd(MASK8 mask, __m256d vec) {
+    const __m256i sign = _mm256_set1_epi64x(0x8000000000000000ULL);
+    __m256i mask_i = _mm256_castpd_si256(avx2_mask_to_pd(mask));
+    __m256i flip   = _mm256_and_si256(mask_i, sign);
+    return _mm256_castsi256_pd(_mm256_xor_si256(_mm256_castpd_si256(vec), flip));
+}
+
+// ---------- macros ----------
+#define SET1_PD(dst, a) \
+    const SDOUBLE (dst) = _mm256_set1_pd(a)
+
 #define SIMD_TO_DOUBLE_VEC _mm256_storeu_pd
 
-#define SET_ZERO _mm256_setzero_pd
+#define LOAD_DOUBLE_VEC(dst, src) \
+    const SDOUBLE (dst) = _mm256_loadu_pd(src)
+
+#define ADD_DOUBLE_S(dst, a, b) \
+    const SDOUBLE (dst) = _mm256_add_pd(a, b)
+
+#define SUB_DOUBLE_S(dst, a, b) \
+    const SDOUBLE (dst) = _mm256_sub_pd(a, b)
 
 // Double Operations
-#define MUL_DOUBLE_S _mm256_mul_pd
-#define DIV_DOUBLE_S _mm256_div_pd
+#define MUL_DOUBLE_S(dst, a, b) \
+    const SDOUBLE (dst) = _mm256_mul_pd(a, b)
 
-#define ADD_DOUBLE_S _mm256_add_pd
-#define SUB_DOUBLE_S _mm256_sub_pd
+#define DIV_DOUBLE_S(dst, a, b) \
+    const SDOUBLE (dst) = _mm256_div_pd(a, b)
 
-#define FLOOR_DOUBLE_S _mm256_floor_pd
+// requires FMA support (-mfma)
+#define FMADD_PD(dst, a, b, c) \
+    const SDOUBLE (dst) = _mm256_fmadd_pd(a, b, c)
 
+#define CMP_MASK(dst, vec, a, qualifier) \
+    const MASK8 (dst) = avx2_cmp_pd_mask((vec), (a), (qualifier))
 
-// for (a, b, c) does return (a * b) + c
-#define FMADD_PD _mm256_fmadd_pd 
-#define CEIL_PD _mm256_ceil_pd
-#define CMP_PD _mm256_cmp_pd
-#define BLEND_PD _mm256_blendv_pd
+#define MASK_ADD_PD(dst, src, mask, a, b) \
+    const SDOUBLE (dst) = avx2_mask_blend_pd((src), (mask), _mm256_add_pd((a), (b)))
 
+#define MASK_SUB_PD(dst, src, mask, a, b) \
+    const SDOUBLE (dst) = avx2_mask_blend_pd((src), (mask), _mm256_sub_pd((a), (b)))
 
-#define ABS_PD(a) \
-    _mm256_max_pd((a), _mm256_mul_pd(_mm256_set1_pd(-1.0), (a)))
+#define MASK_MUL_PD(dst, src, mask, a, b) \
+    const SDOUBLE (dst) = avx2_mask_blend_pd((src), (mask), _mm256_mul_pd((a), (b)))
 
-#define REMOVE_INF(a) \
-    _mm256_blendv_pd( \
-        (a), \
-        _mm256_setzero_pd(), \
-        _mm256_cmp_pd( \
-            _mm256_andnot_pd(_mm256_set1_pd(-0.0), (a)), \
-            _mm256_set1_pd(INFINITY), \
-            _CMP_EQ_OQ \
+#define MASK_MOV_PD(dst, mask, src_false, src_true) \
+    const SDOUBLE (dst) = avx2_mask_blend_pd((src_false), (mask), (src_true))
+
+#define MASKZ_MOV_PD(dst, mask, vec) \
+    const SDOUBLE (dst) = avx2_mask_blend_pd(_mm256_setzero_pd(), (mask), (vec))
+
+#define GEN_MASK_IF_ODD(dst, vec) \
+    const MASK8 (dst) = avx2_gen_mask_if_odd((vec))
+
+#define FLIP_SIGN_IF_MASK_PD(dst, mask, vec) \
+    const SDOUBLE (dst) = avx2_flip_sign_if_mask_pd((mask), (vec))
+
+#define HALF_PD_FAST(dst, vec) \
+    const SDOUBLE (dst) = _mm256_castsi256_pd( \
+        _mm256_sub_epi64( \
+            _mm256_castpd_si256((vec)), \
+            _mm256_set1_epi64x(0x0010000000000000ULL) \
         ) \
     )
 
+#define DOUBLE_PD_FAST(dst, vec) \
+    const SDOUBLE (dst) = _mm256_castsi256_pd( \
+        _mm256_add_epi64( \
+            _mm256_castpd_si256((vec)), \
+            _mm256_set1_epi64x(0x0010000000000000ULL) \
+        ) \
+    )
+
+// floor(a)
+#define FLOOR_DOUBLE_S(dst, a) \
+    const SDOUBLE (dst) = _mm256_floor_pd((a))
 #endif
 
 void vfast_sin(double *input, double *res, size_t n);
