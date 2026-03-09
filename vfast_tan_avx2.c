@@ -10,6 +10,7 @@
 #include "trig_simd.h"
 
 #include <string.h>
+#include "./util/bit_printing.h"
 
 
 void vfast_tan(double *input, double *res, size_t n) {
@@ -22,6 +23,9 @@ void vfast_tan(double *input, double *res, size_t n) {
     SET1_PD(pi_2_hi, M_PI_2);
     SET1_PD(cor_coeff, COR_COEFF);
     SET1_PD(one, 1.0);
+
+    SET1_PD(half, 0.5);
+    SET1_PD(two, 2.0);
 
     SET1_PD(taylor_coeff1, tan_tp1);
     SET1_PD(taylor_coeff2, tan_tp2);
@@ -47,6 +51,11 @@ void vfast_tan(double *input, double *res, size_t n) {
     SUB_DOUBLE_S(x_reduced_range, x_in, range_multiple);
 
     /* treatment of cotan ranges */
+//  MUL_DOUBLE_S(odd_mask_partial, num_ranges_away, half);
+//  FLOOR_DOUBLE_S(odd_mask_partial_floor, odd_mask_partial);
+//  SUB_DOUBLE_S(odd_mask_partial1, odd_mask_partial, odd_mask_partial_floor)
+//  MUL_DOUBLE_S(odd_mask, odd_mask_partial1, two);
+
     GEN_MASK_IF_ODD(odd_mask, num_ranges_away);
     MASK_SUB_PD(x_cotan_adjust, x_reduced_range, odd_mask, pi_2, x_reduced_range);
 
@@ -55,11 +64,24 @@ void vfast_tan(double *input, double *res, size_t n) {
     FLOOR_DOUBLE_S(quadrant, not_floored);
 
     /* Generate Mask */
-    CMP_MASK(m2, quadrant, one, _CMP_GT_OQ);
+    MUL_DOUBLE_S(m2_1, quadrant, half);
+    FLOOR_DOUBLE_S(neg_m2, m2_1);
+    SUB_DOUBLE_S(m2, one, neg_m2);
 
-    // Kann kein fehler haben da nur exponent geaendert wird
-    MASK_SUB_PD(x_second_adjust, x_cotan_adjust, m2, pi_2_hi, x_cotan_adjust);
-    HALF_PD_FAST(x_half, x_second_adjust);
+//  PRINT_FULL_M256D(quadrant);
+//  PRINT_FULL_M256D(neg_m2);
+//  PRINT_FULL_M256D(m2);
+
+    /* Apply Mask */
+    SUB_DOUBLE_S(pi_2_sub_x, pi_2_hi, x_cotan_adjust);
+
+    MUL_DOUBLE_S(first_adjust, x_cotan_adjust, m2);
+    MUL_DOUBLE_S(second_adjust, pi_2_sub_x, neg_m2);
+
+    ADD_DOUBLE_S(x_second_adjust, first_adjust, second_adjust);
+
+    // PRINT_FULL_M256D(x_second_adjust);
+    MUL_DOUBLE_S(x_half, x_second_adjust, half);
 
     /* ---- Taylor Loop ---- */
     MUL_DOUBLE_S(x_square, x_half, x_half);
@@ -82,7 +104,9 @@ void vfast_tan(double *input, double *res, size_t n) {
     /* Calculate Correction */
     MUL_DOUBLE_S(result_q0_partial, result_q0_t13, x_half);
     FMADD_PD(correction, x_square, cor_coeff, cor_coeff);
-    MASK_ADD_PD(result_q0_corrected, result_q0_partial, m2, result_q0_partial, correction);
+
+    MUL_DOUBLE_S(eval_correction, neg_m2, correction);
+    ADD_DOUBLE_S(result_q0_corrected, result_q0_partial, eval_correction);
 
     /* Obtain result */
     ADD_DOUBLE_S(result_q0, result_q0_corrected, x_half); // Here the one is added
@@ -97,7 +121,9 @@ void vfast_tan(double *input, double *res, size_t n) {
     DIV_DOUBLE_S(result_q23, denominator, nominator);
 
     /* Putting together results */
-    MASK_MOV_PD(partial_result, m2, result_q01, result_q23);
+    MUL_DOUBLE_S(result_first, m2, result_q01);
+    MUL_DOUBLE_S(result_sec, neg_m2, result_q23);
+    ADD_DOUBLE_S(partial_result, result_first, result_sec);
 
     /* adjust cotan ranges */
     FLIP_SIGN_IF_MASK_PD(result, odd_mask, partial_result);
