@@ -51,13 +51,19 @@ void vfast_tan(double *input, double *res, size_t n) {
     SUB_DOUBLE_S(x_reduced_range, x_in, range_multiple);
 
     /* treatment of cotan ranges */
-//  MUL_DOUBLE_S(odd_mask_partial, num_ranges_away, half);
-//  FLOOR_DOUBLE_S(odd_mask_partial_floor, odd_mask_partial);
-//  SUB_DOUBLE_S(odd_mask_partial1, odd_mask_partial, odd_mask_partial_floor)
-//  MUL_DOUBLE_S(odd_mask, odd_mask_partial1, two);
+    MUL_DOUBLE_S(odd_mask_partial, num_ranges_away, half);
+    FLOOR_DOUBLE_S(odd_mask_partial_floor, odd_mask_partial);
+    SUB_DOUBLE_S(odd_mask_partial1, odd_mask_partial, odd_mask_partial_floor);
+    MUL_DOUBLE_S(odd_mask, odd_mask_partial1, two);
 
-    GEN_MASK_IF_ODD(odd_mask, num_ranges_away);
-    MASK_SUB_PD(x_cotan_adjust, x_reduced_range, odd_mask, pi_2, x_reduced_range);
+    DOUBLE_PD_FAST(two_x1, x_reduced_range);
+    SUB_DOUBLE_S(pi_2_sub_2x1, pi_2_hi, two_x1);
+    MUL_DOUBLE_S(second_adjust1, pi_2_sub_2x1, odd_mask);
+    ADD_DOUBLE_S(x_cotan_adjust, x_reduced_range, second_adjust1);
+
+
+//  GEN_MASK_IF_ODD(odd_mask, num_ranges_away);
+//  MASK_SUB_PD(x_cotan_adjust, x_reduced_range, odd_mask, pi_2, x_reduced_range);
 
     /* Get Quadrant */
     MUL_DOUBLE_S(not_floored, x_cotan_adjust, one_over_pi_8);
@@ -73,12 +79,10 @@ void vfast_tan(double *input, double *res, size_t n) {
 //  PRINT_FULL_M256D(m2);
 
     /* Apply Mask */
-    SUB_DOUBLE_S(pi_2_sub_x, pi_2_hi, x_cotan_adjust);
-
-    MUL_DOUBLE_S(first_adjust, x_cotan_adjust, m2);
-    MUL_DOUBLE_S(second_adjust, pi_2_sub_x, neg_m2);
-
-    ADD_DOUBLE_S(x_second_adjust, first_adjust, second_adjust);
+    DOUBLE_PD_FAST(two_x, x_cotan_adjust);
+    SUB_DOUBLE_S(pi_2_sub_2x, pi_2_hi, two_x);
+    MUL_DOUBLE_S(second_adjust, pi_2_sub_2x, neg_m2);
+    ADD_DOUBLE_S(x_second_adjust, x_cotan_adjust, second_adjust);
 
     // PRINT_FULL_M256D(x_second_adjust);
     MUL_DOUBLE_S(x_half, x_second_adjust, half);
@@ -126,7 +130,9 @@ void vfast_tan(double *input, double *res, size_t n) {
     ADD_DOUBLE_S(partial_result, result_first, result_sec);
 
     /* adjust cotan ranges */
-    FLIP_SIGN_IF_MASK_PD(result, odd_mask, partial_result);
+    MUL_DOUBLE_S(odd_mask1, odd_mask, two);
+    SUB_DOUBLE_S(odd_mask01, one, odd_mask1);
+    MUL_DOUBLE_S(result, odd_mask01, partial_result);
 
     /* save result */
     SIMD_TO_DOUBLE_VEC(&res[i], result);
