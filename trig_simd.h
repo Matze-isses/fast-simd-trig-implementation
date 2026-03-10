@@ -4,8 +4,6 @@
 #pragma once
 #include <immintrin.h>
 
-//#define __AVX2__ 1
-
 #define M_PI_8 (M_PI / 8)
 #define RANG_REDUCTION_CORRECTION (3.8981718325193755e-17)
 #define PI_LO (0x1.1a62633145c07p-54)
@@ -50,7 +48,7 @@
 #define sin_tp19 (-4.9024697565135435e-47)
 #define sin_tp20 (2.9893108271424046e-50)
 
-#define __AVX2__ 1
+
 
 #if defined(__AVX512F__)
 
@@ -156,51 +154,14 @@
 #define SDOUBLE __m256d
 #define SINT    __m256i
 
-// ---------- helpers ----------
-static inline __m256d avx2_mask_to_pd(MASK8 mask) {
-    return _mm256_castsi256_pd(_mm256_set_epi64x(
-        (mask & 0x8) ? -1LL : 0LL,
-        (mask & 0x4) ? -1LL : 0LL,
-        (mask & 0x2) ? -1LL : 0LL,
-        (mask & 0x1) ? -1LL : 0LL
-    ));
-}
-
-static inline __m256d avx2_mask_blend_pd(__m256d src_false, MASK8 mask, __m256d src_true) {
-    return _mm256_blendv_pd(src_false, src_true, avx2_mask_to_pd(mask));
-}
-
-static inline MASK8 avx2_cmp_pd_mask(__m256d a, __m256d b, const int imm8) {
-    return (MASK8)_mm256_movemask_pd(_mm256_cmp_pd(a, b, imm8));
-}
-
-static inline MASK8 avx2_gen_mask_if_odd(__m256d vec) {
-    double tmp[4];
-    _mm256_storeu_pd(tmp, vec);
-
-    MASK8 mask = 0;
-    for (int i = 0; i < 4; ++i) {
-        long long v = (long long)tmp[i];   // trunc toward zero
-        if (v & 1LL) mask |= (1u << i);
-    }
-    return mask;
-}
-
-static inline __m256d avx2_flip_sign_if_mask_pd(MASK8 mask, __m256d vec) {
-    const __m256i sign = _mm256_set1_epi64x(0x8000000000000000ULL);
-    __m256i mask_i = _mm256_castpd_si256(avx2_mask_to_pd(mask));
-    __m256i flip   = _mm256_and_si256(mask_i, sign);
-    return _mm256_castsi256_pd(_mm256_xor_si256(_mm256_castpd_si256(vec), flip));
-}
-
 // ---------- macros ----------
-#define SET1_PD(dst, a) \
-    const SDOUBLE (dst) = _mm256_set1_pd(a)
+#define LOAD_DOUBLE_VEC(dst, src) \
+    const SDOUBLE (dst) = _mm256_loadu_pd(src)
 
 #define SIMD_TO_DOUBLE_VEC _mm256_storeu_pd
 
-#define LOAD_DOUBLE_VEC(dst, src) \
-    const SDOUBLE (dst) = _mm256_loadu_pd(src)
+#define SET1_PD(dst, a) \
+    const SDOUBLE (dst) = _mm256_set1_pd(a)
 
 #define ADD_DOUBLE_S(dst, a, b) \
     const SDOUBLE (dst) = _mm256_add_pd(a, b)
@@ -218,30 +179,6 @@ static inline __m256d avx2_flip_sign_if_mask_pd(MASK8 mask, __m256d vec) {
 // requires FMA support (-mfma)
 #define FMADD_PD(dst, a, b, c) \
     const SDOUBLE (dst) = _mm256_fmadd_pd(a, b, c)
-
-#define CMP_MASK(dst, vec, a, qualifier) \
-    const MASK8 (dst) = avx2_cmp_pd_mask((vec), (a), (qualifier))
-
-#define MASK_ADD_PD(dst, src, mask, a, b) \
-    const SDOUBLE (dst) = avx2_mask_blend_pd((src), (mask), _mm256_add_pd((a), (b)))
-
-#define MASK_SUB_PD(dst, src, mask, a, b) \
-    const SDOUBLE (dst) = avx2_mask_blend_pd((src), (mask), _mm256_sub_pd((a), (b)))
-
-#define MASK_MUL_PD(dst, src, mask, a, b) \
-    const SDOUBLE (dst) = avx2_mask_blend_pd((src), (mask), _mm256_mul_pd((a), (b)))
-
-#define MASK_MOV_PD(dst, mask, src_false, src_true) \
-    const SDOUBLE (dst) = avx2_mask_blend_pd((src_false), (mask), (src_true))
-
-#define MASKZ_MOV_PD(dst, mask, vec) \
-    const SDOUBLE (dst) = avx2_mask_blend_pd(_mm256_setzero_pd(), (mask), (vec))
-
-#define GEN_MASK_IF_ODD(dst, vec) \
-    const MASK8 (dst) = avx2_gen_mask_if_odd((vec))
-
-#define FLIP_SIGN_IF_MASK_PD(dst, mask, vec) \
-    const SDOUBLE (dst) = avx2_flip_sign_if_mask_pd((mask), (vec))
 
 #define HALF_PD_FAST(dst, vec) \
     const SDOUBLE (dst) = _mm256_castsi256_pd( \
@@ -262,6 +199,12 @@ static inline __m256d avx2_flip_sign_if_mask_pd(MASK8 mask, __m256d vec) {
 // floor(a)
 #define FLOOR_DOUBLE_S(dst, a) \
     const SDOUBLE (dst) = _mm256_floor_pd((a))
+
+
+#else
+
+#define SIMD_DOUBLES (1)
+
 #endif
 
 void vfast_sin(double *input, double *res, size_t n);
