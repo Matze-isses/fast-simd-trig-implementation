@@ -3,7 +3,7 @@
 
 static void split_multiple_of_pi(long double factor)
 {
-    long double x = factor * acosl(-1.0L);
+    long double x = 1 / (factor * acosl(-1.0L));
     double a = (double)x;
     long double rest = x - (long double)a;
     double b = (double)rest;
@@ -17,6 +17,6 @@ static void split_multiple_of_pi(long double factor)
 
 int main(void)
 {
-    split_multiple_of_pi(1.0L);
+    split_multiple_of_pi(0.5L);
     return 0;
 }

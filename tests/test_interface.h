@@ -8,6 +8,7 @@
 /* input generators */
 void fill_uniform(double lower, double upper, size_t n, double *vec);
 void fill_dense_pi_over_2(double lower, double upper, size_t n, double *vec, double sigma);
+void fill_grid(double lower, double upper, size_t n, double *vec);
 
 /* Arb-based reference comparisons (absolute + ULP where applicable) */
 void compare_results_sin(double *x, double *y,

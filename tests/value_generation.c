@@ -87,3 +87,13 @@ void fill_dense_pi_over_2(double lower, double upper, size_t n, double *vec, dou
     }
   }
 }
+
+void fill_grid(double lower, double upper, size_t n, double *vec) {
+      double step = (upper - lower) / (double)(n - 1);
+
+      for (size_t i = 0; i < n; i++) 
+          vec[i] = lower + step * (double)i;
+
+      vec[0] = lower;
+      vec[n - 1] = upper;
+}

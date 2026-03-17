@@ -193,7 +193,7 @@ static void quadrant_error_test(func_kind_t fk, size_t n)
       return;
     }
 
-    fill_uniform(lower, upper, n, test_values);
+    fill_grid(lower, upper, n, test_values);
 
     own_fn(test_values, own_results, n);
     for (size_t i = 0; i < n; ++i) glibc_results[i] = libm(test_values[i]);
@@ -282,7 +282,7 @@ static void run_precision_test(func_kind_t fk, double lower, double upper, size_
     return;
   }
 
-  fill_uniform(lower, upper, accuracy_test_size, test_values);
+  fill_grid(lower, upper, accuracy_test_size, test_values);
 
   own_fn(test_values, own_results, accuracy_test_size);
   for (size_t i = 0; i < accuracy_test_size; i++) glibc_results[i] = libm(test_values[i]);
