@@ -17,7 +17,7 @@ SRC_GENERIC := ./vfast_sin.c ./vfast_tan.c
 SRC_AVX2    := ./vfast_sin_avx2.c ./vfast_tan_avx2.c
 SRC_AVX512  := ./vfast_sin_avx512.c ./vfast_tan_avx512.c
 
-AVX2FLAGS   := -mavx2 -mfma
+AVX2FLAGS   := -mavx2 -mfma -mno-avx512f
 AVX512FLAGS := -mavx512f -mavx512bw -mavx512dq -mavx512vl -mfma
 
 BUILDDIR := build

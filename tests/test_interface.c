@@ -150,11 +150,11 @@ static void quadrant_error_test(func_kind_t fk, size_t n)
   };
 
   double bounds_sin[5] = {
-    nextafter(0.0, 1.0),
-    nextafter(M_PI / 2.0, 0.0),
-    nextafter(M_PI, 0.0),
-    nextafter(3.0 * M_PI / 2.0, M_PI),
-    nextafter(2.0 * M_PI, 0.0)
+    0.0,
+    M_PI_2,
+    M_PI,
+    3.0 * M_PI_2,
+    2.0 * M_PI
   };
 
   /* For tan: stay in (0, pi/2) but split into 4 sub-intervals */
@@ -178,8 +178,8 @@ static void quadrant_error_test(func_kind_t fk, size_t n)
   printf("+------------------+----------------+---------------------------+---------------------------+---------------------------+---------------------------+\n");
 
   for (int q = 0; q < 4; ++q) {
-    double lower = bounds[q];
-    double upper = bounds[q + 1];
+    double lower = nextafter(bounds[q], INFINITY);
+    double upper = nextafter(bounds[q+1], -INFINITY);
 
     double *test_values   = (double*)malloc(n * sizeof(double));
     double *own_results   = (double*)malloc(n * sizeof(double));

@@ -9,6 +9,12 @@
 #define PI_LO (0x1.1a62633145c07p-54)
 #define COR_COEFF (0x1.1a62633145c07p-55)
 
+#define TWO_PI (0x1.921fb54442d18p+2)
+#define ONE_OVER_TWO_PI (0x1.45f306dc9c883p-3)
+#define ONE_OVER_PI (0x1.45f306dc9c883p-2)
+#define ONE_OVER_PI_2 (0x1.45f306dc9c883p-1)
+
+
 
 // Taylor Polynomaial Coefficiants
 #define tan_tp1 (0x1.5555555555555p-2)
@@ -48,6 +54,7 @@
 #define sin_tp19 (-4.9024697565135435e-47)
 #define sin_tp20 (2.9893108271424046e-50)
 
+#define __AVX512F__ 1
 
 
 #if defined(__AVX512F__)
@@ -142,6 +149,8 @@
 #define FLOOR_DOUBLE_S(dst, a)\
     const SDOUBLE (dst) = _mm512_roundscale_pd((a), _MM_FROUND_TO_NEG_INF)
 
+#define ABS_PD(dst, a) \
+    const SDOUBLE (dst) = _mm512_and_pd((a), _mm512_castsi512_pd(_mm512_set1_epi64(0x7FFFFFFFFFFFFFFF)))
 
 #elif defined(__AVX2__)
 
@@ -200,6 +209,10 @@
 #define FLOOR_DOUBLE_S(dst, a) \
     const SDOUBLE (dst) = _mm256_floor_pd((a))
 
+
+// abs(a)
+#define ABS_PD(dst, a) \
+    const SDOUBLE (dst) = _mm256_and_pd((a), _mm256_castsi256_pd(_mm256_set1_epi64x(0x7FFFFFFFFFFFFFFF)))
 
 #else
 
