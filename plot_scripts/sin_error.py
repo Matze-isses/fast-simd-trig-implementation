@@ -11,8 +11,6 @@ def get_data(path="./sin_error_behavior.tsv"):
 
 
 def simple_error_plot(x, err):
-#   x = x[err < 10]
-#   err = err[err < 10]
     plt.figure(figsize=(19.2, 10.8), dpi=100)
 
     plt.xlabel(r"$x$", fontsize=22)
@@ -22,6 +20,14 @@ def simple_error_plot(x, err):
     plt.scatter(x, err, s=0.1, alpha=0.7)
 
     ax = plt.gca()
+
+    ticks = [0, np.pi/2, np.pi, 3*np.pi/2, 2*np.pi]
+    labels = [r"$0$", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$", r"$2\pi$"]
+
+    ax.set_xticks(ticks)
+    ax.set_xticklabels(labels)
+
+    ax.grid(True)
 
     ax.tick_params(axis="x", labelsize=16)
     ax.tick_params(axis="y", labelsize=16)
@@ -653,8 +659,8 @@ def fit_linear_conssints_poleband(x, err, dmin, dmax):
 
 if __name__ == "__main__":
     print("Next: ", 3/2 * np.pi - 0.00001, 3/2 * np.pi + 0.00001)
-    x, err = get_data('./sin_ulp_error_behavior.tsv')
-    # x, err = get_data('./sin_error_behavior.tsv')
+    # x, err = get_data('./sin_ulp_error_behavior.tsv')
+    x, err = get_data('./sin_error_behavior.tsv')
     # x, err = get_data('./range_reduction_error.tsv')
     simple_error_plot(x, err) 
 

@@ -5,8 +5,6 @@
 #include <math.h>
 #include "trig_simd.h"
 
-
-
 static uint64_t double_to_ordered_u64(double x)
 {
     uint64_t u;
@@ -36,11 +34,34 @@ static double reference_sin_as_double(double x)
     return (double)yl;
 }
 
+static int save_results_tsv(const char *filename,
+                            const double *input,
+                            const double *res,
+                            size_t n)
+{
+    FILE *fp = fopen(filename, "w");
+    if (fp == NULL)
+        return -1;
+
+    fprintf(fp, "x\tvfast_sin(x)\tref_double\tulp_diff\n");
+
+    for (size_t i = 0; i < n; ++i) {
+        double ref = reference_sin_as_double(input[i]);
+        long long ulp = signed_ulp_diff(res[i], ref);
+
+        fprintf(fp, "%.17g\t%.17g\t%.17g\t%lld\n",
+                input[i], res[i], ref, ulp);
+    }
+
+    fclose(fp);
+    return 0;
+}
+
 int main(void)
 {
-    const size_t n = 8;
-    const double a = 1.58;
-    const double b = 2.0 * M_PI;
+    const size_t n = 100000;
+    const double a = 0;
+    const double b = M_PI_2;
 
     double input[n];
     double res[n];
@@ -57,8 +78,12 @@ int main(void)
         double ref = reference_sin_as_double(input[i]);
         long long ulp = signed_ulp_diff(res[i], ref);
 
-        printf("%24.17g %24.17g %24.17g %12lld\n",
-               input[i], res[i], ref, ulp);
+        // printf("%24.17g %24.17g %24.17g %12lld\n", input[i], res[i], ref, ulp);
+    }
+
+    if (save_results_tsv("sin_results.tsv", input, res, n) != 0) {
+        fprintf(stderr, "Could not write sin_results.tsv\n");
+        return 1;
     }
 
     return 0;

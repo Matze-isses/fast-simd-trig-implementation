@@ -51,8 +51,6 @@
 #define sin_tp16 (1.1516335620771951e-37)
 #define sin_tp17 (-9.6775929586318907e-41)
 #define sin_tp18 (7.2654601791530714e-44)
-#define sin_tp19 (-4.9024697565135435e-47)
-#define sin_tp20 (2.9893108271424046e-50)
 
 #define __AVX512F__ 1
 

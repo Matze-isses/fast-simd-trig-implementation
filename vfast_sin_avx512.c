@@ -96,9 +96,8 @@ void vfast_sin(double *input, double *res, size_t n) {
         FMADD_PD(result_q0_t16, result_q0_t15, x_square, taylor_coeff2);
         FMADD_PD(result_q0_t17, result_q0_t16, x_square, taylor_coeff1);
         FMADD_PD(result_q0_t18, result_q0_t17, x_square, taylor_coeff0);
-
-        // to uneven the degrees
         MUL_DOUBLE_S(result, result_q0_t18, in_range);
+
         MASK_MUL_PD(sign_adjusted_result, result, sign_mask, result, neg_one);
 
         SIMD_TO_DOUBLE_VEC(&res[i], sign_adjusted_result);

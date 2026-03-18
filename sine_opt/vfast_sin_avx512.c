@@ -19,7 +19,7 @@ void vfast_sin(double *input, double *res, size_t n) {
     SET1_PD(one_over_pi_2, ONE_OVER_PI_2);
     SET1_PD(cor_coeff, COR_COEFF);
 
-    SET1_PD(pi_lo, 0x1.1a8p-53);
+    SET1_PD(pi_lo, 0x1.1a62633145c07p-53);
 
     SET1_PD(one, 1.0);
     SET1_PD(two, 2.0);
@@ -70,8 +70,8 @@ void vfast_sin(double *input, double *res, size_t n) {
 
         MASK_SUB_PD(in_range_partial, corrected_range, q2 | q3, corrected_range, pi);
         MASK_SUB_PD(in_range_hi, in_range_partial, q1 | q3, pi, in_range_partial);
-        MASK_ADD_PD(in_range_t, in_range_hi, q1 | q3, pi_lo, in_range_hi);
-        MASK_ADD_PD(in_range, in_range_t, q3, in_range_t, pi_lo);
+
+        MASK_ADD_PD(in_range, in_range_hi, q1 | q3, in_range_hi, pi_lo);
 
         MUL_DOUBLE_S(x_square, in_range, in_range);
 
