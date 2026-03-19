@@ -34,6 +34,13 @@ static double reference_sin_as_double(double x)
     return (double)yl;
 }
 
+static double reference_cos_as_double(double x)
+{
+    long double xl = (long double)x;
+    long double yl = cosl(xl);
+    return (double)yl;
+}
+
 static int save_results_tsv(const char *filename,
                             const double *input,
                             const double *res,
@@ -57,86 +64,60 @@ static int save_results_tsv(const char *filename,
     return 0;
 }
 
-double cos_taylor30(double x) {
-    double x2 = x * x;
+double cos_taylor(double x)
+{
+    double r = 0;
+    double x_square = x * x;
+    double x_cube = x * x_square;
 
-    double r =
-    0x1.0000000000000p+0 +
-    x2 * (
-    -0x1.0000000000000p-1 +
-    x2 * (
-     0x1.5555555555555p-5 +
-    x2 * (
-    -0x1.6c16c16c16c17p-10 +
-    x2 * (
-     0x1.a01a01a01a01ap-16 +
-    x2 * (
-    -0x1.27e4fb7789f5cp-22 +
-    x2 * (
-     0x1.1eed8eff8d898p-29 +
-    x2 * (
-    -0x1.93974a81d1e3cp-37 +
-    x2 * (
-     0x1.4f8b588e368f1p-45 +
-    x2 * (
-    -0x1.1f5d7d9a7b0aap-54 +
-    x2 * (
-     0x1.0a6c0f5c0b56dp-63 +
-    x2 * (
-    -0x1.3b3b3b3b3b3b4p-73 +
-    x2 * (
-     0x1.3b3b3b3b3b3b4p-84 +
-    x2 * (
-    -0x1.1111111111111p-95 +
-    x2 * (
-     0x1.745d1745d1746p-108
-    ))))))))))))));
+    r = cos_tp8;
+
+//  r = r * x_square + cos_tp13;
+//  r = r * x_square + cos_tp12;
+//  r = r * x_square + cos_tp11;
+//  r = r * x_square + cos_tp10;
+//  r = r * x_square + cos_tp9;
+//  r = r * x_square + cos_tp8;
+    r = r * x_square + cos_tp7;
+    r = r * x_square + cos_tp6;
+    r = r * x_square + cos_tp5;
+    r = r * x_square + cos_tp4;
+    r = r * x_square + cos_tp3;
+    r = r * x_square + cos_tp2;
+    r = r * x_square + cos_tp1;
+    r = r * x_square + cos_tp0;
 
     return r;
 }
 
-double sin_taylor29(double x)
+double sin_taylor(double x)
 {
-    double x2 = x * x;
+    double r = 0;
+    double x_square = x * x;
+    double x_cube = x * x_square;
 
-    double r =
-    0x1.0000000000000p+0 +
-    x2 * (
-    -0x1.5555555555555p-3 +
-    x2 * (
-     0x1.1111111111111p-7 +
-    x2 * (
-    -0x1.a01a01a01a01ap-13 +
-    x2 * (
-     0x1.71de3a556c734p-19 +
-    x2 * (
-    -0x1.ae64567f544e4p-26 +
-    x2 * (
-     0x1.6124613a86d09p-33 +
-    x2 * (
-    -0x1.ae7f3e733b81fp-41 +
-    x2 * (
-     0x1.3c6a5b63d3f1fp-49 +
-    x2 * (
-    -0x1.6c16c16c16c17p-58 +
-    x2 * (
-     0x1.1eed8eff8d898p-67 +
-    x2 * (
-    -0x1.27e4fb7789f5cp-77 +
-    x2 * (
-     0x1.93974a81d1e3cp-88 +
-    x2 * (
-    -0x1.4f8b588e368f1p-100
-    )))))))))))));
+    r = sin_tp11 * x_square + sin_tp10;
 
-    return x * r;
+    r = r * x_square + sin_tp9;
+    r = r * x_square + sin_tp8;
+    r = r * x_square + sin_tp7;
+    r = r * x_square + sin_tp6;
+    r = r * x_square + sin_tp5;
+    r = r * x_square + sin_tp4;
+    r = r * x_square + sin_tp3;
+    r = r * x_square + sin_tp2;
+    r = r * x_square + sin_tp1;
+
+    r = r * x_cube + x;
+
+    return r;
 }
 
 
 int main(void) {
     const size_t n = 100000;
     const double a = 0;
-    const double b = M_PI_2;
+    const double b = M_PI_4;
 
     double input[n];
     double res[n];
@@ -146,7 +127,7 @@ int main(void) {
     }
 
     for (size_t i = 0; i < n; i++) {
-        res[i] = sin_taylor29(input[i]);
+        res[i] = cos_taylor(input[i]);
     }
 
     printf("%24s %24s %24s %12s\n", "x", "vfast_sin(x)", "ref_double", "ulp_diff");
@@ -155,7 +136,7 @@ int main(void) {
     int count_severe = 0;
 
     for (size_t i = 0; i < n; ++i) {
-        double ref = reference_sin_as_double(input[i]);
+        double ref = reference_cos_as_double(input[i]);
         long long ulp = signed_ulp_diff(res[i], ref);
 
         if (ulp > 2 || ulp < -2) count_severe++;
@@ -164,8 +145,10 @@ int main(void) {
 
         //printf("%24.17g %24.17g %24.17g %12lld\n", input[i], res[i], ref, ulp);
     }
-    printf("Total ULP 1 Values: %d\n\n", count_one);
-    printf("Total ULP 2 Values: %d\n\n", count_two);
+
+    printf("Total ULP 0 Values: %d\n", n - count_one - count_two - count_severe);
+    printf("Total ULP 1 Values: %d\n", count_one);
+    printf("Total ULP 2 Values: %d\n", count_two);
     printf("Total Unacceptable: %d\n\n", count_severe);
 
 
