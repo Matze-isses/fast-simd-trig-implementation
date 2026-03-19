@@ -14,6 +14,7 @@
 #define ONE_OVER_PI (0x1.45f306dc9c883p-2)
 #define ONE_OVER_PI_2 (0x1.45f306dc9c883p-1)
 
+#define SQRT2 (1.4142135623730950488)
 
 
 // Taylor Polynomaial Coefficiants
@@ -51,6 +52,24 @@
 #define sin_tp16 (1.1516335620771951e-37)
 #define sin_tp17 (-9.6775929586318907e-41)
 #define sin_tp18 (7.2654601791530714e-44)
+#define sin_tp19 (-4.9024697565135435e-47)
+#define sin_tp20 (2.9893108271424046e-50)
+
+#define cos_tp0 (1.0)
+#define cos_tp1 (-0.5)
+#define cos_tp2 (0.041666666666666664)
+#define cos_tp3 (-0.001388888888888889)
+#define cos_tp4 (2.48015873015873e-05)
+#define cos_tp5 (-2.755731922398589e-07)
+#define cos_tp6 (2.08767569878681e-09)
+#define cos_tp7 (-1.1470745597729725e-11)
+#define cos_tp8 (4.779477332387385e-14)
+#define cos_tp9 (-1.5619206968586225e-16)
+#define cos_tp10 (4.110317623312165e-19)
+#define cos_tp11 (-8.896791392450574e-22)
+#define cos_tp12 (1.6117375710961184e-24)
+#define cos_tp13 (-2.4795962632247976e-27)
+#define cos_tp14 (3.279889237069838e-30)
 
 #define __AVX512F__ 1
 
@@ -91,6 +110,9 @@
 #define FMADD_PD(dst, a, b, c)\
     const SDOUBLE (dst) = _mm512_fmadd_pd(a, b, c)
 
+
+#define MASK_BLEND(dst, mask, a, b)\
+    const SDOUBLE (dst) = _mm512_mask_blend_pd(mask, a, b)
 
 #define CMP_MASK(dst, vec, a, qualifier) \
     const MASK8 (dst) = _mm512_cmp_pd_mask(vec, a, qualifier)

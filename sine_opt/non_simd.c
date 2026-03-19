@@ -70,7 +70,7 @@ double cos_taylor(double x)
     double x_square = x * x;
     double x_cube = x * x_square;
 
-    r = cos_tp8;
+    r = cos_tp5;
 
 //  r = r * x_square + cos_tp13;
 //  r = r * x_square + cos_tp12;
@@ -78,9 +78,9 @@ double cos_taylor(double x)
 //  r = r * x_square + cos_tp10;
 //  r = r * x_square + cos_tp9;
 //  r = r * x_square + cos_tp8;
-    r = r * x_square + cos_tp7;
-    r = r * x_square + cos_tp6;
-    r = r * x_square + cos_tp5;
+    //r = r * x_square + cos_tp7;
+    //r = r * x_square + cos_tp6;
+    //r = r * x_square + cos_tp5;
     r = r * x_square + cos_tp4;
     r = r * x_square + cos_tp3;
     r = r * x_square + cos_tp2;
@@ -117,7 +117,7 @@ double sin_taylor(double x)
 int main(void) {
     const size_t n = 100000;
     const double a = 0;
-    const double b = M_PI_4;
+    const double b = 0.15658;
 
     double input[n];
     double res[n];

@@ -14,6 +14,7 @@
 #define ONE_OVER_PI (0x1.45f306dc9c883p-2)
 #define ONE_OVER_PI_2 (0x1.45f306dc9c883p-1)
 
+#define SQRT2 (1.4142135623730950488)
 
 
 // Taylor Polynomaial Coefficiants
@@ -109,6 +110,9 @@
 #define FMADD_PD(dst, a, b, c)\
     const SDOUBLE (dst) = _mm512_fmadd_pd(a, b, c)
 
+
+#define MASK_BLEND(dst, mask, a, b)\
+    const SDOUBLE (dst) = _mm512_mask_blend_pd(mask, a, b)
 
 #define CMP_MASK(dst, vec, a, qualifier) \
     const MASK8 (dst) = _mm512_cmp_pd_mask(vec, a, qualifier)

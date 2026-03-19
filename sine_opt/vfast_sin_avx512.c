@@ -26,6 +26,7 @@ void vfast_sin(double *input, double *res, size_t n) {
 
     SET1_PD(martin_const, 0.0000000000000000074010000000001);
 
+    SET1_PD(sqrt2, SQRT2);
     SET1_PD(one, 1.0);
     SET1_PD(two, 2.0);
     SET1_PD(three, 3.0);
@@ -86,7 +87,8 @@ void vfast_sin(double *input, double *res, size_t n) {
 
         MASK_ADD_PD(in_range_partial1, in_range_hi, q1 | q3, in_range_hi, pi_lo);
 
-        CMP_MASK(second_half, in_range_partial1, pi_4, _CMP_GT_OQ) ;
+        CMP_MASK(second_half, in_range_partial1, sqrt2, _CMP_GT_OQ) ;
+
         MASK_SUB_PD(in_range, in_range_partial1, second_half, pi_2, in_range_partial1); 
 
         MUL_DOUBLE_S(x_square, in_range, in_range);
@@ -105,19 +107,13 @@ void vfast_sin(double *input, double *res, size_t n) {
 
         FMADD_PD(result_sin, sin_res_t1, x_cube, in_range);
 
-        FMADD_PD(cos_res_t10, tc_cos11, x_square, tc_cos10);
-        FMADD_PD(cos_res_t9, cos_res_t10, x_square, tc_cos9);
-        FMADD_PD(cos_res_t8, cos_res_t9, x_square, tc_cos8);
-        FMADD_PD(cos_res_t7, cos_res_t8, x_square, tc_cos7);
-        FMADD_PD(cos_res_t6, cos_res_t7, x_square, tc_cos6);
-        FMADD_PD(cos_res_t5, cos_res_t6, x_square, tc_cos5);
-        FMADD_PD(cos_res_t4, cos_res_t5, x_square, tc_cos4);
+        FMADD_PD(cos_res_t4, tc_cos5, x_square, tc_cos4);
         FMADD_PD(cos_res_t3, cos_res_t4, x_square, tc_cos3);
         FMADD_PD(cos_res_t2, cos_res_t3, x_square, tc_cos2);
         FMADD_PD(cos_res_t1, cos_res_t2, x_square, tc_cos1);
         FMADD_PD(result_cos, cos_res_t1, x_square, tc_cos0);
 
-        __m512d result = _mm512_mask_blend_pd(second_half, result_sin, result_cos);
+        MASK_BLEND(result, second_half, result_sin, result_cos);
 
 
         MASK_MUL_PD(sign_adjusted_result, result, sign_mask, result, neg_one);
