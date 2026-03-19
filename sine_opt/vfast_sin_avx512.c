@@ -60,11 +60,9 @@ void vfast_sin(double *input, double *res, size_t n) {
         MUL_DOUBLE_S(range_multiple, num_ranges_away, two_pi);
 
         SUB_DOUBLE_S(in_outer_range_uncorrected, x, range_multiple);
-        MUL_DOUBLE_S(correction_term, x, range_reduction_correction);
-        SUB_DOUBLE_S(corrected_range, in_outer_range_uncorrected, correction_term);
 
         /* get masks */
-        MUL_DOUBLE_S(small_ranges_away, corrected_range, one_over_pi_2);
+        MUL_DOUBLE_S(small_ranges_away, in_outer_range_uncorrected, one_over_pi_2);
         FLOOR_DOUBLE_S(q, small_ranges_away);
 
         CMP_MASK(sign_mask, q, one, _CMP_GT_OQ);
@@ -73,11 +71,11 @@ void vfast_sin(double *input, double *res, size_t n) {
         CMP_MASK(q2, q, two, _CMP_EQ_OQ);
         CMP_MASK(q3, q, three, _CMP_EQ_OQ);
 
-        MASK_SUB_PD(in_range_partial, corrected_range, q2 | q3, corrected_range, pi);
-        MASK_SUB_PD(in_range_hi, in_range_partial, q1 | q3, pi, in_range_partial);
+        MASK_SUB_PD(in_range_partial, in_outer_range_uncorrected, q2 | q3, in_outer_range_uncorrected, pi);
+        MASK_SUB_PD(in_range, in_range_partial, q1 | q3, pi, in_range_partial);
 
-        MASK_ADD_PD(in_range, in_range_hi, q1 | q3, in_range_hi, pi_lo);
         MUL_DOUBLE_S(x_square, in_range, in_range);
+        MUL_DOUBLE_S(x_cube, x_square, in_range);
 
         FMADD_PD(result_q0_t8, taylor_coeff11, x_square, taylor_coeff10);
         FMADD_PD(result_q0_t9, result_q0_t8, x_square, taylor_coeff9);
@@ -89,20 +87,8 @@ void vfast_sin(double *input, double *res, size_t n) {
         FMADD_PD(result_q0_t15, result_q0_t14, x_square, taylor_coeff3);
         FMADD_PD(result_q0_t16, result_q0_t15, x_square, taylor_coeff2);
         FMADD_PD(result_q0_t17, result_q0_t16, x_square, taylor_coeff1);
-        MUL_DOUBLE_S(result_q0_t18, result_q0_t17, x_square);
 
-        // to uneven the degrees
-        MUL_DOUBLE_S(result_partial, result_q0_t18, in_range);
-
-//        PRINT_FULL_M512D(result_partial);
-
-        CMP_MASK(test_mask, in_range, half, _CMP_GT_OQ);
-
-        MUL_DOUBLE_S(partial_correction, x_square, martin_const);
-        ADD_DOUBLE_S(correction, partial_correction, martin_const);
-        MASK_ADD_PD(result_corrected, result_partial, test_mask, result_partial, correction);
-        
-        ADD_DOUBLE_S(result, result_corrected, in_range);
+        FMADD_PD(result, result_q0_t17, x_cube, in_range);
 
         MASK_MUL_PD(sign_adjusted_result, result, sign_mask, result, neg_one);
 

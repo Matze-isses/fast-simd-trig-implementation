@@ -9,21 +9,11 @@ def load_tsv(filename):
     ulp = data[:, 3]
     return x, approx, ref, ulp
 
+
 def plot_results(x, approx, ref, ulp):
     plt.figure()
 
-    plt.plot(x, approx, label="vfast_sin")
-    plt.plot(x, ref, label="reference", linestyle="--")
-
-    plt.xlabel("x")
-    plt.ylabel("sin(x)")
-    plt.title("Approximation vs Reference")
-    plt.legend()
-    plt.grid()
-
-    plt.figure()
-
-    plt.plot(x, ulp)
+    plt.plot(x**2, ulp)
 
     plt.xlabel("x")
     plt.ylabel("ULP error")
