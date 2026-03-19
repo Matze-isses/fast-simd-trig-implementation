@@ -54,6 +54,18 @@
 #define sin_tp19 (-4.9024697565135435e-47)
 #define sin_tp20 (2.9893108271424046e-50)
 
+#define cos_tp1 (0x1.0000000000000p+0)
+#define cos_tp2 (-0x1.0000000000000p-1)
+#define cos_tp3 (0x1.5555555555555p-5)
+#define cos_tp4 (-0x1.6c16c16c16c17p-10)
+#define cos_tp5 (0x1.a01a01a01a01ap-16)
+#define cos_tp6 (-0x1.27e4fb7789f5cp-22)
+#define cos_tp7 (0x1.1eed8eff8d898p-29)
+#define cos_tp8 (-0x1.93974a8c07c9dp-37)
+#define cos_tp9 (0x1.ae7f3e733b81fp-45)
+#define cos_tp10 (-0x1.6827863b97d97p-53)
+#define cos_tp11 (0x1.e542ba4020225p-62)
+
 #define __AVX512F__ 1
 
 

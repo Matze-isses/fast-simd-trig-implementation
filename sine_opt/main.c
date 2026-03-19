@@ -73,13 +73,23 @@ int main(void)
     vfast_sin(input, res, n);
 
     printf("%24s %24s %24s %12s\n", "x", "vfast_sin(x)", "ref_double", "ulp_diff");
+    int count_one = 0;
+    int count_two = 0;
+    int count_severe = 0;
 
     for (size_t i = 0; i < n; ++i) {
         double ref = reference_sin_as_double(input[i]);
         long long ulp = signed_ulp_diff(res[i], ref);
 
-        // printf("%24.17g %24.17g %24.17g %12lld\n", input[i], res[i], ref, ulp);
+        if (ulp > 2 || ulp < -2) count_severe++;
+        if (ulp == 2 || ulp == -2) count_two++;
+        if (ulp == 1 || ulp == -1) count_one++;
+
+        //printf("%24.17g %24.17g %24.17g %12lld\n", input[i], res[i], ref, ulp);
     }
+    printf("Total ULP 1 Values: %d\n\n", count_one);
+    printf("Total ULP 2 Values: %d\n\n", count_two);
+    printf("Total Unacceptable: %d\n\n", count_severe);
 
     if (save_results_tsv("sin_results.tsv", input, res, n) != 0) {
         fprintf(stderr, "Could not write sin_results.tsv\n");

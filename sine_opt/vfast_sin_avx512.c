@@ -4,6 +4,7 @@
 #include <math.h>
 #include <stdio.h>
 #include "trig_simd.h"
+#include "bit_printing.h"
 
 
 void vfast_sin(double *input, double *res, size_t n) {
@@ -21,10 +22,14 @@ void vfast_sin(double *input, double *res, size_t n) {
 
     SET1_PD(pi_lo, 0x1.1a62633145c07p-53);
 
+    SET1_PD(martin_const, 0.0000000000000000074010000000001);
+
     SET1_PD(one, 1.0);
     SET1_PD(two, 2.0);
     SET1_PD(three, 3.0);
     SET1_PD(neg_one, -1.0);
+
+    SET1_PD(half, 0.5);
 
     SET1_PD(taylor_coeff0, sin_tp0);
     SET1_PD(taylor_coeff1, sin_tp1);
@@ -72,17 +77,9 @@ void vfast_sin(double *input, double *res, size_t n) {
         MASK_SUB_PD(in_range_hi, in_range_partial, q1 | q3, pi, in_range_partial);
 
         MASK_ADD_PD(in_range, in_range_hi, q1 | q3, in_range_hi, pi_lo);
-
         MUL_DOUBLE_S(x_square, in_range, in_range);
 
-        FMADD_PD(result_q0_t1, taylor_coeff18, x_square, taylor_coeff17);
-        FMADD_PD(result_q0_t2, result_q0_t1, x_square, taylor_coeff16);
-        FMADD_PD(result_q0_t3, result_q0_t2, x_square, taylor_coeff15);
-        FMADD_PD(result_q0_t4, result_q0_t3, x_square, taylor_coeff14);
-        FMADD_PD(result_q0_t5, result_q0_t4, x_square, taylor_coeff13);
-        FMADD_PD(result_q0_t6, result_q0_t5, x_square, taylor_coeff12);
-        FMADD_PD(result_q0_t7, result_q0_t6, x_square, taylor_coeff11);
-        FMADD_PD(result_q0_t8, result_q0_t7, x_square, taylor_coeff10);
+        FMADD_PD(result_q0_t8, taylor_coeff11, x_square, taylor_coeff10);
         FMADD_PD(result_q0_t9, result_q0_t8, x_square, taylor_coeff9);
         FMADD_PD(result_q0_t10, result_q0_t9, x_square, taylor_coeff8);
         FMADD_PD(result_q0_t11, result_q0_t10, x_square, taylor_coeff7);
@@ -92,13 +89,25 @@ void vfast_sin(double *input, double *res, size_t n) {
         FMADD_PD(result_q0_t15, result_q0_t14, x_square, taylor_coeff3);
         FMADD_PD(result_q0_t16, result_q0_t15, x_square, taylor_coeff2);
         FMADD_PD(result_q0_t17, result_q0_t16, x_square, taylor_coeff1);
-        FMADD_PD(result_q0_t18, result_q0_t17, x_square, taylor_coeff0);
+        MUL_DOUBLE_S(result_q0_t18, result_q0_t17, x_square);
 
         // to uneven the degrees
-        MUL_DOUBLE_S(result, result_q0_t18, in_range);
+        MUL_DOUBLE_S(result_partial, result_q0_t18, in_range);
+
+//        PRINT_FULL_M512D(result_partial);
+
+        CMP_MASK(test_mask, in_range, half, _CMP_GT_OQ);
+
+        MUL_DOUBLE_S(partial_correction, x_square, martin_const);
+        ADD_DOUBLE_S(correction, partial_correction, martin_const);
+        MASK_ADD_PD(result_corrected, result_partial, test_mask, result_partial, correction);
+        
+        ADD_DOUBLE_S(result, result_corrected, in_range);
+
         MASK_MUL_PD(sign_adjusted_result, result, sign_mask, result, neg_one);
 
         SIMD_TO_DOUBLE_VEC(&res[i], sign_adjusted_result);
     }
+
 
 }
